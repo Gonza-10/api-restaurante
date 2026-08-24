@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Mesas Interactivo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f3f4f6; padding: 40px; color: #333; }
+        .dashboard { max-width: 900px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; background-color: #1f2937; color: white; padding: 20px 30px; border-radius: 12px; margin-bottom: 30px; }
+        .counters { display: flex; gap: 15px; }
+        .counter-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px; text-align: center; }
+        .counter-box span { display: block; font-size: 28px; font-weight: bold; }
+        .text-libre { color: #4ade80; }
+        .text-ocupada { color: #f87171; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+        .mesa-card { background: white; border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; aspect-ratio: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 3px solid transparent; }
+        .mesa-card:hover { transform: scale(1.05); }
+        .libre { border-color: #4ade80; background-color: #f0fdf4; }
+        .ocupada { border-color: #f87171; background-color: #fef2f2; }
+        .status-dot { width: 24px; height: 24px; border-radius: 50%; margin-bottom: 15px; }
+        .dot-libre { background-color: #4ade80; }
+        .dot-ocupada { background-color: #f87171; }
+        .numero { font-size: 28px; font-weight: bold; margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h2>Plano del Restaurante</h2>
+            <div class="counters">
+                <div class="counter-box"><span class="text-libre" id="count-libre">0</span> Libres</div>
+                <div class="counter-box"><span class="text-ocupada" id="count-ocupada">0</span> Ocupadas</div>
+            </div>
+        </div>
+        <div class="grid" id="contenedor-mesas"></div>
+    </div>
+
+    <script>
+        // Simulamos la base de datos de SQL Server
+        let mesas = [
+            { id: 1, estado: 'libre' }, { id: 2, estado: 'ocupada' },
+            { id: 3, estado: 'libre' }, { id: 4, estado: 'libre' },
+            { id: 5, estado: 'ocupada' }, { id: 6, estado: 'libre' },
+            { id: 7, estado: 'libre' }, { id: 8, estado: 'ocupada' }
+        ];
+
+        function actualizarPantalla() {
+            const contenedor = document.getElementById('contenedor-mesas');
+            contenedor.innerHTML = '';
+            let libres = 0, ocupadas = 0;
+
+            mesas.forEach(mesa => {
+                if (mesa.estado === 'libre') libres++; else ocupadas++;
+
+                const card = document.createElement('div');
+                const esLibre = mesa.estado === 'libre';
+                card.className = `mesa-card ${esLibre ? 'libre' : 'ocupada'}`;
+                
+                card.innerHTML = `
+                    <div class="status-dot ${esLibre ? 'dot-libre' : 'dot-ocupada'}"></div>
+                    <p class="numero">Mesa ${mesa.id}</p>
+                `;
+
+                // Evento de clic para el mozo
+                card.onclick = () => {
+                    mesa.estado = esLibre ? 'ocupada' : 'libre';
+                    actualizarPantalla(); 
+                };
+
+                contenedor.appendChild(card);
+            });
+
+            document.getElementById('count-libre').innerText = libres;
+            document.getElementById('count-ocupada').innerText = ocupadas;
+        }
+
+        actualizarPantalla();
+    </script>
+</body>
+</html>
