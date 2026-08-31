@@ -72,16 +72,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
+from decouple import config
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'mssql',
-        'NAME': 'RestauranteDB',
-        'HOST': 'localhost',
+        'NAME': config('DB_NAME'),
+        'HOST': config('DB_HOST'),
         'OPTIONS': {
-            'extra_params': 'TrustServerCertificate=yes;'
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'TrustServerCertificate=yes',
         },
     }
 }
@@ -109,9 +111,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-ar'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
 USE_I18N = True
 
@@ -131,4 +133,8 @@ MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
+}
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'restaurante.exception_handler.manejador_excepciones_personalizado',
 }
