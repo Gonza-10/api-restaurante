@@ -10,7 +10,7 @@ import json
 
 # Memoria temporal para los productos
 productos_db = [
-    {"id": 1, "nombre": "Milanesa Napolitan", "precio": 9000.0}
+    {"id": 1, "nombre": "Milanesa Napolitana", "precio": 9000.0}
 ]
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -40,11 +40,23 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             
             try:
                 data = json.loads(post_data.decode('utf-8'))
+                
+                # --- VALIDACIÓN TIPO AE1 ---
+                precio = float(data.get("precio", 0))
+                if precio <= 0:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "El precio debe ser mayor a 0."}).encode('utf-8'))
+                    return
+                # -----------------------------
+
                 nuevo_id = len(productos_db) + 1
                 nuevo_producto = {
                     "id": nuevo_id,
                     "nombre": data.get("nombre"),
-                    "precio": float(data.get("precio", 0))
+                    "precio": precio
                 }
                 productos_db.append(nuevo_producto)
 

@@ -68,12 +68,16 @@ formulario.addEventListener('submit', async (e) => {
             alertaExito.style.display = 'flex';
             formulario.reset();
             obtenerRegistros(); 
-        } else {
+        } else if (respuesta.status === 400) {
+            // ACÁ ATRAPAMOS LA VALIDACIÓN DEL BACKEND (PRECIO <= 0)
             alertaError.textContent = resultado.error || 'Datos inválidos.';
+            alertaError.style.display = 'flex';
+        } else {
+            alertaError.textContent = 'Error desconocido en el servidor.';
             alertaError.style.display = 'flex';
         }
     } catch (error) {
-        alertaError.textContent = 'Fallo de conexión.';
+        alertaError.textContent = 'Fallo de conexión. ¿Está encendido SERV_WEB.py?';
         alertaError.style.display = 'flex';
     }
 });
