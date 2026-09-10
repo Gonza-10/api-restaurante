@@ -9,10 +9,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json  
 from datetime import datetime  
  
-PRODUCTOS_DB = [ 
-    {"id": 1, "nombre": "Yerba Mate Misionera Premium", "precio": 3500.0}, 
-    {"id": 2, "nombre": "Té Negro Misiones 500g", "precio": 2100.0} 
-] 
+# Simulación de una base de datos de productos en memoria usando una lista de diccionarios
+PRODUCTOS_DB = [
+    {"id": 1, "nombre": "Hamburguesa Completa con Cheddar", "precio": 8500.0},
+    {"id": 2, "nombre": "Parrillada para dos personas", "precio": 22000.0},
+    {"id": 3, "nombre": "Pizza Especial de Muzzarella", "precio": 9000.0}
+]
  
 class PyLPApiHandler(BaseHTTPRequestHandler): 
  

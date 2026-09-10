@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Digital - Restaurante</title>
+    <!-- Heredamos el diseño base oscuro -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Estilos específicos del cliente */
+        .client-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .table-badge { background: var(--accent-soft); color: var(--accent); padding: 8px 16px; border-radius: 99px; font-weight: 800; font-size: 14px; border: 1px solid var(--accent); }
+        .menu-container { max-width: 1180px; margin: 0 auto; padding: 40px 30px 100px; }
+        
+        /* Tarjetas de producto con foto */
+        .prod-card-client { background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; transition: transform 0.2s; display: flex; flex-direction: column; }
+        .prod-card-client:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+        .prod-image { width: 100%; height: 220px; background-size: cover; background-position: center; background-color: #222; }
+        .prod-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
+        .prod-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .prod-title { font-size: 18px; font-weight: 700; color: var(--text); margin-right: 10px; }
+        .prod-price { font-size: 18px; font-weight: 800; color: var(--success); }
+        
+        /* Botones y carrito */
+        .btn-add-cart { margin-top: auto; width: 100%; background: transparent; color: var(--text); border: 1px solid var(--border-strong); padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .btn-add-cart:hover { background: var(--accent); border-color: var(--accent); color: white; }
+        .floating-cart { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: min(400px, 90%); background: var(--accent); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 12px 30px rgba(255, 79, 23, 0.3); cursor: pointer; font-weight: 800; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+    <header class="client-header">
+        <div class="brand">
+            <span class="brand-main" style="font-size: 24px;">Restaurante</span><span class="brand-dot" style="font-size: 24px;">.</span>
+        </div>
+        <div class="table-badge">📍 Mesa #04</div>
+    </header>
+
+    <main class="menu-container">
+        <div class="divider" style="margin-top: 0;">
+            <span></span>
+            <p>CATÁLOGO DIGITAL</p>
+            <span></span>
+        </div>
+
+        <div id="listado-menu" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+            <p style="color: var(--text-muted); font-size: 14px;">Cargando menú desde el servidor...</p>
+        </div>
+    </main>
+
+    <div class="floating-cart">
+        <span>🛒 Mi Comanda</span>
+        <span>$0.00</span>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api/v1/productos';
+        const contenedorLista = document.getElementById('listado-menu');
+
+        // Banco de imágenes de alta calidad (se asignan en loop a los productos)
+        const bancoImagenes = [
+            'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80', // Hamburguesa
+            'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&q=80', // Carne/Parrilla
+            'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=600&q=80', // Pizza
+            'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&q=80'  // Postre
+        ];
+
+        async function cargarMenuCliente() {
+            try {
+                const respuesta = await fetch(API_URL);
+                if (!respuesta.ok) throw new Error('Error de servidor');
+
+                const items = await respuesta.json();
+                contenedorLista.innerHTML = '';
+
+                if (items.length === 0) {
+                    contenedorLista.innerHTML = '<p style="color: var(--text-muted);">El menú está vacío en este momento.</p>';
+                    return;
+                }
+
+                items.forEach((item, index) => {
+                    const foto = bancoImagenes[index % bancoImagenes.length];
+                    
+                    const tarjeta = document.createElement('div');
+                    tarjeta.className = 'prod-card-client';
+                    tarjeta.innerHTML = `
+                        <div class="prod-image" style="background-image: url('${foto}')"></div>
+                        <div class="prod-content">
+                            <div class="prod-header">
+                                <h3 class="prod-title">${item.nombre}</h3>
+                                <span class="prod-price">$${item.precio.toFixed(2)}</span>
+                            </div>
+                            <button class="btn-add-cart">+ Agregar</button>
+                        </div>
+                    `;
+                    contenedorLista.appendChild(tarjeta);
+                });
+            } catch (error) {
+                contenedorLista.innerHTML = '<p style="color: var(--error);">Fallo de conexión con el backend.</p>';
+            }
+        }
+
+        cargarMenuCliente();
+    </script>
+</body>
+</html>
