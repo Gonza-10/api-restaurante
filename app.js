@@ -17,10 +17,7 @@ function limpiarAlertas() {
 async function obtenerRegistros() {
     try {
         const respuesta = await fetch(API_URL);
-
-        if (!respuesta.ok) {
-            throw new Error(`Error en el servidor código ${respuesta.status}`);
-        }
+        if (!respuesta.ok) throw new Error(`Error ${respuesta.status}`);
 
         const items = await respuesta.json();
         contenedorLista.innerHTML = '';
@@ -44,10 +41,8 @@ async function obtenerRegistros() {
             `;
             contenedorLista.appendChild(tarjeta);
         });
-
     } catch (error) {
-        console.error('Fallo en la comunicación', error);
-        contenedorLista.innerHTML = '<p style="color: var(--error); font-size: 14px;">No se pudo conectar con el servidor backend. Verificá SERV_WEB.py</p>';
+        contenedorLista.innerHTML = '<p style="color: var(--error); font-size: 14px;">Fallo de conexión con el servidor.</p>';
     }
 }
 
@@ -57,7 +52,6 @@ formulario.addEventListener('submit', async (e) => {
 
     const nombre = document.getElementById('campo-nombre').value.trim(); 
     const precio = parseFloat(document.getElementById('campo-precio').value); 
-
     const payload = { nombre: nombre, precio: precio };
 
     try {
@@ -78,12 +72,10 @@ formulario.addEventListener('submit', async (e) => {
             alertaError.textContent = resultado.error || 'Datos inválidos.';
             alertaError.style.display = 'flex';
         }
-
     } catch (error) {
-        alertaError.textContent = 'Fallo de conexión. Servidor apagado.';
+        alertaError.textContent = 'Fallo de conexión.';
         alertaError.style.display = 'flex';
     }
 });
 
-/* Carga inicial de datos al abrir la web */
 obtenerRegistros();
