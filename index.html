@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Menú - API REST</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="login-page">
+        <!-- Contenedor Principal (Panel Dividido) -->
+        <div class="login-shell">
+            
+            <!-- PANEL IZQUIERDO: Hero -->
+            <div class="hero-panel">
+                <div class="brand">
+                    <span class="brand-main">Restaurante</span><span class="brand-dot">.</span>
+                </div>
+                
+                <div class="hero-copy">
+                    <span class="eyebrow">PANEL DE ADMINISTRACIÓN</span>
+                    <h1>Gestión de<br>Menú API</h1>
+                    <p>Agregá nuevos platos al catálogo y visualizá los datos consumiendo el backend local de Python (AE1).</p>
+                </div>
+            </div>
+
+            <!-- PANEL DERECHO: Formulario -->
+            <div class="form-panel">
+                <div class="login-card">
+                    <div class="login-header">
+                        <h2>Nuevo Producto</h2>
+                        <p>Ingresá los datos para enviar al servidor</p>
+                    </div>
+
+                    <!-- Formulario conectado a JS -->
+                    <form id="formulario-registro" style="margin-top: 30px;">
+                        
+                        <fieldset class="input-fieldset">
+                            <legend>Nombre / Identificador</legend>
+                            <input type="text" id="campo-nombre" class="text-input" placeholder="Ej: Hamburguesa Completa" required>
+                        </fieldset>
+
+                        <fieldset class="input-fieldset">
+                            <legend>Precio de Lista ($)</legend>
+                            <input type="number" id="campo-precio" class="text-input" placeholder="0.00" step="0.01" required>
+                        </fieldset>
+                        
+                        <!-- Mensajes de estado -->
+                        <div id="caja-error" class="message error" style="display: none;"></div>
+                        <div id="caja-exito" class="message success" style="display: none;"></div>
+
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">
+                            Guardar en Servidor <span class="btn-arrow">→</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN INFERIOR: Lista de Productos -->
+        <div class="catalogo-section">
+            <div class="divider">
+                <span></span>
+                <p>BASE DE DATOS ACTUAL</p>
+                <span></span>
+            </div>
+            
+            <div id="listado" class="products-grid">
+                <p style="color: var(--text-muted); font-size: 14px;">Cargando registros desde la API...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

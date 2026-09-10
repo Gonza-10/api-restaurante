@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso a Mesa - Restaurante</title>
+    <!-- Reutilizamos tu mismo archivo de estilos para mantener el diseño -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="login-page">
+        <div class="login-shell" style="grid-template-columns: 1fr; max-width: 500px; min-height: auto;">
+            
+            <div class="form-panel" style="padding: 60px 40px; border-radius: var(--radius-xl);">
+                <div class="login-card" style="width: 100%; border: none; box-shadow: none; background: transparent;">
+                    
+                    <div class="login-header">
+                        <div class="brand" style="margin: 0 auto 20px;">
+                            <span class="brand-main">Restaurante</span><span class="brand-dot">.</span>
+                        </div>
+                        <h2>Acceso a tu Mesa</h2>
+                        <p>Ingresá el PIN de 4 dígitos que te proporcionó el mozo al abrir tu mesa.</p>
+                    </div>
+
+                    <form id="formulario-login" style="margin-top: 40px;">
+                        
+                        <fieldset class="pin-fieldset">
+                            <legend style="text-align: center;">PIN DE MESA</legend>
+                            <div class="pin-group" id="pin-container">
+                                <!-- Inputs limitados a 1 solo número -->
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required autofocus>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                            </div>
+                        </fieldset>
+                        
+                        <div id="login-error" class="message error" style="display: none; justify-content: center; margin-top: 10px;">PIN incorrecto o mesa no habilitada.</div>
+
+                        <button type="submit" class="btn-primary" style="margin-top: 30px;">
+                            Ingresar al Menú <span class="btn-arrow">→</span>
+                        </button>
+                    </form>
+
+                    <div class="login-footer">
+                        <div class="status-dot"></div>
+                        <span>Sistema conectado al servidor local</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lógica para que el foco salte automáticamente al siguiente casillero del PIN
+        const pinInputs = document.querySelectorAll('.pin-input');
+        
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', function() {
+                if (this.value.length === 1 && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+        });
+
+        // Simulación de envío del PIN
+        document.getElementById('formulario-login').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Recolectamos los 4 dígitos
+            let pinIngresado = '';
+            pinInputs.forEach(input => pinIngresado += input.value);
+
+            console.log("PIN ingresado para PedidoCabecera:", pinIngresado);
+            
+            // Acá a futuro iría el fetch() al backend validando el PIN.
+            // Por ahora, simulamos que el acceso es correcto y redirigimos al menú.
+            window.location.href = 'index.html'; 
+        });
+    </script>
+</body>
+</html>
