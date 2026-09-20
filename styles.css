@@ -234,3 +234,57 @@ button, input { font: inherit; }
     border-color: #ff4f17;
     box-shadow: 0 0 0 4px rgba(255, 79, 23, 0.16);
 }
+
+:root {
+    --bg-dark: #121212;
+    --surface-dark: #1E1E1E;
+    --primary-orange: #FF7A00;
+    --primary-hover: #E06A00;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --text-main: #FFFFFF;
+    --text-muted: #A0A0A0;
+}
+
+.product-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 122, 0, 0.3);
+}
+
+.btn-orange {
+    background: var(--primary-orange);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-orange:hover {
+    background: var(--primary-hover);
+    transform: scale(1.08);
+    box-shadow: 0 4px 15px rgba(255, 122, 0, 0.4);
+}
+
+.btn-orange:active {
+    transform: scale(0.95);
+}
