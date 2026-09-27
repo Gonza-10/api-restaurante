@@ -1,9 +1,10 @@
 /* ==========================================================================
    LÓGICA DEL CLIENTE WEB (ASINCRONÍA Y FETCH API) - PyLP III
-   Módulo de Autogestión y Catálogo de Productos
+   Módulo de Autogestión, Catálogo de Productos y Checkout
    ========================================================================== */
 
 const API_URL = 'http://localhost:8080/api/v1/productos';
+const API_PEDIDOS_URL = 'http://localhost:8080/api/v1/pedidos';
 
 const contenedorLista = document.getElementById('listado');
 const alertaError = document.getElementById('caja-error');
@@ -19,12 +20,12 @@ function obtenerImagenPorNombre(nombre) {
     const n = nombre.toLowerCase();
     if (n.includes('milanesa')) return 'https://marubotana.tv/uploads/2026/03/milanesa-napolitana.webp';
     if (n.includes('pizza')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=80';
-    if (n.includes('hamburguesa') || n.includes('burger')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80';
+    if (n.includes('hamburguesa') || n.includes('burger')) return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg';
     if (n.includes('galeto') || n.includes('pollo')) return 'https://images.unsplash.com/photo-1598514982205-f36b96d1e8d4?auto=format&fit=crop&w=500&q=80';
     if (n.includes('pasta') || n.includes('fideo')) return 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=500&q=80';
     if (n.includes('ensalada')) return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80';
-    if (n.includes('picada') || n.includes('tabla')) return 'https://images.unsplash.com/photo-1602928321679-560bb453f190?auto=format&fit=crop&w=500&q=80';
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80'; 
+    if (n.includes('picada') || n.includes('tabla')) return 'https://picadasxl.com/wp-content/uploads/2024/08/inicio.png';
+    return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg'; 
 }
 
 function obtenerDetallesPorNombre(nombre) {
@@ -157,5 +158,44 @@ formulario.addEventListener('submit', async (e) => {
         alertaError.style.display = 'flex';
     }
 });
+
+/* ==========================================================================
+   PROCESAMIENTO TRANSACCIONAL DE COMANDAS Y CONTROL DE IDEMPOTENCIA
+   ========================================================================== */
+
+function generarUUID() {
+    return crypto.randomUUID();
+}
+
+function estructurarComanda(carrito, mesaId) {
+    return {
+        id_comanda_uuid: generarUUID(),
+        mesa_id: mesaId,
+        items: carrito,
+        timestamp: new Date().toISOString()
+    };
+}
+
+async function enviarComandaServidor(comandaPayload) {
+    try {
+        const respuesta = await fetch(API_PEDIDOS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(comandaPayload)
+        });
+
+        if (respuesta.status === 202) {
+            return { exito: true, estado: 'en_cola' };
+        } else if (respuesta.status === 200 || respuesta.status === 201) {
+            return { exito: true, estado: 'confirmado' };
+        } else {
+            const errorData = await respuesta.json().catch(() => ({}));
+            throw new Error(errorData.error || `Error en el procesamiento: ${respuesta.status}`);
+        }
+    } catch (error) {
+        console.error('Fallo en la comunicación con el servicio de comandas:', error);
+        throw error;
+    }
+}
 
 obtenerRegistros();
