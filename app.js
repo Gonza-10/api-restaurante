@@ -198,4 +198,59 @@ async function enviarComandaServidor(comandaPayload) {
     }
 }
 
+/* ==========================================================================
+   EVENTO DE CONFIRMACIÓN DE COMPRA (ASINCRONÍA UI)
+   ========================================================================== */
+
+async function confirmarPedido() {
+    if (cantidadItems === 0) return; // Evita mandar pedidos vacíos
+
+    const botonCarrito = document.getElementById('boton-carrito');
+    const textoOriginal = document.getElementById('texto-pedido').textContent;
+    const totalOriginal = document.getElementById('total-pedido').textContent;
+
+    // 1. Feedback visual asíncrono (deshabilita el botón)
+    botonCarrito.style.pointerEvents = 'none';
+    botonCarrito.style.backgroundColor = '#666'; // Gris para indicar espera
+    document.getElementById('texto-pedido').textContent = 'Enviando a cocina...';
+    document.getElementById('total-pedido').innerHTML = '<span class="spinner" style="display:inline-block; width:15px; height:15px; border:2px solid white; border-top:2px solid transparent; border-radius:50%; animation: spin 1s linear infinite;"></span>';
+
+    try {
+        // 2. Prepara el payload con el UUID
+        const payload = estructurarComanda([{ cantidad: cantidadItems, total: totalPedido }], "04");
+
+        // 3. Envía a RabbitMQ y espera el código 202
+        const resultado = await enviarComandaServidor(payload);
+
+        if (resultado.exito) {
+            // Éxito: RabbitMQ aceptó el mensaje.
+            botonCarrito.style.backgroundColor = '#4CAF50'; // Verde éxito
+            document.getElementById('texto-pedido').textContent = '¡Orden en preparación!';
+            document.getElementById('total-pedido').textContent = 'Cocina avisada';
+            
+            // Resetea el carrito local después de 3 segundos
+            setTimeout(() => {
+                totalPedido = 0;
+                cantidadItems = 0;
+                document.getElementById('texto-pedido').textContent = 'Mi pedido (0)';
+                document.getElementById('total-pedido').textContent = '$0.00';
+                botonCarrito.style.backgroundColor = 'var(--primary-orange)';
+                botonCarrito.style.pointerEvents = 'auto';
+            }, 3000);
+        }
+    } catch (error) {
+        // Fallo: Restaura el botón para que el usuario intente de nuevo
+        console.error("Fallo al enviar:", error);
+        botonCarrito.style.backgroundColor = 'var(--error)';
+        document.getElementById('texto-pedido').textContent = 'Error de red';
+        
+        setTimeout(() => {
+            botonCarrito.style.backgroundColor = 'var(--primary-orange)';
+            document.getElementById('texto-pedido').textContent = textoOriginal;
+            document.getElementById('total-pedido').textContent = totalOriginal;
+            botonCarrito.style.pointerEvents = 'auto';
+        }, 3000);
+    }
+}
+
 obtenerRegistros();

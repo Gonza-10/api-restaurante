@@ -322,3 +322,7 @@ button, input { font: inherit; }
     pointer-events: none;
     transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1);
 }
+
+@keyframes spin { 
+    100% { transform: rotate(360deg); } 
+}

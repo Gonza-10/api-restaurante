@@ -69,7 +69,7 @@
     </div>
 
     <div style="position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; padding-bottom: 20px; pointer-events: none; z-index: 1000;">
-        <div id="boton-carrito" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
+        <div id="boton-carrito" onclick="confirmarPedido()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
             <span id="texto-pedido">Mi pedido (0)</span>
             <span id="total-pedido">$0.00</span>
         </div>
@@ -139,12 +139,12 @@
             const n = nombre.toLowerCase();
             if (n.includes('milanesa')) return 'https://marubotana.tv/uploads/2026/03/milanesa-napolitana.webp';
             if (n.includes('pizza')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=80';
-            if (n.includes('hamburguesa') || n.includes('burger')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80';
+            if (n.includes('hamburguesa') || n.includes('burger')) return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg';
             if (n.includes('galeto') || n.includes('pollo')) return 'https://images.unsplash.com/photo-1598514982205-f36b96d1e8d4?auto=format&fit=crop&w=500&q=80';
             if (n.includes('pasta') || n.includes('fideo')) return 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=500&q=80';
             if (n.includes('ensalada')) return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80';
             if (n.includes('picada') || n.includes('tabla')) return 'https://picadasxl.com/wp-content/uploads/2024/08/inicio.png';
-            return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80'; 
+            return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg'; 
         }
 
         function obtenerDetallesPorNombre(nombre) {
