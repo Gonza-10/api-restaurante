@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú Digital - Savage Grill</title>
+    <!-- Vinculación de estilos base -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
+    <!-- ==========================================================================
+         CABECERA: Estado de Sesión y Mesa Activa
+         ========================================================================== -->
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
         <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
         <span onclick="abrirModalMesa()" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--primary-orange)';">
@@ -15,6 +19,9 @@
         </span>
     </header>
 
+    <!-- ==========================================================================
+         MÓDULO PRINCIPAL: Renderizado Dinámico del Catálogo
+         ========================================================================== -->
     <main style="padding: 40px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px;">
         
         <div style="background: linear-gradient(to right, rgba(18,18,18,0.98) 20%, rgba(18,18,18,0.4)), url('https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80') center/cover; border-radius: 24px; padding: 50px; margin-bottom: 50px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 320px; border: 1px solid var(--primary-orange); box-shadow: 0 15px 35px rgba(255, 122, 0, 0.15); position: relative; overflow: hidden;">
@@ -36,17 +43,19 @@
         </div>
         
         <div id="listado" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-            <!-- Contenido dinámico -->
+            <!-- Contenido dinámico renderizado por JS -->
         </div>
     </main>
 
-    <!-- Modal de Información de Mesa -->
+    <!-- ==========================================================================
+         OVERLAYS Y MODALES (UI Asíncrona)
+         ========================================================================== -->
+
+    <!-- 1. Modal de Información de Contexto -->
     <div id="modal-mesa" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(380px, 90%); padding: 30px; position: relative;">
             <button onclick="cerrarModalMesa()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
-            
             <h2 style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">Mesa #04</h2>
-            
             <div style="display: flex; flex-direction: column; gap: 16px;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span>
@@ -68,26 +77,126 @@
         </div>
     </div>
 
+    <!-- 2. NUEVO: Modal de Vista Rápida del Producto (Quick View) -->
+    <div id="modal-detalle" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(450px, 90%); padding: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--glass-border);">
+            
+            <!-- Botón de cierre flotante sobre la imagen -->
+            <button onclick="cerrarModalDetalle()" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border: none; color: white; cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 10; transition: background 0.2s;" onmouseover="this.style.background='var(--primary-orange)'" onmouseout="this.style.background='rgba(0,0,0,0.6)'">✕</button>
+            
+            <img id="detalle-img" src="" alt="Detalle del producto" style="width: 100%; height: 260px; object-fit: cover;">
+            
+            <div style="padding: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="color: var(--primary-orange); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Info. del Plato</span>
+                    
+                    <!-- Indicador dinámico de Porciones -->
+                    <div style="display: flex; align-items: center; gap: 6px; color: var(--text-main); font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span id="detalle-porciones"></span>
+                    </div>
+                </div>
+                
+                <h2 id="detalle-nombre" style="margin: 0 0 12px 0; color: var(--text-main); font-size: 28px; font-weight: 900;"></h2>
+                <p id="detalle-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;"></p>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Precio final</span>
+                        <span id="detalle-precio" style="font-size: 30px; font-weight: 900; color: var(--primary-orange);"></span>
+                    </div>
+                    <!-- Permite agregar al carrito directamente desde la vista de detalle -->
+                    <button id="btn-detalle-agregar" class="btn-orange" style="padding: 12px 24px; font-size: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background-color: var(--primary-orange); color: white; box-shadow: 0 4px 15px rgba(255,122,0,0.3);">
+                        + Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Modal de Confirmación Transaccional DETALLADO (Checkout) -->
+    <div id="modal-carrito" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(400px, 90%); padding: 30px; position: relative; max-height: 90vh; display: flex; flex-direction: column;">
+            <button onclick="cerrarModalCarrito()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+            
+            <h2 style="margin-top: 0; color: var(--primary-orange); font-size: 22px; margin-bottom: 20px; text-align: center; flex-shrink: 0;">Resumen del Pedido</h2>
+            
+            <div id="lista-carrito-modal" style="overflow-y: auto; flex-grow: 1; margin-bottom: 20px; padding-right: 5px; display: flex; flex-direction: column; gap: 8px;">
+                <!-- JS inyectará los platos acá -->
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 25px; flex-shrink: 0;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
+                    <span style="color: var(--text-muted); font-size: 15px;">Cantidad de Platos</span>
+                    <span id="modal-cantidad-items" style="font-weight: 600;">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;">
+                    <span style="color: var(--text-muted); font-size: 15px;">Total a pagar</span>
+                    <span id="modal-total-pago" style="font-size: 28px; font-weight: 900; color: var(--text-main);">$0.00</span>
+                </div>
+            </div>
+
+            <button id="btn-confirmar-modal" onclick="confirmarPedido()" style="width: 100%; background-color: var(--primary-orange); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s ease; flex-shrink: 0;">
+                Confirmar y Enviar a Cocina
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         CALL TO ACTION (Barra Inferior Flotante)
+         ========================================================================== -->
     <div style="position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; padding-bottom: 20px; pointer-events: none; z-index: 1000;">
-        <div id="boton-carrito" onclick="confirmarPedido()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
+        <div id="boton-carrito" onclick="abrirModalCarrito()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
             <span id="texto-pedido">Mi pedido (0)</span>
             <span id="total-pedido">$0.00</span>
         </div>
     </div>
 
+    <!-- Importación del motor asíncrono y transaccional -->
+    <script src="app.js"></script>
+    
     <script>
-        const API_URL = 'http://localhost:8080/api/v1/productos';
-        const contenedorLista = document.getElementById('listado');
-        let totalPedido = 0;
-        let cantidadItems = 0;
+        window.carrito = [];
+        window.totalPedido = 0;
 
-        function agregarAlCarrito(precio, botonElement) {
-            totalPedido += precio;
-            cantidadItems++;
+        /* ==========================================================================
+           GESTIÓN DEL CARRITO (Estado Local)
+           ========================================================================== */
+        function agregarAlCarrito(nombre, precio, botonElement) {
+            const idTemp = Date.now() + Math.floor(Math.random() * 1000);
+            
+            window.carrito.push({ id: idTemp, nombre: nombre, precio: precio });
+            window.totalPedido += precio;
 
-            document.getElementById('total-pedido').textContent = `$${totalPedido.toFixed(2)}`;
-            document.getElementById('texto-pedido').textContent = `Mi pedido (${cantidadItems})`;
+            actualizarBarraFlotante();
+            animarBoton(botonElement);
+        }
 
+        function removerDelCarrito(idItem) {
+            const index = window.carrito.findIndex(item => item.id === idItem);
+            if (index > -1) {
+                window.totalPedido -= window.carrito[index].precio;
+                window.carrito.splice(index, 1);
+                
+                actualizarBarraFlotante();
+                
+                if (window.carrito.length === 0) {
+                    cerrarModalCarrito(); 
+                } else {
+                    renderizarListaModal(); 
+                }
+            }
+        }
+
+        function actualizarBarraFlotante() {
+            document.getElementById('total-pedido').textContent = `$${window.totalPedido.toFixed(2)}`;
+            document.getElementById('texto-pedido').textContent = `Mi pedido (${window.carrito.length})`;
+        }
+
+        /* ==========================================================================
+           CONTROLADORES DE VISTA Y DOM
+           ========================================================================== */
+        function animarBoton(botonElement) {
             const textoOriginal = botonElement.innerHTML;
             botonElement.innerHTML = 'Agregado';
             botonElement.style.backgroundColor = '#4CAF50'; 
@@ -96,33 +205,13 @@
             const barra = document.getElementById('boton-carrito');
             barra.style.transform = 'scale(1.05)';
 
-            // Lógica del punto animado
-            const rectBoton = botonElement.getBoundingClientRect();
-            const rectCarrito = barra.getBoundingClientRect();
-
-            const punto = document.createElement('div');
-            punto.className = 'punto-animado';
-            
-            const startX = rectBoton.left + rectBoton.width / 2 - 10;
-            const startY = rectBoton.top + rectBoton.height / 2 - 10;
-            punto.style.left = `${startX}px`;
-            punto.style.top = `${startY}px`;
-            
-            document.body.appendChild(punto);
-
             setTimeout(() => {
-                const targetX = rectCarrito.left + rectCarrito.width / 2 - 10;
-                const targetY = rectCarrito.top + rectCarrito.height / 2 - 10;
-                punto.style.left = `${targetX}px`;
-                punto.style.top = `${targetY}px`;
-                punto.style.transform = 'scale(0.2)';
-                punto.style.opacity = '0';
-            }, 50);
-
-            setTimeout(() => {
-                punto.remove();
                 botonElement.innerHTML = textoOriginal;
                 botonElement.style.backgroundColor = ''; 
+                if(!botonElement.classList.contains('btn-orange')) {
+                    // Solo limpia si no es el botón del modal de detalles para respetar sus estilos
+                    botonElement.style.backgroundColor = 'transparent';
+                }
                 barra.style.transform = 'scale(1)';
             }, 750);
         }
@@ -135,34 +224,75 @@
             document.getElementById('modal-mesa').style.display = 'none';
         }
 
-        function obtenerImagenPorNombre(nombre) {
-            const n = nombre.toLowerCase();
-            if (n.includes('milanesa')) return 'https://marubotana.tv/uploads/2026/03/milanesa-napolitana.webp';
-            if (n.includes('pizza')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=80';
-            if (n.includes('hamburguesa') || n.includes('burger')) return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg';
-            if (n.includes('galeto') || n.includes('pollo')) return 'https://images.unsplash.com/photo-1598514982205-f36b96d1e8d4?auto=format&fit=crop&w=500&q=80';
-            if (n.includes('pasta') || n.includes('fideo')) return 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=500&q=80';
-            if (n.includes('ensalada')) return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80';
-            if (n.includes('picada') || n.includes('tabla')) return 'https://picadasxl.com/wp-content/uploads/2024/08/inicio.png';
-            return 'https://chiplotegrill.com/wp-content/uploads/2021/02/HAMBURGUESA-COMPLETA.jpg'; 
+        /* Controlador de la nueva vista de detalle de producto */
+        function abrirModalDetalle(nombre, precio, desc, imagen, porciones) {
+            document.getElementById('detalle-img').src = imagen;
+            document.getElementById('detalle-nombre').textContent = nombre;
+            document.getElementById('detalle-desc').textContent = desc;
+            document.getElementById('detalle-precio').textContent = `$${parseFloat(precio).toFixed(2)}`;
+            document.getElementById('detalle-porciones').textContent = porciones;
+            
+            // Reasignamos el evento del botón "Agregar" para que use los datos correctos
+            const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
+            btnDetalleAgregar.onclick = function() {
+                agregarAlCarrito(nombre, precio, this);
+            };
+
+            document.getElementById('modal-detalle').style.display = 'flex';
         }
 
+        function cerrarModalDetalle() {
+            document.getElementById('modal-detalle').style.display = 'none';
+        }
+
+        function renderizarListaModal() {
+            const contenedor = document.getElementById('lista-carrito-modal');
+            contenedor.innerHTML = ''; 
+            
+            window.carrito.forEach(item => {
+                contenedor.innerHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        <span style="font-size: 15px; font-weight: bold; color: var(--text-main);">${item.nombre}</span>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span style="color: var(--primary-orange); font-weight: bold;">$${item.precio.toFixed(2)}</span>
+                            <button onclick="removerDelCarrito(${item.id})" style="background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; color: #ff4d4d; border-radius: 6px; width: 30px; height: 30px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; transition: all 0.2s;" title="Quitar plato">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('modal-cantidad-items').textContent = window.carrito.length;
+            document.getElementById('modal-total-pago').textContent = `$${window.totalPedido.toFixed(2)}`;
+        }
+
+        function abrirModalCarrito() {
+            if (window.carrito.length === 0) return; 
+            renderizarListaModal();
+            document.getElementById('modal-carrito').style.display = 'flex';
+        }
+
+        function cerrarModalCarrito() {
+            document.getElementById('modal-carrito').style.display = 'none';
+        }
+
+        /* Mockup de BD extendido: Ahora incluye lógica de cálculo de raciones */
         function obtenerDetallesPorNombre(nombre) {
             const n = nombre.toLowerCase();
-            if (n.includes('milanesa')) return { desc: 'Milanesa de ternera gratinada con mozzarella, salsa de tomate y guarnición.', tiempo: '25 min' };
-            if (n.includes('pizza')) return { desc: 'Masa madre a la piedra, salsa natural, mozzarella y aceite de oliva.', tiempo: '20 min' };
-            if (n.includes('burger') || n.includes('hamburguesa')) return { desc: 'Medallón 100% carne de pastura, cheddar derretido, bacon y aderezos.', tiempo: '15 min' };
-            if (n.includes('galeto') || n.includes('pollo')) return { desc: 'Pollo marinado al limón, asado lentamente con finas hierbas aromáticas.', tiempo: '35 min' };
-            if (n.includes('pasta') || n.includes('fideo')) return { desc: 'Pasta artesanal salteada al wok con salsa a elección y queso sardo.', tiempo: '20 min' };
-            if (n.includes('ensalada')) return { desc: 'Mix de hojas verdes de estación, tomates cherry, croutons y vinagreta.', tiempo: '10 min' };
-            if (n.includes('picada') || n.includes('tabla')) return { desc: 'Selección premium de fiambres ahumados, quesos duros y panes caseros.', tiempo: '10 min' };
-            return { desc: 'Especialidad de la casa elaborada en el momento con ingredientes frescos.', tiempo: '20 min' }; 
+            if (n.includes('milanesa')) return { desc: 'Milanesa de ternera gratinada con mozzarella, salsa de tomate y guarnición.', tiempo: '25 min', porciones: 'Para 2 personas' };
+            if (n.includes('pizza')) return { desc: 'Masa madre a la piedra, salsa natural, mozzarella y aceite de oliva.', tiempo: '20 min', porciones: '2 a 3 personas' };
+            if (n.includes('burger') || n.includes('hamburguesa')) return { desc: 'Medallón 100% carne de pastura, cheddar derretido, bacon y aderezos.', tiempo: '15 min', porciones: 'Individual' };
+            if (n.includes('galeto') || n.includes('pollo')) return { desc: 'Pollo marinado al limón, asado lentamente con finas hierbas aromáticas.', tiempo: '35 min', porciones: 'Para 2 personas' };
+            if (n.includes('pasta') || n.includes('fideo')) return { desc: 'Pasta artesanal salteada al wok con salsa a elección y queso sardo.', tiempo: '20 min', porciones: 'Individual' };
+            if (n.includes('ensalada')) return { desc: 'Mix de hojas verdes de estación, tomates cherry, croutons y vinagreta.', tiempo: '10 min', porciones: 'Individual' };
+            if (n.includes('picada') || n.includes('tabla')) return { desc: 'Selección premium de fiambres ahumados, quesos duros y panes caseros.', tiempo: '10 min', porciones: '3 a 4 personas' };
+            return { desc: 'Especialidad de la casa elaborada en el momento con ingredientes frescos.', tiempo: '20 min', porciones: 'Individual' }; 
         }
 
+        /* Proceso core de fetching asíncrono para renderizado del catálogo */
         async function obtenerCatalogo() {
             try {
                 const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error(`Error ${respuesta.status}`);
+                if (!respuesta.ok) throw new Error(`Error HTTP: ${respuesta.status}`);
 
                 const items = await respuesta.json();
                 contenedorLista.innerHTML = '';
@@ -173,35 +303,57 @@
                 }
 
                 items.forEach(item => {
+                    const nombreSeguro = item.nombre.replace(/'/g, "\\'");
+                    const detalles = obtenerDetallesPorNombre(item.nombre);
+                    const descSegura = detalles.desc.replace(/'/g, "\\'");
+                    const imagenUrl = obtenerImagenPorNombre(item.nombre);
+                    
                     const tarjeta = document.createElement('div');
                     tarjeta.className = 'product-card';
                     tarjeta.style.width = '300px'; 
+                    // Transición para efecto de hover y cursor pointer
+                    tarjeta.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
+                    
                     tarjeta.innerHTML = `
-                        <img src="${obtenerImagenPorNombre(item.nombre)}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px;">
+                        <!-- Evento para abrir el modal al hacer clic en la imagen -->
+                        <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle('${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${detalles.porciones}')">
+                        
                         <div style="display: flex; flex-direction: column; flex-grow: 1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                 <span style="color: var(--primary-orange); font-size: 12px; font-weight: 700; text-transform: uppercase;">Recomendado</span>
                                 <div style="display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; font-weight: bold;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                    ${obtenerDetallesPorNombre(item.nombre).tiempo}
+                                    ${detalles.tiempo}
                                 </div>
                             </div>
-                            <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0;">${item.nombre}</h3>
+                            
+                            <!-- Evento para abrir el modal al hacer clic en el título -->
+                            <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle('${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${detalles.porciones}')">
+                                ${item.nombre}
+                            </h3>
+                            
                             <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
-                                ${obtenerDetallesPorNombre(item.nombre).desc}
+                                ${detalles.desc}
                             </p>
+                            
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
                                 <span style="font-size: 20px; font-weight: 900; color: var(--text-main);">$${parseFloat(item.precio).toFixed(2)}</span>
-                                <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease;" onclick="agregarAlCarrito(${item.precio}, this)">
+                                <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease;" onclick="agregarAlCarrito('${nombreSeguro}', ${item.precio}, this)">
                                     + Agregar
                                 </button>
                             </div>
                         </div>
                     `;
+                    
+                    // Efecto sutil al pasar el mouse
+                    tarjeta.onmouseover = function() { this.style.transform = "translateY(-5px)"; };
+                    tarjeta.onmouseout = function() { this.style.transform = "translateY(0)"; };
+                    
                     contenedorLista.appendChild(tarjeta);
                 });
             } catch (error) {
-                contenedorLista.innerHTML = '<p style="color: var(--error);">Fallo al cargar el menú digital.</p>';
+                console.error(error);
+                contenedorLista.innerHTML = '<p style="color: var(--error);">Fallo al cargar el menú digital. Verifique si el servidor de Python está encendido.</p>';
             }
         }
 
