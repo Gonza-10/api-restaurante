@@ -202,5 +202,29 @@
         sincronizarComandas();
         setInterval(sincronizarComandas, INTERVALO_POLLING);
     </script>
+    <script>
+        // Inyector local de Modo Claro/Oscuro
+        document.addEventListener('DOMContentLoaded', () => {
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
+            
+            const actualizarTexto = () => {
+                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+            };
+            
+            actualizarTexto();
+            
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTexto();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            
+            document.body.appendChild(btnTema);
+        });
+    </script>
 </body>
 </html>

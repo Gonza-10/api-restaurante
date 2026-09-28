@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso a Mesa - Restaurante</title>
-    <!-- Reutilizamos tu mismo archivo de estilos para mantener el diseño -->
+    <title>Acceso a Mesa - Savage Grill</title>
+    <!-- Reutilizamos el archivo de estilos centralizado -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,7 +17,7 @@
                     
                     <div class="login-header">
                         <div class="brand" style="margin: 0 auto 20px;">
-                            <span class="brand-main">Restaurante</span><span class="brand-dot">.</span>
+                            <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
                         </div>
                         <h2>Acceso a tu Mesa</h2>
                         <p>Ingresá el PIN de 4 dígitos que te proporcionó el mozo al abrir tu mesa.</p>
@@ -43,8 +43,8 @@
                         </button>
                     </form>
 
-                    <div class="login-footer">
-                        <div class="status-dot"></div>
+                    <div style="margin-top: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <div style="width: 8px; height: 8px; background-color: var(--success); border-radius: 50%;"></div>
                         <span>Sistema conectado al servidor local</span>
                     </div>
 
@@ -71,19 +71,42 @@
             });
         });
 
-        // Simulación de envío del PIN
-        document.getElementById('formulario-login').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Recolectamos los 4 dígitos
-            let pinIngresado = '';
-            pinInputs.forEach(input => pinIngresado += input.value);
+            // Simulación de envío del PIN
+            document.getElementById('formulario-login').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                // Recolectamos los 4 dígitos
+                let pinIngresado = '';
+                pinInputs.forEach(input => pinIngresado += input.value);
 
-            console.log("PIN ingresado para PedidoCabecera:", pinIngresado);
+                console.log("PIN ingresado para PedidoCabecera:", pinIngresado);
+                
+                // Redirección directa al menú del catálogo
+                window.location.href = 'catalogo.html';
+            });
+        </script>
+    <script>
+        // Inyector local de Modo Claro/Oscuro
+        document.addEventListener('DOMContentLoaded', () => {
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
             
-            // Acá a futuro iría el fetch() al backend validando el PIN.
-            // Por ahora, simulamos que el acceso es correcto y redirigimos al menú.
-            window.location.href = 'catalogo.html';
+            const actualizarTexto = () => {
+                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+            };
+            
+            actualizarTexto();
+            
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTexto();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            
+            document.body.appendChild(btnTema);
         });
     </script>
 </body>

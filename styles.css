@@ -4,6 +4,11 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap');
 
+
+/* =========================================================
+   FUENTES
+   ========================================================= */
+
 @font-face {
     font-family: 'Elemental End';
     src: url('./fonts/ElementalEnd.ttf') format('truetype');
@@ -11,366 +16,1029 @@
     font-style: normal;
 }
 
+
+/* =========================================================
+   VARIABLES GLOBALES - MODO OSCURO
+   ========================================================= */
+
 :root {
+    /* Fondo general */
     --bg: #050505;
+
+    /* Superficies */
     --surface: #111111;
     --surface-soft: #191919;
     --surface-hover: #202020;
+
+    /* Textos */
     --text: #f7f7f7;
     --text-soft: #b7b7b7;
     --text-muted: #7b7b7b;
+
+    /* Colores principales */
     --accent: #ff4f17;
     --accent-hover: #ff672f;
     --accent-soft: rgba(255, 79, 23, 0.16);
+
+    /* Estados */
     --success: #58d68d;
     --error: #ff6b6b;
+
+    /* Bordes */
     --border: rgba(255, 255, 255, 0.14);
     --border-strong: rgba(255, 255, 255, 0.35);
+
+    /* Bordes redondeados */
     --radius-xl: 28px;
     --radius-lg: 20px;
     --radius-md: 14px;
+
+    /* Sombras */
     --shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
-    
-    /* Variables del Catálogo y Admin (Glassmorphism) */
+
+    /* Variables utilizadas por Catálogo y Administración */
     --bg-dark: #121212;
-    --surface-dark: #1E1E1E;
-    --primary-orange: #FF7A00;
-    --primary-hover: #E06A00;
+    --surface-dark: #1e1e1e;
+
+    --primary-orange: #ff7a00;
+    --primary-hover: #e06a00;
+
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --text-main: #FFFFFF;
+
+    --text-main: #ffffff;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { min-height: 100%; }
+
+/* =========================================================
+   RESET GENERAL
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    min-height: 100%;
+}
 
 body {
     min-height: 100vh;
+
     font-family: 'Montserrat', sans-serif !important;
+
     background:
-        radial-gradient(circle at 12% 14%, rgba(255, 79, 23, 0.12), transparent 22rem),
-        radial-gradient(circle at 88% 84%, rgba(255, 123, 48, 0.07), transparent 26rem),
+        radial-gradient(
+            circle at 12% 14%,
+            rgba(255, 79, 23, 0.12),
+            transparent 22rem
+        ),
+        radial-gradient(
+            circle at 88% 84%,
+            rgba(255, 123, 48, 0.07),
+            transparent 26rem
+        ),
         var(--bg);
+
     color: var(--text);
 }
 
-button, input { font: inherit; }
+button,
+input {
+    font: inherit;
+}
+
 
 /* =========================================================
-   TIPOGRAFÍA TÍTULOS
+   TIPOGRAFÍA / LOGO
    ========================================================= */
+
 .logo-restaurante {
     font-family: 'Elemental End', sans-serif !important;
+
     margin: 0;
+
     font-size: 28px;
     letter-spacing: 1px;
 }
 
+
 /* =========================================================
    LAYOUT PRINCIPAL
    ========================================================= */
+
 .login-page {
     min-height: 100vh;
+
     display: flex;
     flex-direction: column;
     align-items: center;
+
     padding: 30px;
 }
+
+
+/* =========================================================
+   CONTENEDOR PRINCIPAL
+   ========================================================= */
 
 .login-shell {
     width: min(1180px, 100%);
     min-height: 680px;
+
     display: grid;
     grid-template-columns: 1.12fr 0.88fr;
+
     overflow: hidden;
+
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-xl);
+
     background: #090909;
+
     box-shadow: var(--shadow);
 }
 
+
 /* =========================================================
-   PANEL IZQUIERDO
+   PANEL IZQUIERDO - HERO
    ========================================================= */
+
 .hero-panel {
     position: relative;
     isolation: isolate;
+
     min-height: 680px;
+
     padding: 42px 48px;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+
     background-image:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.22) 45%, rgba(0, 0, 0, 0.70) 100%),
-        linear-gradient(0deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.12) 56%, rgba(0, 0, 0, 0.42) 100%),
+        linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.45) 0%,
+            rgba(0, 0, 0, 0.22) 45%,
+            rgba(0, 0, 0, 0.70) 100%
+        ),
+        linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.88) 0%,
+            rgba(0, 0, 0, 0.12) 56%,
+            rgba(0, 0, 0, 0.42) 100%
+        ),
         url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1400&q=90");
+
     background-position: center;
     background-size: cover;
 }
 
 .hero-panel::after {
     content: "";
+
     position: absolute;
     inset: 0;
+
     z-index: -1;
+
     background:
-        linear-gradient(120deg, rgba(0, 0, 0, 0.12), transparent 45%),
-        radial-gradient(circle at 70% 48%, rgba(255, 79, 23, 0.13), transparent 22rem);
+        linear-gradient(
+            120deg,
+            rgba(0, 0, 0, 0.12),
+            transparent 45%
+        ),
+        radial-gradient(
+            circle at 70% 48%,
+            rgba(255, 79, 23, 0.13),
+            transparent 22rem
+        );
 }
 
-.brand { width: fit-content; color: var(--text); text-decoration: none; letter-spacing: -0.06em; }
-.brand-main { font-size: 32px; line-height: 1; font-weight: 850; }
-.brand-dot { color: var(--accent); font-size: 34px; font-weight: 900; }
 
-.hero-copy { max-width: 490px; margin-top: auto; margin-bottom: 34px; }
-.eyebrow { display: block; margin-bottom: 12px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0.18em; }
-.hero-copy h1 { max-width: 470px; font-size: clamp(48px, 5vw, 72px); line-height: 0.95; letter-spacing: -0.055em; font-weight: 850; }
-.hero-copy p { max-width: 430px; margin-top: 22px; color: rgba(255, 255, 255, 0.76); font-size: 16px; line-height: 1.65; }
+/* =========================================================
+   MARCA
+   ========================================================= */
+
+.brand {
+    width: fit-content;
+
+    color: var(--text);
+
+    text-decoration: none;
+    letter-spacing: -0.06em;
+}
+
+.brand-main {
+    font-size: 32px;
+    line-height: 1;
+
+    font-weight: 850;
+}
+
+.brand-dot {
+    color: var(--accent);
+
+    font-size: 34px;
+    font-weight: 900;
+}
+
+
+/* =========================================================
+   TEXTO DEL HERO
+   ========================================================= */
+
+.hero-copy {
+    max-width: 490px;
+
+    margin-top: auto;
+    margin-bottom: 34px;
+}
+
+.eyebrow {
+    display: block;
+
+    margin-bottom: 12px;
+
+    color: var(--accent);
+
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.hero-copy h1 {
+    max-width: 470px;
+
+    font-size: clamp(48px, 5vw, 72px);
+    line-height: 0.95;
+
+    letter-spacing: -0.055em;
+    font-weight: 850;
+}
+
+.hero-copy p {
+    max-width: 430px;
+
+    margin-top: 22px;
+
+    color: rgba(255, 255, 255, 0.76);
+
+    font-size: 16px;
+    line-height: 1.65;
+}
+
 
 /* =========================================================
    PANEL DERECHO
    ========================================================= */
+
 .form-panel {
     display: grid;
     place-items: center;
+
     padding: 48px;
-    background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.025), transparent 19rem), #0b0b0b;
+
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 255, 255, 0.025),
+            transparent 19rem
+        ),
+        #0b0b0b;
 }
+
+
+/* =========================================================
+   TARJETA DE FORMULARIO
+   ========================================================= */
 
 .login-card {
     width: min(400px, 100%);
+
     padding: 34px;
+
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    background: linear-gradient(180deg, #171717 0%, #111111 100%);
+
+    background:
+        linear-gradient(
+            180deg,
+            #171717 0%,
+            #111111 100%
+        );
+
     box-shadow: 0 24px 50px rgba(0, 0, 0, 0.36);
 }
 
-.login-header { text-align: center; }
-.login-header h2 { font-size: 31px; letter-spacing: -0.04em; font-weight: 800; }
-.login-header > p:last-child { max-width: 310px; margin: 10px auto 0; color: var(--text-soft); font-size: 14px; line-height: 1.6; }
 
 /* =========================================================
-   INPUTS ADAPTADOS PARA FORMULARIO
+   ENCABEZADO DEL FORMULARIO
    ========================================================= */
-.input-fieldset { margin-bottom: 15px; border: 0; }
-.input-fieldset legend { width: 100%; margin-bottom: 10px; color: #d7d7d7; font-size: 13px; font-weight: 700; }
+
+.login-header {
+    text-align: center;
+}
+
+.login-header h2 {
+    font-size: 31px;
+
+    letter-spacing: -0.04em;
+    font-weight: 800;
+}
+
+.login-header > p:last-child {
+    max-width: 310px;
+
+    margin: 10px auto 0;
+
+    color: var(--text-soft);
+
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   INPUTS DEL FORMULARIO ADMIN
+   ========================================================= */
+
+.input-fieldset {
+    margin-bottom: 15px;
+
+    border: 0;
+}
+
+.input-fieldset legend {
+    width: 100%;
+
+    margin-bottom: 10px;
+
+    color: #d7d7d7;
+
+    font-size: 13px;
+    font-weight: 700;
+}
 
 .text-input {
     width: 100%;
     height: 52px;
+
     padding: 0 16px;
+
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 12px;
+
     outline: none;
+
     background: #0b0b0b;
     color: var(--text);
+
     font-size: 15px;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
 }
-.text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+.text-input:focus {
+    border-color: var(--accent);
+
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
 
 /* =========================================================
-   MENSAJES Y BOTÓN
+   MENSAJES
    ========================================================= */
-.message { min-height: 34px; display: flex; align-items: center; padding-top: 9px; font-size: 13px; line-height: 1.4; }
-.message.error { color: var(--error); }
-.message.success { color: var(--success); }
+
+.message {
+    min-height: 34px;
+
+    display: flex;
+    align-items: center;
+
+    padding-top: 9px;
+
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.message.error {
+    color: var(--error);
+}
+
+.message.success {
+    color: var(--success);
+}
+
+
+/* =========================================================
+   BOTÓN PRINCIPAL
+   ========================================================= */
 
 .btn-primary {
     width: 100%;
     height: 52px;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     gap: 10px;
+
     border: 0;
     border-radius: 10px;
+
     cursor: pointer;
+
     background: var(--accent);
-    color: #fff;
+    color: #ffffff;
+
     font-size: 14px;
     font-weight: 800;
-    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
-.btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 12px 24px rgba(255, 79, 23, 0.18); }
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 12px 24px rgba(255, 79, 23, 0.18);
+}
+
 
 /* =========================================================
-   CATÁLOGO DE PRODUCTOS (GRILLA)
+   CATÁLOGO DE PRODUCTOS - ADMIN
    ========================================================= */
-.catalogo-section { width: min(1180px, 100%); margin-top: 20px; }
+
+.catalogo-section {
+    width: min(1180px, 100%);
+
+    margin-top: 20px;
+}
+
+
+/* =========================================================
+   DIVISOR
+   ========================================================= */
 
 .divider {
     margin: 40px 0 30px;
+
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
+
     gap: 15px;
 }
-.divider span { height: 1px; background: var(--border); }
-.divider p { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0.15em; }
 
-.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.divider span {
+    height: 1px;
+
+    background: var(--border);
+}
+
+.divider p {
+    color: var(--accent);
+
+    font-size: 12px;
+    font-weight: 800;
+
+    letter-spacing: 0.15em;
+}
+
+
+/* =========================================================
+   GRILLA DE PRODUCTOS
+   ========================================================= */
+
+.products-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fill, minmax(320px, 1fr));
+
+    gap: 20px;
+}
+
+
+/* =========================================================
+   PRODUCTO SIMPLE
+   ========================================================= */
 
 .product-item {
-    background: var(--surface-soft);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: transform 0.2s, border-color 0.2s;
-}
-.product-item:hover { transform: translateY(-2px); border-color: var(--border-strong); }
 
-.prod-info h3 { font-size: 16px; color: var(--text); font-weight: 700; margin-bottom: 4px; }
-.prod-info p { font-size: 13px; color: var(--text-muted); }
-.prod-price { font-size: 18px; font-weight: 800; color: var(--success); }
+    padding: 20px;
+
+    background: var(--surface-soft);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+
+    transition:
+        transform 0.2s,
+        border-color 0.2s;
+}
+
+.product-item:hover {
+    transform: translateY(-2px);
+
+    border-color: var(--border-strong);
+}
+
+.prod-info h3 {
+    margin-bottom: 4px;
+
+    color: var(--text);
+
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.prod-info p {
+    color: var(--text-muted);
+
+    font-size: 13px;
+}
+
+.prod-price {
+    color: var(--success);
+
+    font-size: 18px;
+    font-weight: 800;
+}
+
 
 /* =========================================================
    PIN DE MESA
    ========================================================= */
-.pin-fieldset { margin-top: 20px; border: 0; }
-.pin-fieldset legend { width: 100%; margin-bottom: 15px; color: #d7d7d7; font-size: 13px; font-weight: 700; text-align: center; }
+
+.pin-fieldset {
+    margin-top: 20px;
+
+    border: 0;
+}
+
+.pin-fieldset legend {
+    width: 100%;
+
+    margin-bottom: 15px;
+
+    color: #d7d7d7;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    text-align: center;
+}
 
 .pin-group {
+    max-width: 280px;
+
+    margin: 0 auto;
+
     display: grid;
     grid-template-columns: repeat(4, 1fr);
+
     gap: 15px;
-    max-width: 280px;
-    margin: 0 auto;
 }
 
 .pin-input {
     width: 100%;
     height: 64px;
+
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 12px;
+
     outline: none;
+
     background: #0b0b0b;
     color: #f7f7f7;
+
     text-align: center;
+
     font-size: 26px;
     font-weight: 800;
+
     caret-color: #ff4f17;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s;
+
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.18s ease;
 }
 
 .pin-input:focus {
     transform: translateY(-2px);
+
     border-color: #ff4f17;
-    box-shadow: 0 0 0 4px rgba(255, 79, 23, 0.16);
+
+    box-shadow:
+        0 0 0 4px rgba(255, 79, 23, 0.16);
 }
+
 
 /* =========================================================
    TARJETAS GLASSMORPHISM
    ========================================================= */
+
 .product-card {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
     padding: 16px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+
     display: flex;
     flex-direction: column;
+
     gap: 12px;
+
+    background: var(--glass-bg);
+
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    transition:
+        transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.3s ease,
+        border-color 0.3s ease;
 }
 
 .product-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+
     border-color: rgba(255, 122, 0, 0.3);
+
+    box-shadow:
+        0 12px 24px rgba(0, 0, 0, 0.4);
 }
 
+
+/* =========================================================
+   BOTÓN NARANJA
+   ========================================================= */
+
 .btn-orange {
-    background: var(--primary-orange);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    padding: 10px 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+
+    padding: 10px 16px;
+
+    border: none;
+    border-radius: 14px;
+
+    cursor: pointer;
+
+    background: var(--primary-orange);
+    color: #ffffff;
+
+    font-weight: 700;
+
+    transition: all 0.2s ease;
 }
 
 .btn-orange:hover {
     background: var(--primary-hover);
+
     transform: scale(1.08);
-    box-shadow: 0 4px 15px rgba(255, 122, 0, 0.4);
+
+    box-shadow:
+        0 4px 15px rgba(255, 122, 0, 0.4);
 }
 
 .btn-orange:active {
     transform: scale(0.95);
 }
 
+
 /* =========================================================
    ANIMACIONES
    ========================================================= */
+
 .punto-animado {
     position: fixed;
+
     width: 20px;
     height: 20px;
+
     background-color: var(--primary-orange);
+
     border-radius: 50%;
+
     z-index: 9999;
+
     pointer-events: none;
-    transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+
+    transition:
+        all 0.7s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-@keyframes spin { 
-    100% { transform: rotate(360deg); } 
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-/* ==========================================================================
-   TEMA CLARO (LIGHT MODE) Y ESTADOS DE ADMINISTRACIÓN
-   ========================================================================== */
 
-/* Sobrescritura de variables globales al activar el tema claro */
-body.light-mode {
-    --bg-dark: #f4f4f9;
-    --text-main: #1a1a1a;
-    --text-muted: #666666;
-    --glass-border: rgba(0, 0, 0, 0.1);
-}
+/* =========================================================
+   BOTÓN FLOTANTE DE TEMA
+   ========================================================= */
 
-/* Adaptación de fondos y tarjetas para que resalten en fondo blanco */
-body.light-mode .product-card { background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-body.light-mode header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-body.light-mode .kanban-column { background: rgba(0,0,0,0.02); }
-body.light-mode .comanda-card { background: white; }
-body.light-mode .login-box { background: white; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-body.light-mode input { background: #f0f0f0; color: #1a1a1a; }
+.btn-tema {
+    position: fixed;
 
-/* Botón flotante universal para cambiar de tema (se inyecta vía JS) */
-.btn-tema { 
-    position: fixed; 
-    bottom: 20px; 
-    left: 20px; 
-    background: rgba(18,18,18,0.8); 
-    color: white; 
-    border: 1px solid var(--glass-border); 
-    width: auto; /* Permite que el ancho se adapte al texto */
-    padding: 10px 20px; /* Le da forma alargada */
-    border-radius: 20px; 
-    cursor: pointer; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 9999; 
-    backdrop-filter: blur(5px); 
-    transition: all 0.3s ease; 
+    bottom: 20px;
+    left: 20px;
+
+    width: auto;
+
+    padding: 10px 20px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+
+    cursor: pointer;
+
+    background: rgba(18, 18, 18, 0.8);
+    color: #ffffff;
+
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+
+    z-index: 9999;
+
     font-size: 14px;
     font-weight: bold;
+
+    transition: all 0.3s ease;
 }
 
-body.light-mode .btn-tema { 
-    background: white; 
-    border-color: #ccc; 
-    color: #1a1a1a; 
+
+/* =========================================================
+   =========================================================
+   MODO CLARO
+   =========================================================
+   ========================================================= */
+
+
+/* =========================================================
+   VARIABLES DEL MODO CLARO
+   ========================================================= */
+
+body.light-mode {
+    /* Fondo */
+    --bg: #f4f4f9;
+    --bg-dark: #f4f4f9;
+
+    /* Superficies */
+    --surface: #ffffff;
+    --surface-soft: #ffffff;
+    --surface-hover: #f2f2f2;
+    --surface-dark: #ffffff;
+
+    /* Textos */
+    --text: #1a1a1a;
+    --text-main: #1a1a1a;
+    --text-soft: #555555;
+    --text-muted: #666666;
+
+    /* Bordes */
+    --border: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.22);
+
+    /* Glass */
+    --glass-bg: #ffffff;
+    --glass-border: rgba(0, 0, 0, 0.10);
+
+    /* Sombras */
+    --shadow:
+        0 28px 90px rgba(0, 0, 0, 0.16);
+
+    background: #f4f4f9;
+
+    color: var(--text);
+}
+
+
+/* =========================================================
+   CONTENEDOR PRINCIPAL EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .login-shell {
+    background: #ffffff;
+
+    border-color: var(--border-strong);
+
+    box-shadow: var(--shadow);
+}
+
+
+/* =========================================================
+   PANEL DERECHO EN MODO CLARO
+   Admin + PIN
+   ========================================================= */
+
+body.light-mode .form-panel {
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 79, 23, 0.035),
+            transparent 19rem
+        ),
+        #ffffff;
+
+    color: var(--text);
+}
+
+
+/* =========================================================
+   TARJETA DEL FORMULARIO EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .login-card {
+    background: #ffffff;
+
+    border-color: var(--border);
+
+    color: var(--text);
+
+    box-shadow:
+        0 24px 50px rgba(0, 0, 0, 0.10);
+}
+
+
+/* =========================================================
+   ENCABEZADOS EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .login-header h2 {
+    color: var(--text);
+}
+
+body.light-mode .login-header > p:last-child {
+    color: var(--text-soft);
+}
+
+
+/* =========================================================
+   LABELS / LEGENDS EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .input-fieldset legend,
+body.light-mode .pin-fieldset legend {
+    color: #333333;
+}
+
+
+/* =========================================================
+   INPUTS EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .text-input,
+body.light-mode .pin-input {
+    background: #f0f0f0;
+
+    color: #1a1a1a;
+
+    border-color: #cccccc;
+}
+
+body.light-mode .text-input::placeholder,
+body.light-mode .pin-input::placeholder {
+    color: #777777;
+
+    opacity: 1;
+}
+
+body.light-mode .text-input:focus,
+body.light-mode .pin-input:focus {
+    border-color: var(--accent);
+
+    box-shadow:
+        0 0 0 4px var(--accent-soft);
+}
+
+
+/* =========================================================
+   PANEL HERO DEL ADMIN
+   Siempre mantiene texto blanco porque tiene una fotografía
+   oscura de fondo.
+   ========================================================= */
+
+body.light-mode .hero-panel,
+body.light-mode .hero-panel .brand,
+body.light-mode .hero-panel .logo-restaurante,
+body.light-mode .hero-panel .hero-copy h1,
+body.light-mode .hero-panel .hero-copy p {
+    color: #ffffff;
+}
+
+body.light-mode .hero-panel .eyebrow {
+    color: var(--accent);
+}
+
+
+/* =========================================================
+   LOGO DEL PANEL DERECHO / PIN
+   ========================================================= */
+
+body.light-mode .form-panel .brand,
+body.light-mode .form-panel .logo-restaurante {
+    color: #1a1a1a;
+}
+
+
+/* =========================================================
+   PRODUCTOS EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .product-card,
+body.light-mode .product-item {
+    background: #ffffff;
+
+    border-color: var(--border);
+}
+
+body.light-mode .product-card:hover {
+    border-color: rgba(255, 122, 0, 0.30);
+
+    box-shadow:
+        0 12px 25px rgba(255, 122, 0, 0.25);
+}
+
+body.light-mode .prod-info h3,
+body.light-mode .prod-price {
+    color: var(--text);
+}
+
+body.light-mode .prod-info p {
+    color: var(--text-muted);
+}
+
+
+/* =========================================================
+   DIVISOR EN MODO CLARO
+   ========================================================= */
+
+body.light-mode .divider span {
+    background: var(--border);
+}
+
+
+/* =========================================================
+   ELEMENTOS DE OTRAS PANTALLAS
+   ========================================================= */
+
+body.light-mode header {
+    background: rgba(255, 255, 255, 0.90);
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+body.light-mode .kanban-column {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-mode .comanda-card {
+    background: #ffffff;
+
+    border-color: #dddddd;
+
+    color: var(--text);
+}
+
+body.light-mode .comanda-card:hover {
+    transform: translateY(-5px);
+
+    box-shadow:
+        0 12px 25px rgba(255, 122, 0, 0.25);
+}
+
+body.light-mode .login-box {
+    background: #ffffff;
+
+    color: var(--text);
+
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.10);
 }
