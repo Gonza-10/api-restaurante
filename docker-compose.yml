@@ -1,0 +1,16 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: contenedor_${GRUPO}_pylp3
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    volumes:
+      - datos_infra:/var/lib/rabbitmq
+    restart: unless-stopped
+
+volumes:
+  datos_infra:
