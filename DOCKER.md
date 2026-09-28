@@ -69,7 +69,7 @@ motor y el mismo plugin `docker compose`.
 
 ### B.1 Verificación del CLI
 
-![1790558918456](image/DOCKER/1790558918456.png)
+![Verificación del CLI](image/DOCKER/Evidencia_B1.png)
 
 ```
 Docker version 29.8.1, build 4a63305
@@ -78,7 +78,7 @@ Docker Compose version v5.5.1
 
 ### B.2 docker-compose.yml
 
-![1790558949223](image/DOCKER/1790558949223.png)
+![Salida de docker compose](image/DOCKER/Evidencia_B2.png)
 
 El archivo funcional se encuentra en la raíz del repositorio. Levanta RabbitMQ con
 el panel de administración, expone los puertos 5672 (AMQP) y 15672 (panel web) y
@@ -93,6 +93,6 @@ contenedor_savagegrill_pylp3   rabbitmq:3-management-alpine   "docker-entrypoint
 
 ### B.4 Prueba de acceso
 
-![1790559006479](image/DOCKER/1790559006479.png)
+![Panel de RabbitMQ Management](image/DOCKER/Evidencia_B3_RabbitMQ.png)
 
 *Panel accesible en http://localhost:15672 con el usuario configurado.*
