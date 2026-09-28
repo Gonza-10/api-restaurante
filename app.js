@@ -23,14 +23,14 @@ function inicializarTema() {
     const btnTema = document.createElement('button');
     btnTema.className = 'btn-tema';
     btnTema.title = 'Cambiar tema visual';
-    
+
     // Función interna para actualizar el texto según el estado
     const actualizarTexto = () => {
         btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
     };
-    
+
     actualizarTexto(); // Setear el texto inicial
-    
+
     // Alternancia de clases y guardado de estado local al hacer clic
     btnTema.onclick = () => {
         document.body.classList.toggle('light-mode');
@@ -38,7 +38,7 @@ function inicializarTema() {
         const esClaro = document.body.classList.contains('light-mode');
         localStorage.setItem('savage-tema', esClaro ? 'light' : 'dark');
     };
-    
+
     document.body.appendChild(btnTema);
 }
 
@@ -73,7 +73,7 @@ function obtenerDetallesPorNombre(nombre) {
 }
 
 /* ==========================================================================
-   MÓDULO DE ADMINISTRACIÓN (Solo se ejecuta si existe el formulario)
+   MÓDULO DE ADMINISTRACIÓN (Solo se ejecuta si existe el formulario principal)
    ========================================================================== */
 if (formulario) {
     function limpiarAlertas() {
@@ -97,13 +97,15 @@ if (formulario) {
             items.forEach(item => {
                 // Validación del estado de Soft Delete (asume true si no viene definido en la DB)
                 const estaActivo = item.activo !== false; 
-                
+
                 // Aplicación de estilos dinámicos para el borrado lógico (Grisado visual)
                 const opacidad = estaActivo ? '1' : '0.5';
                 const filtroGris = estaActivo ? 'none' : 'grayscale(100%)';
                 const textoBoton = estaActivo ? 'Ocultar Plato' : 'Reactivar Plato';
                 const colorBoton = estaActivo ? 'var(--text-muted)' : '#4CAF50';
-                const valorInvertido = !estaActivo; // Calculamos el valor opuesto para enviarlo en el click
+                const valorInvertido = !estaActivo; 
+
+                const nombreSeguro = item.nombre.replace(/'/g, "\\'");
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'product-card';
@@ -111,19 +113,27 @@ if (formulario) {
                 tarjeta.style.opacity = opacidad;
                 tarjeta.style.filter = filtroGris;
                 tarjeta.style.transition = 'all 0.3s ease';
-                
+
                 tarjeta.innerHTML = `
                     <img src="${obtenerImagenPorNombre(item.nombre)}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px;">
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0;">${item.nombre} ${estaActivo ? '' : '(INACTIVO)'}</h3>
                         <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0;">${obtenerDetallesPorNombre(item.nombre).desc}</p>
-                        
+
                         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
                             <span style="font-size: 20px; font-weight: 900; color: var(--text-main); text-align: right;">$${parseFloat(item.precio).toFixed(2)}</span>
-                            <!-- Botón para alternar el borrado lógico en BD -->
-                            <button onclick="cambiarEstadoProducto(${item.id}, ${valorInvertido})" style="width: 100%; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid ${colorBoton}; background: transparent; color: ${colorBoton}; transition: all 0.2s;">
-                                ${textoBoton}
-                            </button>
+                            
+                            <div style="display: flex; gap: 8px;">
+                                <!-- Botón de Edición Limpio (SVG) -->
+                                <button onclick="abrirModalEditar(${item.id}, '${nombreSeguro}', ${item.precio})" style="padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid var(--primary-orange); background: transparent; color: var(--primary-orange); display: flex; align-items: center; justify-content: center;" title="Editar plato">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </button>
+                                
+                                <!-- Botón para alternar el borrado lógico en BD -->
+                                <button onclick="cambiarEstadoProducto(${item.id}, ${valorInvertido})" style="flex-grow: 1; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid ${colorBoton}; background: transparent; color: ${colorBoton}; transition: all 0.2s;">
+                                    ${textoBoton}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -134,7 +144,52 @@ if (formulario) {
         }
     }
 
-    // Función global para que el botón pueda invocarla desde el HTML inyectado
+    // Funciones del Modal de Edición
+    window.abrirModalEditar = function(id, nombre, precio) {
+        document.getElementById('editar-id').value = id;
+        document.getElementById('editar-nombre').value = nombre;
+        document.getElementById('editar-precio').value = precio;
+        document.getElementById('modal-editar').style.display = 'flex';
+    };
+
+    window.cerrarModalEditar = function() {
+        document.getElementById('modal-editar').style.display = 'none';
+    };
+
+    const formEditar = document.getElementById('formulario-editar');
+    if (formEditar) {
+        formEditar.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editar-id').value;
+            const nombre = document.getElementById('editar-nombre').value.trim();
+            const precio = parseFloat(document.getElementById('editar-precio').value);
+
+            try {
+                const btn = e.target.querySelector('button');
+                const textOriginal = btn.textContent;
+                btn.textContent = 'Guardando...';
+
+                const respuesta = await fetch(`${API_URL}/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre: nombre, precio: precio })
+                });
+
+                if (respuesta.ok) {
+                    cerrarModalEditar();
+                    obtenerRegistros();
+                } else {
+                    alert("Error al guardar los cambios en el servidor.");
+                }
+                btn.textContent = textOriginal;
+            } catch (error) {
+                console.error("Fallo de red al editar.");
+                alert("Fallo de conexión al intentar editar el plato.");
+            }
+        });
+    }
+
+    // Función de Soft Delete
     window.cambiarEstadoProducto = async function(idProducto, nuevoEstadoBoolean) {
         try {
             const respuesta = await fetch(`${API_URL}/${idProducto}`, {
@@ -144,9 +199,10 @@ if (formulario) {
             });
 
             if (respuesta.ok) {
-                obtenerRegistros(); // Refresca el panel admin
+                obtenerRegistros();
             } else {
-                alert("Aviso: El backend aún no soporta el campo 'activo'.");
+                console.warn("Aviso: El backend de David aún no procesó el PATCH o no soporta el campo 'activo'.");
+                obtenerRegistros();
             }
         } catch (error) {
             console.error("Fallo de red al actualizar estado del producto.");
@@ -159,7 +215,6 @@ if (formulario) {
 
         const nombre = document.getElementById('campo-nombre').value.trim(); 
         const precio = parseFloat(document.getElementById('campo-precio').value); 
-        // Agregamos el activo: true para los productos nuevos
         const payload = { nombre: nombre, precio: precio, activo: true }; 
 
         try {
@@ -239,8 +294,12 @@ async function confirmarPedido() {
     btnModal.innerHTML = '<span class="spinner" style="display:inline-block; width:15px; height:15px; border:2px solid white; border-top:2px solid transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 10px; vertical-align: middle;"></span> Procesando...';
 
     try {
-        // Armado del contrato inyectando el array real de productos
-        const payload = estructurarComanda(window.carrito, "04");
+        // Lee el PIN desde la memoria (Si no hay PIN, usa "00")
+        const pinGuardado = localStorage.getItem('savage-mesa-pin') || '0000';
+        const mesaDinamica = pinGuardado.substring(0, 2);
+
+        // Armado del contrato inyectando el array real de productos y mesa dinámica
+        const payload = estructurarComanda(window.carrito, mesaDinamica);
 
         // Envío al backend
         const resultado = await enviarComandaServidor(payload);
