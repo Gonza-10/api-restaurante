@@ -1,9 +1,12 @@
+import os
 import json
 import pika
-
 from decouple import config
 
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.http import FileResponse, Http404
 
 from .models import Categoria, Producto, Mesa, Empleado, PedidoCabecera, PedidoDetalle, ComandaRecibida
 from .serializers import (
@@ -13,18 +16,17 @@ from .serializers import (
     EmpleadoSerializer,
     PedidoCabeceraSerializer,
     PedidoDetalleSerializer,
+    ComandaEntradaSerializer,
+    ComandaCocinaSerializer,
 )
+from .redis_client import redis_client
+
+CACHE_TTL_SEGUNDOS = 60
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
-
-
-import json
-from .redis_client import redis_client
-
-CACHE_TTL_SEGUNDOS = 60
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -107,37 +109,8 @@ class PedidoDetalleViewSet(viewsets.ModelViewSet):
     queryset = PedidoDetalle.objects.select_related('producto', 'pedido_cabecera').all()
     serializer_class = PedidoDetalleSerializer
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
-from .models import Mesa, PedidoCabecera
-from .serializers import ComandaEntradaSerializer
-
-
-class ComandaCreateView(APIView):
-    def post(self, request):
-        serializer = ComandaEntradaSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        datos = serializer.validated_data
-
-        mesa = Mesa.objects.filter(numero=datos['mesa_id']).first()
-        if mesa is None:
-            return Response(
-                {'error': f"No existe la mesa numero {datos['mesa_id']}."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        pedido_cabecera = PedidoCabecera.objects.filter(
-            mesa=mesa, estado='Abierto'
-        ).first()
-
-        if pedido_cabecera is None:
-            return Response(
-                {'error': 'Esta mesa no tiene una sesion abierta. Avisa al mozo.'},
-                status=status.HTTP_409_CONFLICT
-            )
-
+# ==================== RABBITMQ (publicadores) ====================
 
 def _publicar_en_rabbitmq(payload: dict):
     parametros = pika.ConnectionParameters(
@@ -153,7 +126,7 @@ def _publicar_en_rabbitmq(payload: dict):
         exchange='',
         routing_key='comandas_pendientes',
         body=json.dumps(payload, default=str),
-        properties=pika.BasicProperties(delivery_mode=2)  # persiste el mensaje en disco
+        properties=pika.BasicProperties(delivery_mode=2)
     )
     conexion.close()
 
@@ -177,7 +150,46 @@ def _publicar_evento_comanda_lista(id_comanda_uuid: str):
     conexion.close()
 
 
+# ==================== TABLERO DE COCINA (armado compartido) ====================
+
+def _armar_tablero_cocina():
+    comandas = ComandaRecibida.objects.select_related(
+        'pedido_cabecera__mesa'
+    ).order_by('fecha_hora_recepcion')
+
+    resultado = []
+    for comanda in comandas:
+        uuid_str = str(comanda.id_comanda_uuid)
+        estado = redis_client.get(f'comanda:estado:{uuid_str}')
+
+        if estado is None:
+            continue
+
+        detalles = comanda.pedido_cabecera.detalles.select_related('producto').all()
+        items = [
+            {'nombre': d.producto.nombre, 'precio': d.precio_unitario}
+            for d in detalles
+        ]
+
+        resultado.append({
+            'id_comanda_uuid': uuid_str,
+            'mesa_id': str(comanda.pedido_cabecera.mesa.numero).zfill(2),
+            'items': items,
+            'estado': estado,
+            'timestamp': comanda.fecha_hora_recepcion,
+        })
+
+    return resultado
+
+
+# ==================== COMANDAS ====================
+
 class ComandaCreateView(APIView):
+    def get(self, request):
+        resultado = _armar_tablero_cocina()
+        serializer = ComandaCocinaSerializer(resultado, many=True)
+        return Response(serializer.data)
+
     def post(self, request):
         serializer = ComandaEntradaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -219,43 +231,10 @@ class ComandaCreateView(APIView):
             status=status.HTTP_202_ACCEPTED
         )
 
-        return Response(
-            {'mensaje': 'Comanda validada, pendiente de encolar.'},
-            status=status.HTTP_202_ACCEPTED
-        )
-
-from .serializers import ComandaCocinaSerializer
-
 
 class TableroCocinaView(APIView):
     def get(self, request):
-        comandas = ComandaRecibida.objects.select_related(
-            'pedido_cabecera__mesa'
-        ).order_by('fecha_hora_recepcion')
-
-        resultado = []
-        for comanda in comandas:
-            uuid_str = str(comanda.id_comanda_uuid)
-            estado = redis_client.get(f'comanda:estado:{uuid_str}')
-
-            if estado is None:
-                # La clave vencio por TTL o nunca se escribio -> se considera cerrada/entregada
-                continue
-
-            detalles = comanda.pedido_cabecera.detalles.select_related('producto').all()
-            items = [
-                {'nombre': d.producto.nombre, 'precio': d.precio_unitario}
-                for d in detalles
-            ]
-
-            resultado.append({
-                'id_comanda_uuid': uuid_str,
-                'mesa_id': str(comanda.pedido_cabecera.mesa.numero).zfill(2),
-                'items': items,
-                'estado': estado,
-                'timestamp': comanda.fecha_hora_recepcion,
-            })
-
+        resultado = _armar_tablero_cocina()
         serializer = ComandaCocinaSerializer(resultado, many=True)
         return Response(serializer.data)
 
@@ -288,13 +267,9 @@ class ComandaEstadoUpdateView(APIView):
             try:
                 _publicar_evento_comanda_lista(str(uuid_comanda))
             except pika.exceptions.AMQPConnectionError:
-                pass  # no bloqueamos la actualizacion de estado si RabbitMQ esta caido
+                pass
 
         return Response({'mensaje': f'Comanda actualizada a estado: {nuevo_estado}'})
-
-
-import os
-from django.http import FileResponse, Http404
 
 
 class TicketPDFView(APIView):
