@@ -83,7 +83,7 @@ if (formulario) {
 
     async function obtenerRegistros() {
         try {
-            const respuesta = await fetch(API_URL);
+            const respuesta = await fetch(`${API_URL}?incluir_inactivos=true`);
             if (!respuesta.ok) throw new Error(`Error ${respuesta.status}`);
 
             const items = await respuesta.json();

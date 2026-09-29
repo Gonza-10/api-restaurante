@@ -18,11 +18,15 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class ProductoSerializer(serializers.ModelSerializer):
+    precio = serializers.DecimalField(source='precio_actual', max_digits=10, decimal_places=2)
+    vegetariano = serializers.BooleanField(source='es_vegetariano', required=False, default=False)
+    sin_tacc = serializers.BooleanField(source='apto_celiaco', required=False, default=False)
+
     class Meta:
         model = Producto
-        fields = '__all__'
+        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'activo']
 
-    def validate_precio_actual(self, value):
+    def validate_precio(self, value):
         if value <= 0:
             raise serializers.ValidationError('El precio debe ser mayor a 0.')
         return value
@@ -150,3 +154,20 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
             mesa.estado = False  # liberar la mesa al cerrar el pedido
             mesa.save(update_fields=['estado'])
         return pedido
+
+class ItemComandaSerializer(serializers.Serializer):
+    id = serializers.IntegerField()  # asumido: Producto.Id
+    nombre = serializers.CharField(required=False)  # se recibe, se ignora
+    precio = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)  # se recibe, se ignora
+
+
+class ComandaEntradaSerializer(serializers.Serializer):
+    id_comanda_uuid = serializers.UUIDField()
+    mesa_id = serializers.IntegerField()  # es el Numero de Mesa (D8)
+    items = ItemComandaSerializer(many=True)
+    timestamp = serializers.DateTimeField(required=False)
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError('La comanda debe tener al menos un producto.')
+        return value

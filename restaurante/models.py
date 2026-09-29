@@ -143,6 +143,21 @@ class PedidoDetalle(models.Model):
     def __str__(self):
         return f'{self.cantidad}x {self.producto.nombre}'
 
+class ComandaRecibida(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    id_comanda_uuid = models.UUIDField(unique=True, db_column='IdComandaUuid')
+    pedido_cabecera = models.ForeignKey(
+        PedidoCabecera, on_delete=models.PROTECT,
+        db_column='IdPedidoCabecera', related_name='comandas'
+    )
+    fecha_hora_recepcion = models.DateTimeField(db_column='FechaHoraRecepcion')
+
+    class Meta:
+        db_table = 'ComandaRecibida'
+        managed = False
+
+    def __str__(self):
+        return str(self.id_comanda_uuid)
 
 # ==================== PAGOS Y CAJA (secundarias, encaminadas) ====================
 
