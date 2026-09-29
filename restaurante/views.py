@@ -158,6 +158,25 @@ def _publicar_en_rabbitmq(payload: dict):
     conexion.close()
 
 
+def _publicar_evento_comanda_lista(id_comanda_uuid: str):
+    parametros = pika.ConnectionParameters(
+        host='localhost',
+        credentials=pika.PlainCredentials(
+            config('RABBIT_USER'), config('RABBIT_PASS')
+        )
+    )
+    conexion = pika.BlockingConnection(parametros)
+    canal = conexion.channel()
+    canal.queue_declare(queue='comandas_listas', durable=True)
+    canal.basic_publish(
+        exchange='',
+        routing_key='comandas_listas',
+        body=json.dumps({'id_comanda_uuid': id_comanda_uuid}),
+        properties=pika.BasicProperties(delivery_mode=2)
+    )
+    conexion.close()
+
+
 class ComandaCreateView(APIView):
     def post(self, request):
         serializer = ComandaEntradaSerializer(data=request.data)
@@ -261,8 +280,29 @@ class ComandaEstadoUpdateView(APIView):
             )
 
         if nuevo_estado == 'entregado':
-            redis_client.delete(clave)  # se cierra el ciclo, ya no aparece en el tablero
+            redis_client.delete(clave)
         else:
             redis_client.set(clave, nuevo_estado)
 
+        if nuevo_estado == 'listo':
+            try:
+                _publicar_evento_comanda_lista(str(uuid_comanda))
+            except pika.exceptions.AMQPConnectionError:
+                pass  # no bloqueamos la actualizacion de estado si RabbitMQ esta caido
+
         return Response({'mensaje': f'Comanda actualizada a estado: {nuevo_estado}'})
+
+
+import os
+from django.http import FileResponse, Http404
+
+
+class TicketPDFView(APIView):
+    def get(self, request, uuid_comanda):
+        ruta = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'tickets', f'{uuid_comanda}.pdf'
+        )
+        if not os.path.exists(ruta):
+            raise Http404('El ticket todavia no fue generado o la comanda no existe.')
+        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')

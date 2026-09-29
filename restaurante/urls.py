@@ -11,6 +11,7 @@ from .views import (
     ComandaCreateView,
     TableroCocinaView,
     ComandaEstadoUpdateView,
+    TicketPDFView,
 )
 
 router = DefaultRouter(trailing_slash=False)
@@ -26,4 +27,5 @@ urlpatterns = [
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
     path('pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoUpdateView.as_view(), name='actualizar-estado-comanda'),
     path('cocina/tablero', TableroCocinaView.as_view(), name='tablero-cocina'),
+    path('pedidos/<uuid:uuid_comanda>/ticket', TicketPDFView.as_view(), name='ticket-comanda'),
 ]
