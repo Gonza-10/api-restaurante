@@ -71,19 +71,21 @@
             });
         });
 
-            // Simulación de envío del PIN
-            document.getElementById('formulario-login').addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                // Recolectamos los 4 dígitos
-                let pinIngresado = '';
-                pinInputs.forEach(input => pinIngresado += input.value);
+        // Simulación de envío del PIN
+        document.getElementById('formulario-login').addEventListener('submit', (e) => {
+        e.preventDefault();
+    
+        // Recolectamos los 4 dígitos
+        let pinIngresado = '';
+        pinInputs.forEach(input => pinIngresado += input.value);
 
-                console.log("PIN ingresado para PedidoCabecera:", pinIngresado);
-                
-                // Redirección directa al menú del catálogo
-                window.location.href = 'catalogo.html';
-            });
+        // Los primeros 2 digitos identifican el numero de mesa (ejemplo: 0257 -> mesa 2)
+        const numeroMesa = parseInt(pinIngresado.substring(0, 2), 10);
+        sessionStorage.setItem('savage-mesa-numero', numeroMesa);
+    
+        // Redirección directa al menú del catálogo
+        window.location.href = 'catalogo.html';
+        });
         </script>
     <script>
         // Inyector local de Modo Claro/Oscuro

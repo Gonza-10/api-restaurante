@@ -5,7 +5,7 @@ from decouple import config
 
 from rest_framework import viewsets
 
-from .models import Categoria, Producto, Mesa, Empleado, PedidoCabecera, PedidoDetalle
+from .models import Categoria, Producto, Mesa, Empleado, PedidoCabecera, PedidoDetalle, ComandaRecibida
 from .serializers import (
     CategoriaSerializer,
     ProductoSerializer,
@@ -204,3 +204,65 @@ class ComandaCreateView(APIView):
             {'mensaje': 'Comanda validada, pendiente de encolar.'},
             status=status.HTTP_202_ACCEPTED
         )
+
+from .serializers import ComandaCocinaSerializer
+
+
+class TableroCocinaView(APIView):
+    def get(self, request):
+        comandas = ComandaRecibida.objects.select_related(
+            'pedido_cabecera__mesa'
+        ).order_by('fecha_hora_recepcion')
+
+        resultado = []
+        for comanda in comandas:
+            uuid_str = str(comanda.id_comanda_uuid)
+            estado = redis_client.get(f'comanda:estado:{uuid_str}')
+
+            if estado is None:
+                # La clave vencio por TTL o nunca se escribio -> se considera cerrada/entregada
+                continue
+
+            detalles = comanda.pedido_cabecera.detalles.select_related('producto').all()
+            items = [
+                {'nombre': d.producto.nombre, 'precio': d.precio_unitario}
+                for d in detalles
+            ]
+
+            resultado.append({
+                'id_comanda_uuid': uuid_str,
+                'mesa_id': str(comanda.pedido_cabecera.mesa.numero).zfill(2),
+                'items': items,
+                'estado': estado,
+                'timestamp': comanda.fecha_hora_recepcion,
+            })
+
+        serializer = ComandaCocinaSerializer(resultado, many=True)
+        return Response(serializer.data)
+
+
+class ComandaEstadoUpdateView(APIView):
+    ESTADOS_VALIDOS = {'pendiente', 'proceso', 'listo', 'entregado'}
+
+    def patch(self, request, uuid_comanda):
+        nuevo_estado = request.data.get('estado')
+
+        if nuevo_estado not in self.ESTADOS_VALIDOS:
+            return Response(
+                {'error': f'Estado invalido. Debe ser uno de: {", ".join(self.ESTADOS_VALIDOS)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        clave = f'comanda:estado:{uuid_comanda}'
+        if not redis_client.exists(clave):
+            return Response(
+                {'error': 'La comanda no existe o ya fue cerrada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if nuevo_estado == 'entregado':
+            redis_client.delete(clave)  # se cierra el ciclo, ya no aparece en el tablero
+        else:
+            redis_client.set(clave, nuevo_estado)
+
+        return Response({'mensaje': f'Comanda actualizada a estado: {nuevo_estado}'})

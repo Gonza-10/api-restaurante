@@ -240,7 +240,8 @@ async function confirmarPedido() {
 
     try {
         // Armado del contrato inyectando el array real de productos
-        const payload = estructurarComanda(window.carrito, "04");
+        const numeroMesa = parseInt(sessionStorage.getItem('savage-mesa-numero'), 10) || 2; // fallback: mesa 2 para pruebas directas de catalogo.html
+        const payload = estructurarComanda(window.carrito, numeroMesa);
 
         // Envío al backend
         const resultado = await enviarComandaServidor(payload);

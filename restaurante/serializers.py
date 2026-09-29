@@ -171,3 +171,15 @@ class ComandaEntradaSerializer(serializers.Serializer):
         if not value:
             raise serializers.ValidationError('La comanda debe tener al menos un producto.')
         return value
+
+class ItemCocinaSerializer(serializers.Serializer):
+    nombre = serializers.CharField()
+    precio = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class ComandaCocinaSerializer(serializers.Serializer):
+    id_comanda_uuid = serializers.UUIDField()
+    mesa_id = serializers.CharField()
+    items = ItemCocinaSerializer(many=True)
+    estado = serializers.CharField()
+    timestamp = serializers.DateTimeField()
