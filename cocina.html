@@ -47,23 +47,23 @@
          ========================================================================== -->
     <main class="kanban-board">
         
-        <!-- Columna 1: Entrantes (Estado HTTP 202 encolados) -->
-        <div class="kanban-column" style="border-top: 4px solid #e74c3c;">
-            <div class="kanban-header" style="color: #e74c3c;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
+        <!-- Columna 1: Entrantes (Violeta) -->
+        <div class="kanban-column" style="border-top: 4px solid #a855f7;">
+            <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
             <div class="kanban-body" id="columna-pendientes">
                 <!-- Inyección dinámica de JS -->
             </div>
         </div>
 
-        <!-- Columna 2: Preparación -->
-        <div class="kanban-column" style="border-top: 4px solid #f1c40f;">
-            <div class="kanban-header" style="color: #f1c40f;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
+        <!-- Columna 2: Preparación (Naranja) -->
+        <div class="kanban-column" style="border-top: 4px solid #ff7a00;">
+            <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
             <div class="kanban-body" id="columna-proceso">
                 <!-- Inyección dinámica de JS -->
             </div>
         </div>
 
-        <!-- Columna 3: Despacho -->
+        <!-- Columna 3: Despacho (Verde) -->
         <div class="kanban-column" style="border-top: 4px solid #2ecc71;">
             <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
             <div class="kanban-body" id="columna-listos">
@@ -113,7 +113,7 @@
                 let botonesHTML = '';
                 if (comanda.estado === 'pendiente') {
                     contPendientes++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #f1c40f; color: black; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">Comenzar Preparación ➔</button>`;
+                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #ff7a00; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">Comenzar Preparación ➔</button>`;
                 } else if (comanda.estado === 'proceso') {
                     contProceso++;
                     botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">✔ Marcar como Listo</button>`;
