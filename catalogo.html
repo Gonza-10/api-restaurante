@@ -28,7 +28,7 @@
             <span style="background-color: var(--primary-orange); color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px;">
                 Especial del Día
             </span>
-            <h2 style="font-size: 48px; margin: 0 0 16px 0; font-weight: 900; text-shadow: 3px 3px 6px rgba(0,0,0,0.9); line-height: 1.1;">Savage Burger Doble</h2>
+            <h2 style="color: #FFFFFF; font-size: 48px; margin: 0 0 16px 0; font-weight: 900; text-shadow: 3px 3px 6px rgba(0,0,0,0.9); line-height: 1.1;">Savage Burger Doble</h2>
             <p style="color: #F5F5F5; max-width: 550px; line-height: 1.6; margin: 0 0 24px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); font-size: 17px; font-weight: 600;">
                 Doble medallón de carne, cuádruple cheddar, bacon ahumado crujiente, cebolla caramelizada y nuestra salsa en pan brioche.
             </p>
@@ -207,6 +207,7 @@
                 const nombreSeguro = item.nombre.replace(/'/g, "\\'");
                 const detalles = obtenerDetallesPorNombre(item.nombre);
                 const descSegura = detalles.desc.replace(/'/g, "\\'");
+                const porcionesSegura = detalles.porciones || '1 Persona';
                 const imagenUrl = obtenerImagenPorNombre(item.nombre);
                 
                 // Etiquetas de texto limpias (Sin emojis)
@@ -220,7 +221,7 @@
                 tarjeta.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
                 
                 tarjeta.innerHTML = `
-                    <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="onclick="abrirModalDetalle(${item.id}, '${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${detalles.porciones}')"
+                    <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${item.id}, '${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${porcionesSegura}')">
                     
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -234,7 +235,7 @@
                             </div>
                         </div>
                         
-                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="onclick="abrirModalDetalle(${item.id}, '${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${detalles.porciones}')">
+                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${item.id}, '${nombreSeguro}', ${item.precio}, '${descSegura}', '${imagenUrl}', '${porcionesSegura}')">
                             ${item.nombre}
                         </h3>
                         
@@ -245,6 +246,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
                             <span style="font-size: 20px; font-weight: 900; color: var(--text-main);">$${parseFloat(item.precio).toFixed(2)}</span>
                             <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease;" onclick="agregarAlCarrito(${item.id}, '${nombreSeguro}', ${item.precio}, this)">
+                                + Agregar
                             </button>
                         </div>
                     </div>
@@ -280,10 +282,10 @@
            GESTIÓN DEL CARRITO (Estado Local)
            ========================================================================== */
         function agregarAlCarrito(idProducto, nombre, precio, botonElement) {
-        window.carrito.push({ id: idProducto, nombre: nombre, precio: precio });
-        window.totalPedido += precio;
-        actualizarBarraFlotante();
-        animarBoton(botonElement);
+            window.carrito.push({ id: idProducto, nombre: nombre, precio: precio });
+            window.totalPedido += precio;
+            actualizarBarraFlotante();
+            animarBoton(botonElement);
         }
 
         function removerDelCarrito(idItem) {
@@ -330,15 +332,15 @@
         function cerrarModalCarrito() { document.getElementById('modal-carrito').style.display = 'none'; }
 
         function abrirModalDetalle(idProducto, nombre, precio, desc, imagen, porciones) {
-        document.getElementById('detalle-img').src = imagen;
-        document.getElementById('detalle-nombre').textContent = nombre;
-        document.getElementById('detalle-desc').textContent = desc;
-        document.getElementById('detalle-precio').textContent = `$${parseFloat(precio).toFixed(2)}`;
-        document.getElementById('detalle-porciones').textContent = porciones;
+            document.getElementById('detalle-img').src = imagen;
+            document.getElementById('detalle-nombre').textContent = nombre;
+            document.getElementById('detalle-desc').textContent = desc;
+            document.getElementById('detalle-precio').textContent = `$${parseFloat(precio).toFixed(2)}`;
+            document.getElementById('detalle-porciones').textContent = porciones;
     
-        const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
-        btnDetalleAgregar.onclick = function() { agregarAlCarrito(idProducto, nombre, precio, this); };
-        document.getElementById('modal-detalle').style.display = 'flex';
+            const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
+            btnDetalleAgregar.onclick = function() { agregarAlCarrito(idProducto, nombre, precio, this); };
+            document.getElementById('modal-detalle').style.display = 'flex';
         }
 
         function renderizarListaModal() {
