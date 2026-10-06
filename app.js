@@ -3,6 +3,7 @@
    ========================================================================== */
 
 const API_URL = 'http://localhost:8080/api/v1/productos';
+const API_CATEGORIAS_URL = 'http://localhost:8080/api/v1/categorias';
 const API_PEDIDOS_URL = 'http://localhost:8080/api/v1/pedidos';
 
 // Captura de nodos del DOM (Pueden ser null dependiendo de la pantalla actual)
@@ -15,26 +16,22 @@ const formulario = document.getElementById('formulario-registro');
    SISTEMA DE TEMA (MODO CLARO / OSCURO CON LOCALSTORAGE)
    ========================================================================== */
 function inicializarTema() {
-    // Lee la preferencia guardada en el navegador del usuario
     const temaGuardado = localStorage.getItem('savage-tema');
     if (temaGuardado === 'light') document.body.classList.add('light-mode');
 
-    // Creación dinámica del botón
     const btnTema = document.createElement('button');
     btnTema.className = 'btn-tema';
     btnTema.title = 'Cambiar tema visual';
     
-    // Función interna para actualizar el texto según el estado
     const actualizarTexto = () => {
         btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
     };
     
-    actualizarTexto(); // Setear el texto inicial
+    actualizarTexto();
     
-    // Alternancia de clases y guardado de estado local al hacer clic
     btnTema.onclick = () => {
         document.body.classList.toggle('light-mode');
-        actualizarTexto(); // Cambia el texto en vivo
+        actualizarTexto();
         const esClaro = document.body.classList.contains('light-mode');
         localStorage.setItem('savage-tema', esClaro ? 'light' : 'dark');
     };
@@ -42,7 +39,6 @@ function inicializarTema() {
     document.body.appendChild(btnTema);
 }
 
-// Dispara la función apenas carga la página
 document.addEventListener('DOMContentLoaded', inicializarTema);
 
 /* ==========================================================================
@@ -78,9 +74,29 @@ function obtenerDetallesPorNombre(nombre) {
    MÓDULO DE ADMINISTRACIÓN (Solo se ejecuta si existe el formulario)
    ========================================================================== */
 if (formulario) {
+    window.productosAdmin = [];
+
     function limpiarAlertas() {
         if(alertaError) alertaError.style.display = 'none';
         if(alertaExito) alertaExito.style.display = 'none';
+    }
+
+    async function cargarCategoriasSelect() {
+        const selectCat = document.getElementById('editar-categoria');
+        if (!selectCat) return;
+        try {
+            const resp = await fetch(API_CATEGORIAS_URL);
+            if (resp.ok) {
+                const categorias = await resp.json();
+                if (categorias.length > 0) {
+                    selectCat.innerHTML = categorias.map(c => 
+                        `<option value="${c.id}" style="background: #181818; color: white;">${c.nombre}</option>`
+                    ).join('');
+                }
+            }
+        } catch (e) {
+            // Usa las opciones por defecto si no responde
+        }
     }
 
     async function obtenerRegistros() {
@@ -89,23 +105,22 @@ if (formulario) {
             if (!respuesta.ok) throw new Error(`Error ${respuesta.status}`);
 
             const items = await respuesta.json();
+            window.productosAdmin = items;
             contenedorLista.innerHTML = '';
 
             if (items.length === 0) {
-                contenedorLista.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">No hay registros almacenados en la base de datos.</p>';
+                contenedorLista.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">No hay registros almacenados en el catálogo.</p>';
                 return;
             }
 
             items.forEach(item => {
-                // Validación del estado de Soft Delete (asume true si no viene definido en la DB)
                 const estaActivo = item.activo !== false; 
                 
-                // Aplicación de estilos dinámicos para el borrado lógico (Grisado visual)
                 const opacidad = estaActivo ? '1' : '0.5';
                 const filtroGris = estaActivo ? 'none' : 'grayscale(100%)';
                 const textoBoton = estaActivo ? 'Ocultar Plato' : 'Reactivar Plato';
                 const colorBoton = estaActivo ? 'var(--text-muted)' : '#4CAF50';
-                const valorInvertido = !estaActivo; // Calculamos el valor opuesto para enviarlo en el click
+                const valorInvertido = !estaActivo;
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'product-card';
@@ -122,10 +137,17 @@ if (formulario) {
                         
                         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
                             <span style="font-size: 20px; font-weight: 900; color: var(--text-main); text-align: right;">$${parseFloat(item.precio).toFixed(2)}</span>
-                            <!-- Botón para alternar el borrado lógico en BD -->
-                            <button onclick="cambiarEstadoProducto(${item.id}, ${valorInvertido})" style="width: 100%; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid ${colorBoton}; background: transparent; color: ${colorBoton}; transition: all 0.2s;">
-                                ${textoBoton}
-                            </button>
+                            
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button onclick="cambiarEstadoProducto(${item.id}, ${valorInvertido})" style="flex: 1; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid ${colorBoton}; background: transparent; color: ${colorBoton}; transition: all 0.2s;">
+                                    ${textoBoton}
+                                </button>
+                                <button onclick="abrirModalEditar(${item.id})" title="Editar producto" style="padding: 8px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.04); color: var(--text-main); display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary-orange)'; this.style.color='var(--primary-orange)';" onmouseout="this.style.borderColor='var(--glass-border)'; this.style.color='var(--text-main)';">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -136,7 +158,6 @@ if (formulario) {
         }
     }
 
-    // Función global para que el botón pueda invocarla desde el HTML inyectado
     window.cambiarEstadoProducto = async function(idProducto, nuevoEstadoBoolean) {
         try {
             const respuesta = await fetch(`${API_URL}/${idProducto}`, {
@@ -146,23 +167,79 @@ if (formulario) {
             });
 
             if (respuesta.ok) {
-                obtenerRegistros(); // Refresca el panel admin
+                obtenerRegistros();
             } else {
-                alert("Aviso: El backend aún no soporta el campo 'activo'.");
+                alert("Aviso: No se pudo cambiar el estado del producto.");
             }
         } catch (error) {
             console.error("Fallo de red al actualizar estado del producto.");
         }
     };
 
+    window.abrirModalEditar = function(idProducto) {
+        const prod = window.productosAdmin.find(p => p.id === idProducto);
+        if (!prod) return;
+
+        document.getElementById('editar-id').value = prod.id;
+        document.getElementById('editar-nombre').value = prod.nombre;
+        document.getElementById('editar-precio').value = parseFloat(prod.precio).toFixed(2);
+        document.getElementById('editar-categoria').value = prod.categoria || 2;
+        document.getElementById('editar-vegetariano').checked = Boolean(prod.vegetariano);
+        document.getElementById('editar-sintacc').checked = Boolean(prod.sin_tacc);
+        document.getElementById('editar-error').style.display = 'none';
+
+        document.getElementById('modal-editar').style.display = 'flex';
+    };
+
+    window.cerrarModalEditar = function() {
+        document.getElementById('modal-editar').style.display = 'none';
+    };
+
+    const formEditar = document.getElementById('formulario-editar');
+    if (formEditar) {
+        formEditar.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idProd = document.getElementById('editar-id').value;
+            const errorBox = document.getElementById('editar-error');
+            errorBox.style.display = 'none';
+
+            const payload = {
+                nombre: document.getElementById('editar-nombre').value.trim(),
+                precio: parseFloat(document.getElementById('editar-precio').value),
+                categoria: parseInt(document.getElementById('editar-categoria').value, 10),
+                vegetariano: document.getElementById('editar-vegetariano').checked,
+                sin_tacc: document.getElementById('editar-sintacc').checked
+            };
+
+            try {
+                const respuesta = await fetch(`${API_URL}/${idProd}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (respuesta.ok) {
+                    cerrarModalEditar();
+                    obtenerRegistros();
+                } else {
+                    errorBox.textContent = 'No se pudo actualizar. Verificá los datos.';
+                    errorBox.style.display = 'flex';
+                }
+            } catch (err) {
+                errorBox.textContent = 'Error de conexión con el servidor.';
+                errorBox.style.display = 'flex';
+            }
+        });
+    }
+
     formulario.addEventListener('submit', async (e) => {
         e.preventDefault(); 
         limpiarAlertas();
 
         const nombre = document.getElementById('campo-nombre').value.trim(); 
-        const precio = parseFloat(document.getElementById('campo-precio').value); 
-        // Agregamos el activo: true para los productos nuevos
-        const payload = { nombre: nombre, precio: precio, activo: true }; 
+        const precio = parseFloat(document.getElementById('campo-precio').value);
+        const esBebida = nombre.toLowerCase().includes('coca') || nombre.toLowerCase().includes('agua') || nombre.toLowerCase().includes('cerveza') || nombre.toLowerCase().includes('bebida');
+        const payload = { nombre: nombre, precio: precio, categoria: esBebida ? 1 : 2, activo: true }; 
 
         try {
             const respuesta = await fetch(API_URL, {
@@ -187,6 +264,7 @@ if (formulario) {
         }
     });
 
+    cargarCategoriasSelect();
     obtenerRegistros();
 }
 
@@ -229,32 +307,27 @@ async function enviarComandaServidor(comandaPayload) {
 }
 
 async function confirmarPedido() {
-    // Verificamos el array global carrito instanciado en catalogo.html
     if (typeof window.carrito === 'undefined' || window.carrito.length === 0) return; 
 
     const btnModal = document.getElementById('btn-confirmar-modal');
     const textoOriginalBtn = btnModal.textContent;
 
-    // Feedback visual asíncrono (Bloqueo de UI)
     btnModal.style.pointerEvents = 'none';
     btnModal.style.backgroundColor = '#666'; 
     btnModal.innerHTML = '<span class="spinner" style="display:inline-block; width:15px; height:15px; border:2px solid white; border-top:2px solid transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 10px; vertical-align: middle;"></span> Procesando...';
 
     try {
-        // Armado del contrato inyectando el array real de productos
-        const numeroMesa = parseInt(sessionStorage.getItem('savage-mesa-numero'), 10) || 2; // fallback: mesa 2 para pruebas directas de catalogo.html
+        const numeroMesa = parseInt(sessionStorage.getItem('savage-mesa-numero'), 10) || 2;
         const payload = estructurarComanda(window.carrito, numeroMesa);
 
-        // Envío al backend
         const resultado = await enviarComandaServidor(payload);
 
         if (resultado.exito) {
             btnModal.style.backgroundColor = '#4CAF50'; 
             btnModal.textContent = '¡Orden enviada con éxito!';
 
-            // Limpieza total del carrito y restauración visual
             setTimeout(() => {
-                window.carrito = []; // Vaciamos el array
+                window.carrito = [];
                 window.totalPedido = 0;
                 document.getElementById('texto-pedido').textContent = 'Mi pedido (0)';
                 document.getElementById('total-pedido').textContent = '$0.00';
@@ -265,7 +338,6 @@ async function confirmarPedido() {
             }, 2500);
         }
     } catch (error) {
-        // Fallo de red
         console.error("Fallo transaccional:", error);
         btnModal.style.backgroundColor = 'var(--error)';
         btnModal.textContent = 'Error de conexión. Reintentar.';

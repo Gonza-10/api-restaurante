@@ -72,6 +72,60 @@
         </div>
     </div>
 
+    <!-- MODAL DE EDICIÓN DE PRODUCTO -->
+    <div id="modal-editar" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 2500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(440px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border);">
+            <button type="button" onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+            
+            <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Editar Producto</h2>
+            <p style="margin: 0 0 24px 0; color: var(--text-muted); font-size: 13px;">Modificá los datos del producto seleccionado</p>
+
+            <form id="formulario-editar" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="editar-id">
+
+                <fieldset class="input-fieldset" style="margin: 0;">
+                    <legend>Nombre del Producto</legend>
+                    <input type="text" id="editar-nombre" class="text-input" required>
+                </fieldset>
+
+                <fieldset class="input-fieldset" style="margin: 0;">
+                    <legend>Precio de Lista ($)</legend>
+                    <input type="number" id="editar-precio" class="text-input" step="0.01" min="0.01" required>
+                </fieldset>
+
+                <fieldset class="input-fieldset" style="margin: 0;">
+                    <legend>Categoría</legend>
+                    <select id="editar-categoria" class="text-input" style="background: transparent; color: var(--text-main); border: none; width: 100%; outline: none; cursor: pointer;">
+                        <option value="2" style="background: #181818; color: white;">Principales</option>
+                        <option value="1" style="background: #181818; color: white;">Bebidas</option>
+                    </select>
+                </fieldset>
+
+                <div style="display: flex; gap: 20px; padding: 6px 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
+                        <input type="checkbox" id="editar-vegetariano" style="accent-color: var(--primary-orange); width: 16px; height: 16px; cursor: pointer;">
+                        Vegetariano
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
+                        <input type="checkbox" id="editar-sintacc" style="accent-color: var(--primary-orange); width: 16px; height: 16px; cursor: pointer;">
+                        Sin TACC
+                    </label>
+                </div>
+
+                <div id="editar-error" class="message error" style="display: none; margin: 0;"></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 8px;">
+                    <button type="button" onclick="cerrarModalEditar()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted);">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-guardar-edicion" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white;">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
