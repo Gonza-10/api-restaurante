@@ -69,7 +69,8 @@ RABBIT_PASS=<contraseña-propia>
 2. Crear una base de datos vacía llamada `RestauranteDB`.
 3. Ejecutar `Script_Creacion_RestauranteDB.sql` sobre ella (por ejemplo, desde SQL Server Management Studio) para crear el esquema completo.
    - Si la base ya existía con el esquema anterior, ejecutar además `Script_AE4_Mesas_Migraciones.sql` (agrega `Mesa.Activa` y la restricción única de `Mesa.Numero`; se puede correr más de una vez).
-4. Ejecutar `Script_Seed_AE4.sql` a continuación, para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos), sin necesidad de cargarlos manualmente. Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Los empleados de prueba (`jperez`, `mvera`, `cruiz`, `agomez`, `lmartinez`) usan la contraseña `1234` (solo para desarrollo; cambiarla antes de habilitar un login real).
+   - Del mismo modo, `Script_AE4_Productos_Migraciones.sql` agrega `Producto.Descripcion` y `Producto.ImagenUrl`. Correrlo **antes** del seed en bases existentes.
+4. Ejecutar `Script_Seed_AE4.sql` a continuación, para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos), sin necesidad de cargarlos manualmente. Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo.
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
 
@@ -95,6 +96,20 @@ docker ps
 ```
 
 Deberían aparecer dos contenedores: uno para RabbitMQ (puertos `5672` y `15672`) y otro para Redis (puerto `6379`). El panel de administración de RabbitMQ queda disponible en `http://localhost:15672`, con el usuario y contraseña definidos en `.env`.
+
+### Usuarios de prueba
+
+Cargados por `Script_Seed_AE4.sql`. Todos usan la misma contraseña, **solo para desarrollo** (cambiarla antes de habilitar un login real; este repositorio es público):
+
+| Usuario | Contraseña | Rol | Nombre |
+|---|---|---|---|
+| `jperez` | `1234` | Mozo | Juan Perez |
+| `mvera` | `1234` | Mozo | Marcos Vera |
+| `cruiz` | `1234` | Cocina | Carla Ruiz |
+| `agomez` | `1234` | Admin | Ana Gomez |
+| `lmartinez` | `1234` | Gerente | Luis Martinez |
+
+> El login real todavía no está implementado: por ahora estos usuarios existen en la base y se usan al asignar empleados a sesiones de mesa.
 
 ### 7. Crear un superusuario propio (para el panel de administración de Django)
 
@@ -127,6 +142,7 @@ Con los tres procesos corriendo, los tres frontends (`catalogo.html`, `admin.htm
 |---|---|---|
 | Categorías | `/api/v1/categorias` | GET, POST, PATCH, DELETE |
 | Productos | `/api/v1/productos` | GET, POST, PATCH, DELETE (filtros `?categoria=`, `?vegetariano=true`, `?celiaco=true`, `?incluir_inactivos=true`) |
+| Imagen de producto | `POST /api/v1/productos/{id}/imagen` · `DELETE /api/v1/productos/{id}/imagen` | POST: sube una foto propia (`multipart/form-data`, campo `imagen`; JPG/PNG/WEBP, máx. 2 MB). DELETE: quita la imagen. Para usar una imagen de internet: `PATCH /productos/{id}` con `"imagen_url": "https://..."` |
 | Mesas | `/api/v1/mesas` | GET, POST, PATCH, DELETE (baja lógica: `Activa=0`; filtro `?incluir_inactivas=true`; el `Numero` es único) |
 | Empleados | `/api/v1/empleados` | GET, POST, PATCH, DELETE |
 | Sesiones de mesa | `/api/v1/sesiones-mesa` | GET, POST, PATCH, DELETE (apertura/cierre de mesa por el mozo) |
@@ -135,6 +151,8 @@ Con los tres procesos corriendo, los tres frontends (`catalogo.html`, `admin.htm
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
 | **Avance de estado** | `PATCH /api/v1/pedidos/{uuid}/estado` | Cambia el estado de una comanda (`pendiente`/`proceso`/`listo`/`entregado`) |
 | **Comprobante PDF** | `GET /api/v1/pedidos/{uuid}/ticket` | Descarga el comprobante generado de forma asíncrona |
+
+> Imágenes de producto: `imagen_url` es un link `https://` externo o una ruta local `/media/productos/<archivo>`, que se sirve desde el mismo servidor (`http://localhost:8080/media/productos/<archivo>`; el front debe anteponer el host de la API). Las fotos subidas se guardan en la carpeta `media/` (no se versiona). El nombre lo genera el servidor y el formato se valida por contenido, no por extensión.
 
 > Nota: a diferencia de AE1, las rutas no llevan barra final (`/api/v1/productos`, no `/api/v1/productos/`), para evitar redirecciones que puedan degradar peticiones `POST` a `GET` en algunos navegadores.
 

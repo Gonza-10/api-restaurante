@@ -1,4 +1,5 @@
 import random
+import re
 from decimal import Decimal
 
 from django.utils import timezone
@@ -24,7 +25,32 @@ class ProductoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'activo']
+        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'activo', 'descripcion', 'imagen_url']
+        extra_kwargs = {
+            'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
+        }
+
+    def validate_descripcion(self, value):
+        value = (value or '').strip()
+        return value or None
+
+    def validate_imagen_url(self, value):
+        # Solo se aceptan: un link externo https:// o una imagen ya subida a este servidor
+        value = (value or '').strip()
+        if not value:
+            return None
+        if len(value) > 500:
+            raise serializers.ValidationError('El link es demasiado largo (maximo 500 caracteres).')
+        if re.search(r'\s', value):
+            raise serializers.ValidationError('El link no puede contener espacios.')
+        if value.startswith('https://') and len(value) > len('https://'):
+            return value
+        if re.fullmatch(r'/media/productos/[0-9a-f]{32}\.(jpg|png|webp)', value):
+            return value
+        raise serializers.ValidationError(
+            'La imagen debe ser un link que empiece con https:// o una imagen subida con POST /productos/{id}/imagen.'
+        )
 
     def validate_precio(self, value):
         if value <= 0:

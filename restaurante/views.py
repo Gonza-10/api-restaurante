@@ -1,9 +1,14 @@
 import os
+import re
 import json
+import uuid
 import pika
 from decouple import config
 
+from django.conf import settings
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import FileResponse, Http404
@@ -22,6 +27,33 @@ from .serializers import (
 from .redis_client import redis_client
 
 CACHE_TTL_SEGUNDOS = 60
+
+# ==================== IMAGENES DE PRODUCTO ====================
+IMAGEN_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+IMAGEN_SUBCARPETA = 'productos'
+IMAGEN_RUTA_LOCAL = re.compile(r'^/media/productos/[0-9a-f]{32}\.(jpg|png|webp)$')
+
+
+def _detectar_extension_imagen(cabecera: bytes):
+    """Detecta el formato real por los primeros bytes (no confiamos en el nombre ni en el Content-Type)."""
+    if cabecera[:3] == b'\xff\xd8\xff':
+        return 'jpg'
+    if cabecera[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'png'
+    if cabecera[:4] == b'RIFF' and cabecera[8:12] == b'WEBP':
+        return 'webp'
+    return None
+
+
+def _borrar_imagen_local(imagen_url):
+    """Borra del disco una imagen subida al servidor. Ignora links externos y rutas que no coincidan."""
+    if not imagen_url or not IMAGEN_RUTA_LOCAL.match(imagen_url):
+        return
+    ruta = os.path.join(settings.MEDIA_ROOT, IMAGEN_SUBCARPETA, os.path.basename(imagen_url))
+    try:
+        os.remove(ruta)
+    except FileNotFoundError:
+        pass
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -80,9 +112,54 @@ class ProductoViewSet(viewsets.ModelViewSet):
         print('[CACHE INVALIDADO] por creacion de producto')
 
     def perform_update(self, serializer):
+        imagen_anterior = serializer.instance.imagen_url
         super().perform_update(serializer)
+        if serializer.instance.imagen_url != imagen_anterior:
+            _borrar_imagen_local(imagen_anterior)
         self._invalidar_cache_catalogo()
         print('[CACHE INVALIDADO] por actualizacion de producto')
+
+    @action(detail=True, methods=['post', 'delete'], url_path='imagen',
+            parser_classes=[MultiPartParser, FormParser])
+    def imagen(self, request, pk=None):
+        """POST (multipart, campo 'imagen'): sube una foto propia. DELETE: quita la imagen del producto."""
+        producto = self.get_object()
+        anterior = producto.imagen_url
+
+        if request.method == 'DELETE':
+            producto.imagen_url = None
+            producto.save(update_fields=['imagen_url'])
+            _borrar_imagen_local(anterior)
+            self._invalidar_cache_catalogo()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        archivo = request.FILES.get('imagen')
+        if archivo is None:
+            return Response({'error': "Falta el archivo. Enviar multipart/form-data con el campo 'imagen'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if archivo.size > IMAGEN_MAX_BYTES:
+            return Response({'error': 'La imagen supera el maximo de 2 MB.'},
+                            status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
+        extension = _detectar_extension_imagen(archivo.read(12))
+        archivo.seek(0)
+        if extension is None:
+            return Response({'error': 'Formato no permitido. Solo JPG, PNG o WEBP.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # el nombre lo genera el servidor: el del cliente se descarta (evita pisar archivos y rutas raras)
+        nombre = f'{uuid.uuid4().hex}.{extension}'
+        carpeta = os.path.join(settings.MEDIA_ROOT, IMAGEN_SUBCARPETA)
+        os.makedirs(carpeta, exist_ok=True)
+        with open(os.path.join(carpeta, nombre), 'wb') as destino:
+            for trozo in archivo.chunks():
+                destino.write(trozo)
+
+        producto.imagen_url = f'/media/{IMAGEN_SUBCARPETA}/{nombre}'
+        producto.save(update_fields=['imagen_url'])
+        _borrar_imagen_local(anterior)
+        self._invalidar_cache_catalogo()
+        return Response(ProductoSerializer(producto).data, status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)

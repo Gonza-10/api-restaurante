@@ -88,6 +88,8 @@ class Producto(models.Model):
     es_vegetariano = models.BooleanField(default=False, db_column='EsVegetariano')
     apto_celiaco = models.BooleanField(default=False, db_column='AptoCeliaco')
     activo = models.BooleanField(default=True, db_column='Activo')
+    descripcion = models.CharField(max_length=500, null=True, blank=True, db_column='Descripcion')
+    imagen_url = models.CharField(max_length=500, null=True, blank=True, db_column='ImagenUrl')
 
     class Meta:
         db_table = 'Producto'

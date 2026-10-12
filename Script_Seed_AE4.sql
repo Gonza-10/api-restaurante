@@ -97,6 +97,53 @@ FROM (VALUES
 JOIN Categoria c ON c.Nombre = v.Categoria
 WHERE NOT EXISTS (SELECT 1 FROM Producto p WHERE p.Nombre = v.Nombre);
 
+-- Descripciones (solo completa las que estan vacias: no pisa lo que se haya editado a mano)
+IF COL_LENGTH('dbo.Producto', 'Descripcion') IS NULL
+    PRINT 'AVISO: falta la columna Descripcion. Ejecutar antes Script_AE4_Productos_Migraciones.sql';
+ELSE
+    EXEC(N'
+UPDATE p SET p.Descripcion = v.Descripcion
+FROM Producto p
+JOIN (VALUES
+    (N''Coca-Cola 1L'', N''Botella familiar de 1 litro, bien fría.''),
+    (N''Savage Burger Doble'', N''Dos medallones de carne, cheddar, panceta crocante, cebolla caramelizada y salsa de la casa en pan de papa.''),
+    (N''Milanesa Napolitana'', N''Milanesa de ternera con salsa de tomate, jamón y muzzarella gratinada.''),
+    (N''Ensalada César'', N''Lechuga, pollo grillado, croutons, queso parmesano y aderezo César.''),
+    (N''Pizza Muzzarella'', N''Pizza de masa casera con salsa de tomate, muzzarella y aceitunas.''),
+    (N''Provoleta a la Parrilla'', N''Provolone grillado con orégano y aceite de oliva.''),
+    (N''Empanadas de Carne x3'', N''Tres empanadas de carne cortada a cuchillo, al horno.''),
+    (N''Papas Savage con Cheddar y Panceta'', N''Papas fritas bañadas en cheddar fundido, panceta crocante y verdeo.''),
+    (N''Bastones de Muzzarella'', N''Bastones de muzzarella empanados y fritos, con salsa pomodoro.''),
+    (N''Tabla de Picada para 3'', N''Fiambres, quesos, aceitunas, frutos secos y pan casero para compartir.''),
+    (N''Burger Clásica'', N''Medallón de carne, lechuga, tomate, queso y mayonesa en pan de papa.''),
+    (N''Burger Veggie'', N''Medallón de legumbres y vegetales, rúcula, tomate y alioli en pan de papa.''),
+    (N''Milanesa con Papas Fritas'', N''Milanesa de ternera con porción generosa de papas fritas.''),
+    (N''Galeto al Limón'', N''Pollo a la parrilla marinado en limón, con ensalada de la casa.''),
+    (N''Bife de Chorizo con Papas'', N''Bife de chorizo a la parrilla con papas rústicas. Sin TACC.''),
+    (N''Pasta Ravioles de Ricota'', N''Ravioles de ricota y nuez con salsa a elección: filetto o crema.''),
+    (N''Pasta al Wok con Queso Sardo'', N''Fideos salteados al wok con verduras y queso sardo rallado.''),
+    (N''Ensalada Caprese'', N''Tomate, muzzarella fresca, albahaca y aceite de oliva.''),
+    (N''Pizza Napolitana'', N''Muzzarella, rodajas de tomate, ajo y albahaca sobre masa casera.''),
+    (N''Pizza Fugazzeta'', N''Muzzarella y abundante cebolla caramelizada sobre masa casera.''),
+    (N''Flan Casero con Dulce de Leche'', N''Flan casero con dulce de leche y crema.''),
+    (N''Brownie con Helado'', N''Brownie de chocolate tibio con una bocha de helado de crema.''),
+    (N''Panqueque de Dulce de Leche'', N''Panqueque relleno de dulce de leche, flambeado a pedido.''),
+    (N''Helado 3 Bochas'', N''Tres bochas a elección entre los gustos del día.''),
+    (N''Agua Mineral 500 ml'', N''Agua mineral sin gas.''),
+    (N''Gaseosa Línea Coca-Cola 500 ml'', N''Gaseosa de 500 ml a elección entre las variedades disponibles.''),
+    (N''Jugo de Naranja Natural'', N''Exprimido en el momento.''),
+    (N''Limonada con Menta y Jengibre'', N''Limonada fresca con menta y un toque de jengibre.''),
+    (N''Cerveza Rubia Pinta'', N''Pinta de cerveza rubia tirada, estilo lager.''),
+    (N''Cerveza IPA Artesanal Pinta'', N''Pinta de IPA artesanal, lupulada y de final amargo.''),
+    (N''Fernet con Coca'', N''El clásico: fernet, Coca-Cola y hielo.''),
+    (N''Gin Tonic'', N''Gin, agua tónica, hielo y rodaja de pepino o cítrico.''),
+    (N''Negroni'', N''Gin, Campari y vermut rosso en partes iguales, con piel de naranja.''),
+    (N''Mojito'', N''Ron blanco, lima, menta, azúcar y soda.''),
+    (N''Aperol Spritz'', N''Aperol, espumante y soda, con rodaja de naranja.'')
+) AS v(Nombre, Descripcion) ON v.Nombre = p.Nombre
+WHERE p.Descripcion IS NULL;
+');
+
 COMMIT TRANSACTION;
 
 -- Resumen

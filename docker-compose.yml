@@ -12,5 +12,22 @@ services:
       - datos_infra:/var/lib/rabbitmq
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: contenedor_${GRUPO}_redis
+    # AOF: el estado de las comandas en cocina vive solo en Redis; si el contenedor se reinicia no se pierde
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"   # solo accesible desde esta maquina (Redis no tiene clave)
+    volumes:
+      - datos_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   datos_infra:
+  datos_redis:

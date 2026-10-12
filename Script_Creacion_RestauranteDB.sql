@@ -41,6 +41,8 @@ CREATE TABLE Producto (
     EsVegetariano BIT NOT NULL DEFAULT 0,
     AptoCeliaco BIT NOT NULL DEFAULT 0,
     Activo BIT NOT NULL DEFAULT 1,
+    Descripcion NVARCHAR(500) NULL,
+    ImagenUrl NVARCHAR(500) NULL,
     CONSTRAINT FK_Producto_Categoria FOREIGN KEY (IdCategoria) REFERENCES Categoria(Id)
 );
 
