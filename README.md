@@ -83,8 +83,6 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
    4. `sql/Script_AE4_Sesiones_Migraciones.sql` — una sola sesión abierta por mesa, PIN único entre sesiones abiertas, y sincronización de `Mesa.Estado`.
 5. Ejecutar `sql/Script_Seed_AE4.sql` para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos). Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo.
 
-Para borrar los datos generados durante pruebas (sesiones, pedidos y comandas) existe `sql/Script_Limpieza_Pruebas.sql`, que primero muestra qué borraría y solo borra si se activa `@Ejecutar = 1`.
-
 ### 6. Levantar RabbitMQ y Redis (Docker)
 
 Ambos servicios corren en contenedores. Si usás Docker Desktop de forma nativa en Windows, alcanza con:
@@ -209,7 +207,7 @@ Cada producto trae también `categoria_nombre`, para agrupar el menú sin una se
 ```
 ├── config/            configuración de Django (settings, urls)
 ├── restaurante/       API: modelos, vistas, serializers, auth, workers (RabbitMQ)
-├── sql/               scripts de base de datos (creación, migraciones, seed, limpieza de pruebas)
+├── sql/               scripts de base de datos (creación, migraciones, seed)
 ├── frontend/          páginas HTML, app.js, styles.css y fonts (Gonzalo)
 ├── legacy/            servidor de ejemplo de AE1 (SERV_WEB.py), fuera del sistema actual
 ├── tickets/           PDFs generados (no se versiona)
