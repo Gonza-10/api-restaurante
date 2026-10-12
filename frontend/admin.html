@@ -48,18 +48,40 @@
             resize: vertical;
             font-family: inherit;
         }
+        /* Estilo general del contenedor de archivo */
         .admin-file {
-            padding: 12px 16px;
+            padding: 8px;
             border: 1px dashed rgba(255, 255, 255, 0.25);
             background: rgba(255, 255, 255, 0.02);
             font-size: 13px;
             color: var(--text-muted);
             cursor: pointer;
+            height: auto;
         }
         .admin-file:hover {
-            border-color: var(--accent);
+            border-color: var(--primary-orange);
             background: rgba(255, 255, 255, 0.05);
         }
+        
+        /* Estilo específico para ocultar/modificar el botón nativo de Windows */
+        input[type="file"]::file-selector-button {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background: var(--primary-orange);
+            color: white;
+            border-color: var(--primary-orange);
+        }
+
         /* Checkboxes tipo píldora */
         .admin-checkbox-container {
             display: flex;
@@ -159,7 +181,7 @@
                         </div>
 
                         <div class="admin-form-group">
-                            <label class="admin-label">O subir foto local (Max 2MB)</label>
+                            <label class="admin-label">O subir foto local</label>
                             <input type="file" id="campo-imagen-archivo" class="admin-input admin-file" accept="image/jpeg, image/png, image/webp">
                         </div>
                         
