@@ -68,6 +68,7 @@ RABBIT_PASS=<contraseña-propia>
 1. Tener SQL Server instalado localmente.
 2. Crear una base de datos vacía llamada `RestauranteDB`.
 3. Ejecutar `Script_Creacion_RestauranteDB.sql` sobre ella (por ejemplo, desde SQL Server Management Studio) para crear el esquema completo.
+   - Si la base ya existía con el esquema anterior, ejecutar además `Script_AE4_Mesas_Migraciones.sql` (agrega `Mesa.Activa` y la restricción única de `Mesa.Numero`; se puede correr más de una vez).
 4. Ejecutar `Script_Seed_AE2.sql` a continuación, para cargar datos de prueba reproducibles (roles, un empleado, las 3 mesas, categorías, productos y una sesión de mesa abierta), sin necesidad de cargarlos manualmente.
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
@@ -126,7 +127,7 @@ Con los tres procesos corriendo, los tres frontends (`catalogo.html`, `admin.htm
 |---|---|---|
 | Categorías | `/api/v1/categorias` | GET, POST, PATCH, DELETE |
 | Productos | `/api/v1/productos` | GET, POST, PATCH, DELETE (filtros `?categoria=`, `?vegetariano=true`, `?celiaco=true`, `?incluir_inactivos=true`) |
-| Mesas | `/api/v1/mesas` | GET, POST, PATCH, DELETE |
+| Mesas | `/api/v1/mesas` | GET, POST, PATCH, DELETE (baja lógica: `Activa=0`; filtro `?incluir_inactivas=true`; el `Numero` es único) |
 | Empleados | `/api/v1/empleados` | GET, POST, PATCH, DELETE |
 | Sesiones de mesa | `/api/v1/sesiones-mesa` | GET, POST, PATCH, DELETE (apertura/cierre de mesa por el mozo) |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |

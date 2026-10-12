@@ -91,8 +91,27 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
 
 class MesaViewSet(viewsets.ModelViewSet):
-    queryset = Mesa.objects.all()
     serializer_class = MesaSerializer
+
+    def get_queryset(self):
+        queryset = Mesa.objects.all()
+        if self.action == 'list':
+            incluir_inactivas = self.request.query_params.get('incluir_inactivas') == 'true'
+            if not incluir_inactivas:
+                queryset = queryset.filter(activa=True)
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        # baja lógica: se conserva el historial de sesiones de la mesa
+        mesa = self.get_object()
+        if mesa.estado:
+            return Response(
+                {'error': 'No se puede dar de baja una mesa ocupada. Cierre primero su sesion.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        mesa.activa = False
+        mesa.save(update_fields=['activa'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
@@ -195,7 +214,7 @@ class ComandaCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         datos = serializer.validated_data
 
-        mesa = Mesa.objects.filter(numero=datos['mesa_id']).first()
+        mesa = Mesa.objects.filter(numero=datos['mesa_id'], activa=True).first()
         if mesa is None:
             return Response(
                 {'error': f"No existe la mesa numero {datos['mesa_id']}."},
@@ -280,4 +299,4 @@ class TicketPDFView(APIView):
         )
         if not os.path.exists(ruta):
             raise Http404('El ticket todavia no fue generado o la comanda no existe.')
-        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')

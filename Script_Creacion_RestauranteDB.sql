@@ -23,7 +23,9 @@ CREATE TABLE Mesa (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     Numero INT NOT NULL,
     CapacidadMaxima INT NOT NULL,
-    Estado BIT NOT NULL DEFAULT 0
+    Estado BIT NOT NULL DEFAULT 0,
+    Activa BIT NOT NULL DEFAULT 1,
+    CONSTRAINT UQ_Mesa_Numero UNIQUE (Numero)
 );
 
 CREATE TABLE Categoria (
@@ -151,4 +153,4 @@ CREATE TABLE MovimientoCaja (
     CONSTRAINT FK_MovCaja_Caja FOREIGN KEY (IdCaja) REFERENCES Caja(Id),
     CONSTRAINT FK_MovCaja_Empleado FOREIGN KEY (IdEmpleado) REFERENCES Empleado(Id),
     CONSTRAINT FK_MovCaja_Pago FOREIGN KEY (IdPago) REFERENCES Pago(Id)
-);
+);

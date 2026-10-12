@@ -35,14 +35,35 @@ class ProductoSerializer(serializers.ModelSerializer):
 # ==================== MESAS ====================
 
 class MesaSerializer(serializers.ModelSerializer):
+    # el número es el identificador visible para mozo y cliente: no puede repetirse
+    numero = serializers.IntegerField(
+        validators=[UniqueValidator(
+            queryset=Mesa.objects.all(),
+            message='Ya existe una mesa con ese número.'
+        )]
+    )
+
     class Meta:
         model = Mesa
         fields = '__all__'
+
+    def validate_numero(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('El número de mesa debe ser mayor a 0.')
+        return value
 
     def validate_capacidad_maxima(self, value):
         if value <= 0:
             raise serializers.ValidationError('La capacidad debe ser mayor a 0.')
         return value
+
+    def validate(self, data):
+        # una mesa ocupada no se puede dar de baja (tampoco vía PATCH)
+        if self.instance is not None and data.get('activa') is False and self.instance.estado:
+            raise serializers.ValidationError(
+                {'activa': 'No se puede dar de baja una mesa ocupada. Cerrá primero su sesión.'}
+            )
+        return data
 
 
 # ==================== IDENTIDAD Y ACCESO ====================
@@ -133,6 +154,8 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if self.instance is None:  # esta regla aplica solo al abrir un pedido nuevo
             mesa = data.get('mesa')
+            if mesa and not mesa.activa:
+                raise serializers.ValidationError({'mesa': 'Esta mesa está dada de baja.'})
             if mesa and mesa.estado:
                 raise serializers.ValidationError({'mesa': 'Esta mesa ya está ocupada.'})
         return data
@@ -182,4 +205,4 @@ class ComandaCocinaSerializer(serializers.Serializer):
     mesa_id = serializers.CharField()
     items = ItemCocinaSerializer(many=True)
     estado = serializers.CharField()
-    timestamp = serializers.DateTimeField()
+    timestamp = serializers.DateTimeField()

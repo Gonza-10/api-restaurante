@@ -39,7 +39,8 @@ class Mesa(models.Model):
     id = models.AutoField(primary_key=True, db_column='Id')
     numero = models.IntegerField(db_column='Numero')
     capacidad_maxima = models.IntegerField(db_column='CapacidadMaxima')
-    estado = models.BooleanField(default=False, db_column='Estado')
+    estado = models.BooleanField(default=False, db_column='Estado')  # True = ocupada
+    activa = models.BooleanField(default=True, db_column='Activa')  # False = dada de baja (baja lógica)
 
     class Meta:
         db_table = 'Mesa'
@@ -240,4 +241,4 @@ class MovimientoCaja(models.Model):
 
     class Meta:
         db_table = 'MovimientoCaja'
-        managed = False
+        managed = False
