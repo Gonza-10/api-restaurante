@@ -163,6 +163,7 @@ class PedidoDetalleSerializer(serializers.ModelSerializer):
 class PedidoCabeceraSerializer(serializers.ModelSerializer):
     codigo_pin = serializers.CharField(read_only=True)
     fecha_hora_apertura = serializers.DateTimeField(read_only=True)
+    numero_mesa = serializers.IntegerField(source='mesa.numero', read_only=True)
     detalles = PedidoDetalleSerializer(many=True, read_only=True)
     total = serializers.SerializerMethodField()
 
@@ -205,6 +206,18 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
             mesa.save(update_fields=['estado'])
         return pedido
 
+class SesionAbrirSerializer(serializers.Serializer):
+    """Lo que manda el mozo al sentar clientes en una mesa."""
+    numero_mesa = serializers.IntegerField(
+        min_value=1,
+        error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe ser mayor a 0.'}
+    )
+    cantidad_comensales = serializers.IntegerField(
+        min_value=1,
+        error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe haber al menos un comensal.'}
+    )
+
+
 class ItemComandaSerializer(serializers.Serializer):
     id = serializers.IntegerField()  # asumido: Producto.Id
     nombre = serializers.CharField(required=False)  # se recibe, se ignora
@@ -214,6 +227,10 @@ class ItemComandaSerializer(serializers.Serializer):
 class ComandaEntradaSerializer(serializers.Serializer):
     id_comanda_uuid = serializers.UUIDField()
     mesa_id = serializers.IntegerField()  # es el Numero de Mesa (D8)
+    pin = serializers.RegexField(
+        r'^\d{4}$',
+        error_messages={'required': 'El PIN es obligatorio.', 'invalid': 'El PIN debe tener 4 digitos.', 'blank': 'El PIN es obligatorio.'}
+    )
     items = ItemComandaSerializer(many=True)
     timestamp = serializers.DateTimeField(required=False)
 

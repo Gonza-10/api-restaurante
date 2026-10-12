@@ -3,9 +3,13 @@
 
 Proyecto académico UCP (Paradigmas III y Base de Datos). Todo en español: código, comentarios, mensajes de error y documentación.
 
+## Estructura
+
+`config/` y `restaurante/` (Django) · `sql/` (scripts de base de datos) · `frontend/` (HTML/JS/CSS, de Gonzalo) · `legacy/` (SERV_WEB.py de AE1) · `tickets/` y `media/` (generados, no se versionan).
+
 ## Reglas del esquema
 
-- Todos los modelos son `managed = False`. La fuente de verdad del esquema son los scripts `.sql`; `models.py` los refleja.
+- Todos los modelos son `managed = False`. La fuente de verdad del esquema son los scripts de `sql/`; `models.py` los refleja.
 - Nunca correr `makemigrations`/`migrate` esperando crear tablas del negocio. Cambios de esquema: primero el script SQL, después `models.py`.
 - No ejecutar SQL destructivo (DROP, DELETE masivo) sin pedir confirmación.
 
@@ -27,3 +31,5 @@ Requiere SQL Server (RestauranteDB), RabbitMQ (5672) y Redis (6379) activos. En 
 
 - No leer ni commitear `.env`. Contraseñas siempre hasheadas.
 - Rutas sin barra final (`/api/v1/productos`).
+- Permisos por rol: cada vista declara `roles_lectura` / `roles_escritura` (ver `restaurante/auth.py`); `None` = público y si falta, se exige Admin o Gerente. Toda vista nueva debe declararlos.
+- La `SECRET_KEY` sale del `.env` y firma los tokens de login: nunca hardcodearla.

@@ -2,16 +2,21 @@ import os
 import re
 import json
 import uuid
+import secrets
 import pika
 from decouple import config
 
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction, IntegrityError
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -27,8 +32,14 @@ from .serializers import (
     PedidoDetalleSerializer,
     ComandaEntradaSerializer,
     ComandaCocinaSerializer,
+    SesionAbrirSerializer,
 )
 from .redis_client import redis_client
+from .auth import (
+    emitir_token, ttl_token_segundos,
+    ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
+)
+from .limites import superado, registrar_fallo, limpiar
 
 CACHE_TTL_SEGUNDOS = 60
 
@@ -61,6 +72,8 @@ def _borrar_imagen_local(imagen_url):
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
+    roles_lectura = None  # el menu es publico
+    roles_escritura = ADMIN_GERENTE
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
 
@@ -101,6 +114,8 @@ def _parsear_precio(valor, nombre_param):
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
+    roles_lectura = None  # el menu es publico
+    roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
         queryset = Producto.objects.select_related('categoria').all()
@@ -223,6 +238,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
 class MesaViewSet(viewsets.ModelViewSet):
     serializer_class = MesaSerializer
+    roles_lectura = SALON
+    roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
         queryset = Mesa.objects.all()
@@ -246,16 +263,157 @@ class MesaViewSet(viewsets.ModelViewSet):
 
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
-    queryset = Empleado.objects.select_related('rol').all()
     serializer_class = EmpleadoSerializer
+    roles_lectura = SOLO_GERENTE
+    roles_escritura = SOLO_GERENTE
+
+    def get_queryset(self):
+        queryset = Empleado.objects.select_related('rol').order_by('id')
+        if self.action == 'list' and not _es_verdadero(self.request.query_params.get('incluir_inactivos')):
+            queryset = queryset.filter(activo=True)
+        return queryset
+
+    def _quedan_otros_gerentes(self, empleado):
+        return Empleado.objects.filter(rol__nombre=ROL_GERENTE, activo=True).exclude(id=empleado.id).exists()
+
+    def perform_update(self, serializer):
+        actual = serializer.instance
+        nuevo_activo = serializer.validated_data.get('activo', actual.activo)
+        nuevo_rol = serializer.validated_data.get('rol', actual.rol)
+
+        if actual.id == self.request.user.id and (not nuevo_activo or nuevo_rol.id != actual.rol_id):
+            raise ValidationError({'error': 'No puede darse de baja ni cambiarse el rol a si mismo.'})
+
+        era_gerente_activo = actual.activo and actual.rol.nombre == ROL_GERENTE
+        sigue_siendolo = nuevo_activo and nuevo_rol.nombre == ROL_GERENTE
+        if era_gerente_activo and not sigue_siendolo and not self._quedan_otros_gerentes(actual):
+            raise ValidationError({'error': 'Debe quedar al menos un Gerente activo.'})
+
+        super().perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        # baja logica: el empleado figura en sesiones de mesa historicas y no se puede borrar de la base
+        empleado = self.get_object()
+        if empleado.id == request.user.id:
+            return Response({'error': 'No puede darse de baja a si mismo.'}, status=status.HTTP_409_CONFLICT)
+        if empleado.rol.nombre == ROL_GERENTE and empleado.activo and not self._quedan_otros_gerentes(empleado):
+            return Response({'error': 'Debe quedar al menos un Gerente activo.'}, status=status.HTTP_409_CONFLICT)
+        empleado.activo = False
+        empleado.save(update_fields=['activo'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+PIN_MAX_FALLOS = 10
+PIN_VENTANA_SEGUNDOS = 300
+
+
+def _ip(request):
+    return request.META.get('REMOTE_ADDR', 'desconocida')
+
+
+def _generar_pin_libre():
+    """PIN de 4 digitos que no este en uso por ninguna otra sesion abierta."""
+    en_uso = set(PedidoCabecera.objects.filter(estado='Abierto').values_list('codigo_pin', flat=True))
+    for _ in range(100):
+        pin = f'{secrets.randbelow(10000):04d}'
+        if pin not in en_uso:
+            return pin
+    return None
 
 
 class PedidoCabeceraViewSet(viewsets.ModelViewSet):
-    queryset = PedidoCabecera.objects.select_related('mesa', 'empleado').prefetch_related('detalles__producto').all()
+    """Sesiones de mesa. Se abren y se cierran SOLO con /abrir y /cerrar; el resto es lectura.
+    Un Mozo ve unicamente sus propias sesiones; Admin y Gerente ven todas."""
     serializer_class = PedidoCabeceraSerializer
+    roles_lectura = SALON
+    roles_escritura = SALON
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_queryset(self):
+        queryset = PedidoCabecera.objects.select_related('mesa', 'empleado').prefetch_related(
+            'detalles__producto').order_by('-id')
+        if getattr(self.request.user, 'rol', None) == ROL_MOZO:
+            queryset = queryset.filter(empleado_id=self.request.user.id)
+        if self.action == 'list':
+            p = self.request.query_params
+            estado = (p.get('estado') or '').strip().lower()
+            if estado:
+                if estado not in ('abierto', 'cerrado'):
+                    raise ValidationError({'estado': "Valores validos: 'Abierto' o 'Cerrado'."})
+                queryset = queryset.filter(estado__iexact=estado)
+            if p.get('mesa'):
+                queryset = queryset.filter(mesa__numero__in=_parsear_ids(p['mesa'], 'mesa'))
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {'error': 'Para abrir una mesa use POST /sesiones-mesa/abrir.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    @action(detail=False, methods=['post'], url_path='abrir')
+    def abrir(self, request):
+        """El mozo sienta clientes: indica mesa y cantidad de comensales. El servidor genera el PIN,
+        toma al mozo del token y ocupa la mesa, todo en una sola operacion."""
+        entrada = SesionAbrirSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        numero = entrada.validated_data['numero_mesa']
+        comensales = entrada.validated_data['cantidad_comensales']
+
+        mesa = Mesa.objects.filter(numero=numero, activa=True).first()
+        if mesa is None:
+            return Response({'error': f'No existe la mesa numero {numero}.'}, status=status.HTTP_404_NOT_FOUND)
+        if comensales > mesa.capacidad_maxima:
+            return Response(
+                {'error': f'La mesa {numero} admite hasta {mesa.capacidad_maxima} comensales.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        for _ in range(5):
+            if mesa.estado or PedidoCabecera.objects.filter(mesa=mesa, estado='Abierto').exists():
+                return Response({'error': f'La mesa {numero} ya esta ocupada.'}, status=status.HTTP_409_CONFLICT)
+            pin = _generar_pin_libre()
+            if pin is None:
+                return Response({'error': 'No hay PINs disponibles.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            try:
+                with transaction.atomic():
+                    sesion = PedidoCabecera.objects.create(
+                        mesa=mesa,
+                        empleado=request.user.empleado,
+                        codigo_pin=pin,
+                        fecha_hora_apertura=timezone.now(),
+                        cantidad_comensales=comensales,
+                        estado='Abierto',
+                    )
+                    mesa.estado = True
+                    mesa.save(update_fields=['estado'])
+            except IntegrityError:
+                # otra apertura simultanea tomo la misma mesa o el mismo PIN: se vuelve a evaluar
+                mesa.refresh_from_db()
+                continue
+            return Response(PedidoCabeceraSerializer(sesion).data, status=status.HTTP_201_CREATED)
+
+        return Response({'error': 'No se pudo abrir la mesa. Intente de nuevo.'}, status=status.HTTP_409_CONFLICT)
+
+    @action(detail=True, methods=['post'], url_path='cerrar')
+    def cerrar(self, request, pk=None):
+        """Cierra la sesion: la fecha la pone el servidor y la mesa queda libre, en una sola operacion."""
+        sesion = self.get_object()
+        if sesion.estado != 'Abierto':
+            return Response({'error': 'La sesion ya esta cerrada.'}, status=status.HTTP_409_CONFLICT)
+        with transaction.atomic():
+            sesion.estado = 'Cerrado'
+            sesion.fecha_hora_cierre = timezone.now()
+            sesion.save(update_fields=['estado', 'fecha_hora_cierre'])
+            mesa = sesion.mesa
+            mesa.estado = False
+            mesa.save(update_fields=['estado'])
+        return Response(PedidoCabeceraSerializer(sesion).data)
 
 
 class PedidoDetalleViewSet(viewsets.ModelViewSet):
+    roles_lectura = SALON
+    roles_escritura = SALON
     queryset = PedidoDetalle.objects.select_related('producto', 'pedido_cabecera').all()
     serializer_class = PedidoDetalleSerializer
 
@@ -335,6 +493,9 @@ def _armar_tablero_cocina():
 # ==================== COMANDAS ====================
 
 class ComandaCreateView(APIView):
+    roles_lectura = COCINA   # GET: tablero de cocina
+    roles_escritura = None   # POST: el cliente envia su comanda (mas adelante, protegido por PIN)
+
     def get(self, request):
         resultado = _armar_tablero_cocina()
         serializer = ComandaCocinaSerializer(resultado, many=True)
@@ -362,6 +523,16 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        clave_pin = f'pin:fallos:{_ip(request)}'
+        if superado(clave_pin, PIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        if not secrets.compare_digest(pedido_cabecera.codigo_pin.strip().encode(), datos['pin'].encode()):
+            registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+            return Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
+
         payload = {
             'id_comanda_uuid': str(datos['id_comanda_uuid']),
             'id_pedido_cabecera': pedido_cabecera.id,
@@ -383,6 +554,8 @@ class ComandaCreateView(APIView):
 
 
 class TableroCocinaView(APIView):
+    roles_lectura = COCINA
+
     def get(self, request):
         resultado = _armar_tablero_cocina()
         serializer = ComandaCocinaSerializer(resultado, many=True)
@@ -390,6 +563,7 @@ class TableroCocinaView(APIView):
 
 
 class ComandaEstadoUpdateView(APIView):
+    roles_escritura = COCINA
     ESTADOS_VALIDOS = {'pendiente', 'proceso', 'listo', 'entregado'}
 
     def patch(self, request, uuid_comanda):
@@ -423,6 +597,8 @@ class ComandaEstadoUpdateView(APIView):
 
 
 class TicketPDFView(APIView):
+    roles_lectura = None  # el cliente descarga su comprobante; el nombre del archivo es un UUID
+
     def get(self, request, uuid_comanda):
         ruta = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -431,3 +607,103 @@ class TicketPDFView(APIView):
         if not os.path.exists(ruta):
             raise Http404('El ticket todavia no fue generado o la comanda no existe.')
         return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+
+
+# ==================== LOGIN ====================
+
+LOGIN_MAX_FALLOS = 5
+LOGIN_VENTANA_SEGUNDOS = 300
+_HASH_SENUELO = []
+
+
+def _hash_senuelo():
+    # se verifica contra este hash cuando el usuario no existe, para que tarde lo mismo
+    # y no se pueda descubrir que usuarios existen midiendo el tiempo de respuesta
+    if not _HASH_SENUELO:
+        _HASH_SENUELO.append(make_password('senuelo-sin-uso'))
+    return _HASH_SENUELO[0]
+
+
+class LoginView(APIView):
+    authentication_classes = []  # un token vencido en el encabezado no debe impedir volver a loguearse
+    permission_classes = []
+
+    def post(self, request):
+        usuario = str(request.data.get('usuario') or '').strip()
+        contrasena = str(request.data.get('contrasena') or '')
+        if not usuario or not contrasena:
+            return Response({'error': 'Usuario y contrasena son obligatorios.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        clave_fallos = f'login:fallos:{usuario.lower()}'
+        if superado(clave_fallos, LOGIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos fallidos. Espere unos minutos e intente de nuevo.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        empleado = Empleado.objects.select_related('rol').filter(usuario=usuario, activo=True).first()
+        hash_guardado = empleado.contrasena_hash if empleado else _hash_senuelo()
+        correcta = check_password(contrasena, hash_guardado)
+
+        if empleado is None or not correcta:
+            registrar_fallo(clave_fallos, LOGIN_VENTANA_SEGUNDOS)
+            return Response({'error': 'Usuario o contrasena incorrectos.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        limpiar(clave_fallos)
+
+        return Response({
+            'token': emitir_token(empleado),
+            'tipo': 'Bearer',
+            'expira_en_segundos': ttl_token_segundos(),
+            'empleado': _datos_empleado(empleado),
+        })
+
+
+def _datos_empleado(empleado):
+    return {
+        'id': empleado.id,
+        'nombre': empleado.nombre,
+        'apellido': empleado.apellido,
+        'usuario': empleado.usuario,
+        'rol': empleado.rol.nombre,
+    }
+
+
+class PerfilView(APIView):
+    """GET /me: quien soy segun el token (cualquier rol)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(_datos_empleado(request.user.empleado))
+
+
+class AccesoMesaView(APIView):
+    """El cliente ingresa el PIN que le dio el mozo: devuelve a que mesa pertenece (solo si la sesion esta abierta)."""
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        pin = str(request.data.get('pin') or '').strip()
+        clave_pin = f'pin:fallos:{_ip(request)}'
+        if superado(clave_pin, PIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        sesion = None
+        if re.fullmatch(r'\d{4}', pin):
+            sesion = PedidoCabecera.objects.select_related('mesa').filter(
+                estado='Abierto', codigo_pin=pin, mesa__activa=True
+            ).first()
+        if sesion is None:
+            registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+            return Response(
+                {'error': 'PIN incorrecto o la mesa no tiene una sesion abierta.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # el contador no se reinicia al acertar: asi nadie resetea el limite usando su propio PIN valido
+        return Response({
+            'numero_mesa': sesion.mesa.numero,
+            'cantidad_comensales': sesion.cantidad_comensales,
+        })

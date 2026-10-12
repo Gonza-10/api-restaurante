@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import warnings
 from pathlib import Path
+
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-es$*1z7fi5=q4iig&$i*@wmy235a6v_kd^hyvba0fh3jze7t$o'
+# La clave sale del .env (nunca del codigo): con ella se firman los tokens de login.
+SECRET_KEY = config('SECRET_KEY')
+if SECRET_KEY in ('', 'changeme') or SECRET_KEY.startswith('django-insecure') or len(SECRET_KEY) < 32:
+    warnings.warn('SECRET_KEY debil o de ejemplo: cualquiera podria falsificar tokens de login. Generar una propia (ver README).')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = []
 
@@ -142,7 +148,12 @@ MAILERS = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': ['restaurante.auth.TokenEmpleadoAuthentication'],
+    'DEFAULT_PERMISSION_CLASSES': ['restaurante.auth.PermisoPorRol'],
     'EXCEPTION_HANDLER': 'restaurante.exception_handler.manejador_excepciones_personalizado',
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Duracion de la sesion (token de login), en segundos
+TOKEN_TTL_SEGUNDOS = 12 * 60 * 60

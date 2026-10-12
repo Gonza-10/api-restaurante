@@ -16,6 +16,10 @@ def manejador_excepciones_personalizado(exc, context):
     if response is not None:
         if response.status_code == 404:
             response.data = {'error': 'El recurso solicitado no existe.'}
+        elif response.status_code == 401:
+            response.data = {'error': str(response.data.get('detail', 'Autenticacion requerida. Inicie sesion.'))}
+        elif response.status_code == 403:
+            response.data = {'error': 'No tiene permisos para realizar esta accion.'}
         return response
 
     # Excepción no controlada por DRF: acá cae cualquier error
