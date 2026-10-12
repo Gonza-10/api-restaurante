@@ -5,9 +5,13 @@ import uuid
 import pika
 from decouple import config
 
+from decimal import Decimal, InvalidOperation
+
 from django.conf import settings
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -61,31 +65,81 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     serializer_class = CategoriaSerializer
 
 
+# ==================== FILTROS DEL CATALOGO ====================
+ORDENES_PRODUCTO = {
+    'precio': 'precio_actual',
+    '-precio': '-precio_actual',
+    'nombre': 'nombre',
+    '-nombre': '-nombre',
+}
+PARAMS_SIN_CACHE_PERMITIDOS = {'incluir_inactivos'}
+
+
+def _es_verdadero(valor):
+    return (valor or '').strip().lower() in ('true', '1')
+
+
+def _parsear_ids(valor, nombre_param):
+    try:
+        ids = [int(x) for x in valor.split(',') if x.strip() != '']
+    except ValueError:
+        ids = []
+    if not ids:
+        raise ValidationError({nombre_param: 'Debe ser un id o varios separados por coma (ej: 1 o 1,3).'})
+    return ids
+
+
+def _parsear_precio(valor, nombre_param):
+    try:
+        numero = Decimal(valor)
+    except InvalidOperation:
+        raise ValidationError({nombre_param: 'Debe ser un numero (ej: 8500 o 8500.50).'})
+    if not numero.is_finite() or numero < 0:
+        raise ValidationError({nombre_param: 'Debe ser un numero mayor o igual a 0.'})
+    return numero
+
+
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
 
     def get_queryset(self):
         queryset = Producto.objects.select_related('categoria').all()
-        if self.action == 'list':
-            incluir_inactivos = self.request.query_params.get('incluir_inactivos') == 'true'
-            if not incluir_inactivos:
-                queryset = queryset.filter(activo=True)
+        if self.action != 'list':
+            return queryset
 
-            categoria_id = self.request.query_params.get('categoria')
-            vegetariano = self.request.query_params.get('vegetariano')
-            celiaco = self.request.query_params.get('celiaco')
-            if categoria_id:
-                queryset = queryset.filter(categoria_id=categoria_id)
-            if vegetariano == 'true':
-                queryset = queryset.filter(es_vegetariano=True)
-            if celiaco == 'true':
-                queryset = queryset.filter(apto_celiaco=True)
-        return queryset
+        p = self.request.query_params
+
+        if not _es_verdadero(p.get('incluir_inactivos')):
+            queryset = queryset.filter(activo=True)
+
+        # Todos los filtros se combinan entre si (AND)
+        if p.get('categoria'):
+            queryset = queryset.filter(categoria_id__in=_parsear_ids(p['categoria'], 'categoria'))
+        if _es_verdadero(p.get('vegetariano')):
+            queryset = queryset.filter(es_vegetariano=True)
+        if _es_verdadero(p.get('sin_tacc')) or _es_verdadero(p.get('celiaco')):
+            queryset = queryset.filter(apto_celiaco=True)
+
+        texto = (p.get('buscar') or '').strip()
+        if texto:
+            queryset = queryset.filter(Q(nombre__icontains=texto) | Q(descripcion__icontains=texto))
+
+        if p.get('precio_min'):
+            queryset = queryset.filter(precio_actual__gte=_parsear_precio(p['precio_min'], 'precio_min'))
+        if p.get('precio_max'):
+            queryset = queryset.filter(precio_actual__lte=_parsear_precio(p['precio_max'], 'precio_max'))
+
+        orden = p.get('orden')
+        if orden:
+            if orden not in ORDENES_PRODUCTO:
+                raise ValidationError({'orden': f"Valor invalido. Opciones: {', '.join(ORDENES_PRODUCTO)}."})
+            return queryset.order_by(ORDENES_PRODUCTO[orden], 'id')
+        return queryset.order_by('id')
 
     def list(self, request, *args, **kwargs):
-        incluir_inactivos = request.query_params.get('incluir_inactivos') == 'true'
-        sin_otros_filtros = len(request.query_params) <= 1
-        usar_cache = sin_otros_filtros
+        incluir_inactivos = _es_verdadero(request.query_params.get('incluir_inactivos'))
+        # el cache solo vale para el listado completo: cualquier filtro u orden lo saltea
+        usar_cache = set(request.query_params.keys()) <= PARAMS_SIN_CACHE_PERMITIDOS
 
         cache_key = 'catalogo:productos:admin' if incluir_inactivos else 'catalogo:productos:publico'
 

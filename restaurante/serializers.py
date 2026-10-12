@@ -22,10 +22,11 @@ class ProductoSerializer(serializers.ModelSerializer):
     precio = serializers.DecimalField(source='precio_actual', max_digits=10, decimal_places=2)
     vegetariano = serializers.BooleanField(source='es_vegetariano', required=False, default=False)
     sin_tacc = serializers.BooleanField(source='apto_celiaco', required=False, default=False)
+    categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
 
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'activo', 'descripcion', 'imagen_url']
+        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},

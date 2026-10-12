@@ -141,7 +141,7 @@ Con los tres procesos corriendo, los tres frontends (`catalogo.html`, `admin.htm
 | Recurso | Endpoint | Operaciones |
 |---|---|---|
 | Categorías | `/api/v1/categorias` | GET, POST, PATCH, DELETE |
-| Productos | `/api/v1/productos` | GET, POST, PATCH, DELETE (filtros `?categoria=`, `?vegetariano=true`, `?celiaco=true`, `?incluir_inactivos=true`) |
+| Productos | `/api/v1/productos` | GET, POST, PATCH, DELETE (filtros combinables, ver abajo) |
 | Imagen de producto | `POST /api/v1/productos/{id}/imagen` · `DELETE /api/v1/productos/{id}/imagen` | POST: sube una foto propia (`multipart/form-data`, campo `imagen`; JPG/PNG/WEBP, máx. 2 MB). DELETE: quita la imagen. Para usar una imagen de internet: `PATCH /productos/{id}` con `"imagen_url": "https://..."` |
 | Mesas | `/api/v1/mesas` | GET, POST, PATCH, DELETE (baja lógica: `Activa=0`; filtro `?incluir_inactivas=true`; el `Numero` es único) |
 | Empleados | `/api/v1/empleados` | GET, POST, PATCH, DELETE |
@@ -151,6 +151,20 @@ Con los tres procesos corriendo, los tres frontends (`catalogo.html`, `admin.htm
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
 | **Avance de estado** | `PATCH /api/v1/pedidos/{uuid}/estado` | Cambia el estado de una comanda (`pendiente`/`proceso`/`listo`/`entregado`) |
 | **Comprobante PDF** | `GET /api/v1/pedidos/{uuid}/ticket` | Descarga el comprobante generado de forma asíncrona |
+
+**Filtros de `GET /api/v1/productos`** (todos opcionales y combinables entre sí; el listado completo, sin filtros, se cachea en Redis):
+
+| Parámetro | Ejemplo | Efecto |
+|---|---|---|
+| `categoria` | `?categoria=2` · `?categoria=1,3` | Una o varias categorías (ids, separados por coma) |
+| `vegetariano` | `?vegetariano=true` | Solo vegetarianos |
+| `sin_tacc` (o `celiaco`) | `?sin_tacc=true` | Solo aptos celíacos |
+| `buscar` | `?buscar=burger` | Texto en nombre o descripción |
+| `precio_min` / `precio_max` | `?precio_max=8000` | Rango de precio |
+| `orden` | `?orden=precio` · `-precio` · `nombre` · `-nombre` | Orden del resultado |
+| `incluir_inactivos` | `?incluir_inactivos=true` | Incluye productos dados de baja (vista de admin) |
+
+Cada producto trae también `categoria_nombre`, para agrupar el menú sin una segunda consulta a `/categorias`. Un valor inválido devuelve `400` con el parámetro que falló.
 
 > Imágenes de producto: `imagen_url` es un link `https://` externo o una ruta local `/media/productos/<archivo>`, que se sirve desde el mismo servidor (`http://localhost:8080/media/productos/<archivo>`; el front debe anteponer el host de la API). Las fotos subidas se guardan en la carpeta `media/` (no se versiona). El nombre lo genera el servidor y el formato se valida por contenido, no por extensión.
 
