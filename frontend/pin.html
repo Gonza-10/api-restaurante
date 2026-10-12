@@ -54,39 +54,86 @@
     </div>
 
     <script>
-        // Lógica para que el foco salte automáticamente al siguiente casillero del PIN
+        // 1. Lógica para saltar automáticamente de casillero y soporte para pegar
         const pinInputs = document.querySelectorAll('.pin-input');
         
         pinInputs.forEach((input, index) => {
+            // Al escribir, salta al siguiente
             input.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, ''); // Solo números
                 if (this.value.length === 1 && index < pinInputs.length - 1) {
                     pinInputs[index + 1].focus();
                 }
             });
 
+            // Al borrar (Backspace), vuelve al anterior
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
                     pinInputs[index - 1].focus();
                 }
             });
+
+            // Soporte por si el cliente pega (Ctrl+V) el PIN completo
+            input.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 4);
+                pastedData.split('').forEach((char, i) => {
+                    if (pinInputs[i]) {
+                        pinInputs[i].value = char;
+                        if (i < 3) pinInputs[i + 1].focus();
+                    }
+                });
+            });
         });
 
-        // Simulación de envío del PIN
-        document.getElementById('formulario-login').addEventListener('submit', (e) => {
-        e.preventDefault();
-    
-        // Recolectamos los 4 dígitos
-        let pinIngresado = '';
-        pinInputs.forEach(input => pinIngresado += input.value);
+        // 2. Envío del PIN al backend para validación real
+        document.getElementById('formulario-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorBox = document.getElementById('login-error');
+            const btnSubmit = document.querySelector('.btn-primary');
+            errorBox.style.display = 'none';
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = 'Verificando...';
 
-        // Los primeros 2 digitos identifican el numero de mesa (ejemplo: 0257 -> mesa 2)
-        const numeroMesa = parseInt(pinIngresado.substring(0, 2), 10);
-        sessionStorage.setItem('savage-mesa-numero', numeroMesa);
-    
-        // Redirección directa al menú del catálogo
-        window.location.href = 'catalogo.html';
+            // Recolectamos los 4 dígitos
+            let pinIngresado = '';
+            pinInputs.forEach(input => pinIngresado += input.value);
+
+            try {
+                // Hacemos el POST al endpoint de acceso
+                const respuesta = await fetch('http://localhost:8080/api/v1/acceso-mesa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pinIngresado })
+                });
+
+                if (respuesta.status === 200) {
+                    const data = await respuesta.json();
+                    
+                    // Guardamos los datos de la sesión real en el navegador
+                    sessionStorage.setItem('savage-mesa-numero', data.numero_mesa);
+                    sessionStorage.setItem('savage-mesa-pin', pinIngresado);
+                    sessionStorage.setItem('savage-comensales', data.cantidad_comensales);
+                    
+                    // Redirección al catálogo
+                    window.location.href = 'catalogo.html';
+                } else if (respuesta.status === 429) {
+                    errorBox.textContent = "Demasiados intentos. Esperá unos minutos.";
+                    errorBox.style.display = 'flex';
+                } else {
+                    errorBox.textContent = "PIN incorrecto o mesa sin sesión abierta.";
+                    errorBox.style.display = 'flex';
+                }
+            } catch (error) {
+                errorBox.textContent = "Error de conexión con el servidor.";
+                errorBox.style.display = 'flex';
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Ingresar al Menú <span class="btn-arrow">→</span>';
+            }
         });
-        </script>
+    </script>
     <script>
         // Inyector local de Modo Claro/Oscuro
         document.addEventListener('DOMContentLoaded', () => {
