@@ -26,31 +26,66 @@
             </div>
 
             <!-- PANEL DERECHO: Formulario -->
-            <div class="form-panel">
-                <div class="login-card">
+            <div class="form-panel" style="overflow-y: auto;">
+                <div class="login-card" style="margin-top: 50px; margin-bottom: 50px;">
                     <div class="login-header">
                         <h2>Nuevo Producto</h2>
                         <p>Ingresá los datos para enviar al servidor</p>
                     </div>
 
                     <!-- Formulario conectado a JS -->
-                    <form id="formulario-registro" style="margin-top: 30px;">
+                    <form id="formulario-registro" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
                         
-                        <fieldset class="input-fieldset">
+                        <fieldset class="input-fieldset" style="margin: 0;">
                             <legend>Nombre / Identificador</legend>
                             <input type="text" id="campo-nombre" class="text-input" placeholder="Ej: Hamburguesa Completa" required>
                         </fieldset>
 
-                        <fieldset class="input-fieldset">
-                            <legend>Precio de Lista ($)</legend>
-                            <input type="number" id="campo-precio" class="text-input" placeholder="0.00" step="0.01" required>
+                        <div style="display: flex; gap: 15px;">
+                            <fieldset class="input-fieldset" style="margin: 0; flex: 1;">
+                                <legend>Precio de Lista ($)</legend>
+                                <input type="number" id="campo-precio" class="text-input" placeholder="0.00" step="0.01" required>
+                            </fieldset>
+
+                            <fieldset class="input-fieldset" style="margin: 0; flex: 1;">
+                                <legend>Categoría</legend>
+                                <select id="campo-categoria" class="text-input" style="background: transparent; color: var(--text-main); border: none; width: 100%; outline: none;" required>
+                                    <option value="" disabled selected>Cargando...</option>
+                                </select>
+                            </fieldset>
+                        </div>
+
+                        <div style="display: flex; gap: 20px; padding: 0 4px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
+                                <input type="checkbox" id="campo-vegetariano" style="accent-color: var(--primary-orange); width: 16px; height: 16px;">
+                                Vegetariano
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
+                                <input type="checkbox" id="campo-sintacc" style="accent-color: var(--primary-orange); width: 16px; height: 16px;">
+                                Sin TACC
+                            </label>
+                        </div>
+
+                        <fieldset class="input-fieldset" style="margin: 0;">
+                            <legend>Descripción del Plato</legend>
+                            <textarea id="campo-descripcion" class="text-input" rows="2" placeholder="Ingredientes y detalles..." style="resize: vertical; min-height: 40px;"></textarea>
+                        </fieldset>
+
+                        <fieldset class="input-fieldset" style="margin: 0;">
+                            <legend>URL de Imagen (Opcional)</legend>
+                            <input type="url" id="campo-imagen-url" class="text-input" placeholder="https://...">
+                        </fieldset>
+
+                        <fieldset class="input-fieldset" style="margin: 0; border: 1px dashed var(--glass-border); padding: 10px;">
+                            <legend>O subir foto local (Max 2MB)</legend>
+                            <input type="file" id="campo-imagen-archivo" accept="image/jpeg, image/png, image/webp" style="color: var(--text-muted); font-size: 12px; width: 100%;">
                         </fieldset>
                         
                         <!-- Mensajes de estado -->
-                        <div id="caja-error" class="message error" style="display: none;"></div>
-                        <div id="caja-exito" class="message success" style="display: none;"></div>
+                        <div id="caja-error" class="message error" style="display: none; margin: 0;"></div>
+                        <div id="caja-exito" class="message success" style="display: none; margin: 0;"></div>
 
-                        <button type="submit" class="btn-primary" style="margin-top: 15px;">
+                        <button type="submit" id="btn-submit-registro" class="btn-primary" style="margin-top: 5px;">
                             Guardar Producto <span class="btn-arrow">→</span>
                         </button>
                     </form>
@@ -74,13 +109,13 @@
 
     <!-- MODAL DE EDICIÓN DE PRODUCTO -->
     <div id="modal-editar" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 2500; justify-content: center; align-items: center;">
-        <div class="product-card" style="width: min(440px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border);">
+        <div class="product-card" style="width: min(460px, 95%); padding: 30px; position: relative; border: 1px solid var(--glass-border); max-height: 90vh; overflow-y: auto;">
             <button type="button" onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
             
             <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Editar Producto</h2>
-            <p style="margin: 0 0 24px 0; color: var(--text-muted); font-size: 13px;">Modificá los datos del producto seleccionado</p>
+            <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 13px;">Modificá los datos del producto seleccionado</p>
 
-            <form id="formulario-editar" style="display: flex; flex-direction: column; gap: 16px;">
+            <form id="formulario-editar" style="display: flex; flex-direction: column; gap: 14px;">
                 <input type="hidden" id="editar-id">
 
                 <fieldset class="input-fieldset" style="margin: 0;">
@@ -88,20 +123,21 @@
                     <input type="text" id="editar-nombre" class="text-input" required>
                 </fieldset>
 
-                <fieldset class="input-fieldset" style="margin: 0;">
-                    <legend>Precio de Lista ($)</legend>
-                    <input type="number" id="editar-precio" class="text-input" step="0.01" min="0.01" required>
-                </fieldset>
+                <div style="display: flex; gap: 15px;">
+                    <fieldset class="input-fieldset" style="margin: 0; flex: 1;">
+                        <legend>Precio de Lista ($)</legend>
+                        <input type="number" id="editar-precio" class="text-input" step="0.01" min="0.01" required>
+                    </fieldset>
 
-                <fieldset class="input-fieldset" style="margin: 0;">
-                    <legend>Categoría</legend>
-                    <select id="editar-categoria" class="text-input" style="background: transparent; color: var(--text-main); border: none; width: 100%; outline: none; cursor: pointer;">
-                        <option value="2" style="background: #181818; color: white;">Principales</option>
-                        <option value="1" style="background: #181818; color: white;">Bebidas</option>
-                    </select>
-                </fieldset>
+                    <fieldset class="input-fieldset" style="margin: 0; flex: 1;">
+                        <legend>Categoría</legend>
+                        <select id="editar-categoria" class="text-input" style="background: transparent; color: var(--text-main); border: none; width: 100%; outline: none; cursor: pointer;">
+                            <option value="" disabled>Cargando...</option>
+                        </select>
+                    </fieldset>
+                </div>
 
-                <div style="display: flex; gap: 20px; padding: 6px 4px;">
+                <div style="display: flex; gap: 20px; padding: 0 4px;">
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
                         <input type="checkbox" id="editar-vegetariano" style="accent-color: var(--primary-orange); width: 16px; height: 16px; cursor: pointer;">
                         Vegetariano
@@ -111,6 +147,21 @@
                         Sin TACC
                     </label>
                 </div>
+
+                <fieldset class="input-fieldset" style="margin: 0;">
+                    <legend>Descripción del Plato</legend>
+                    <textarea id="editar-descripcion" class="text-input" rows="2" style="resize: vertical; min-height: 40px;"></textarea>
+                </fieldset>
+
+                <fieldset class="input-fieldset" style="margin: 0;">
+                    <legend>URL de Imagen</legend>
+                    <input type="url" id="editar-imagen-url" class="text-input" placeholder="https://...">
+                </fieldset>
+
+                <fieldset class="input-fieldset" style="margin: 0; border: 1px dashed var(--glass-border); padding: 10px;">
+                    <legend>O reemplazar con foto local</legend>
+                    <input type="file" id="editar-imagen-archivo" accept="image/jpeg, image/png, image/webp" style="color: var(--text-muted); font-size: 12px; width: 100%;">
+                </fieldset>
 
                 <div id="editar-error" class="message error" style="display: none; margin: 0;"></div>
 
