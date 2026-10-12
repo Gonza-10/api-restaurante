@@ -69,7 +69,7 @@ RABBIT_PASS=<contraseña-propia>
 2. Crear una base de datos vacía llamada `RestauranteDB`.
 3. Ejecutar `Script_Creacion_RestauranteDB.sql` sobre ella (por ejemplo, desde SQL Server Management Studio) para crear el esquema completo.
    - Si la base ya existía con el esquema anterior, ejecutar además `Script_AE4_Mesas_Migraciones.sql` (agrega `Mesa.Activa` y la restricción única de `Mesa.Numero`; se puede correr más de una vez).
-4. Ejecutar `Script_Seed_AE2.sql` a continuación, para cargar datos de prueba reproducibles (roles, un empleado, las 3 mesas, categorías, productos y una sesión de mesa abierta), sin necesidad de cargarlos manualmente.
+4. Ejecutar `Script_Seed_AE4.sql` a continuación, para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos), sin necesidad de cargarlos manualmente. Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Los empleados de prueba (`jperez`, `mvera`, `cruiz`, `agomez`, `lmartinez`) usan la contraseña `1234` (solo para desarrollo; cambiarla antes de habilitar un login real).
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
 
@@ -181,7 +181,7 @@ Django (ComandaEstadoUpdateView) ──si estado="listo"──► RabbitMQ (coma
 - Caché de catálogo con Redis (TTL + invalidación explícita).
 - Estado efímero de cocina gestionado en Redis (sin persistir en SQL Server).
 - Generación asíncrona de comprobante PDF.
-- Script de datos semilla (`Script_Seed_AE2.sql`), probado en una base limpia.
+- Script de datos semilla (`Script_Seed_AE4.sql`, reemplaza al de AE2), idempotente.
 
 **Diferido explícitamente a AE4 (fuera del alcance de AE2):**
 - Autenticación real de empleados (login) y validación real del PIN de mesa.
