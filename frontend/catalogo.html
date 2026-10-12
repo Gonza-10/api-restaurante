@@ -13,7 +13,7 @@
          CABECERA: Estado de Sesión y Mesa Activa
          ========================================================================== -->
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
-        <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+        <h1 class="logo-restaurante" style="margin: 0; font-family: 'Elemental End', sans-serif;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
         <div style="display: flex; align-items: center; gap: 15px;">
             <span onclick="abrirModalMesa()" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--primary-orange)';">
                 Mesa #<span id="txt-nro-mesa">--</span>
@@ -53,12 +53,13 @@
                 <button class="btn-filtro" onclick="aplicarFiltro('sintacc', this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>
             </div>
         </div>
-        
+
         <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">
             Fallo al cargar el menú digital. Verifique si el servidor backend está encendido.
         </div>
 
         <div id="listado" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+            <!-- Contenido dinámico renderizado por JS -->
             <p style="color: var(--text-muted);">Cargando catálogo desde el servidor...</p>
         </div>
     </main>
@@ -66,6 +67,18 @@
     <!-- ==========================================================================
          OVERLAYS Y MODALES (UI Asíncrona)
          ========================================================================== -->
+
+    <!-- Modal Custom Estético para Avisos (Reemplaza a los alerts nativos) -->
+    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div id="aviso-icono" style="font-size: 45px; margin-bottom: 15px;">📋</div>
+            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
+            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px; transition: background 0.2s;">
+                Entendido
+            </button>
+        </div>
+    </div>
 
     <!-- 1. Modal de Información de Contexto -->
     <div id="modal-mesa" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center;">
@@ -75,9 +88,10 @@
             <h2 id="titulo-modal-mesa" style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">MESA #--</h2>
             
             <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Fila del mozo agregada y lista para recibir datos de la API -->
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span>
-                    <span style="font-weight: 600;">(Pendiente API)</span>
+                    <span id="span-mozo" style="font-weight: 600;">(Pendiente API)</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span style="color: var(--text-muted); font-size: 14px;">Comensales</span>
@@ -157,7 +171,7 @@
         </div>
     </div>
 
-    <!-- Importación del motor asíncrono y transaccional -->
+    <!-- Importación del motor asíncrono y transaccional compartido -->
     <script src="app.js"></script>
 
     <script>
@@ -166,31 +180,88 @@
         window.totalPedido = 0;
         window.productosGlobal = []; 
         let intervaloCronometro = null;
+        let intervaloValidacion = null;
         let timestampInicio = Date.now();
+        let callbackAviso = null;
+        const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
 
         document.addEventListener('DOMContentLoaded', () => {
             const mesaNum = sessionStorage.getItem('savage-mesa-numero');
-            if (!mesaNum) {
-                alert("Acceso no autorizado. Ingrese con el PIN proporcionado por el mozo.");
+            if (!mesaNum || !pinMesa) {
                 window.location.href = 'pin.html';
                 return;
             }
 
             document.getElementById('txt-nro-mesa').textContent = mesaNum;
             
-            // Lógica del Cronómetro Inteligente (Guarda el tiempo inicial si no existe)
+            // Lógica del Cronómetro Inteligente
             if (!sessionStorage.getItem('savage-tiempo-inicio')) {
                 sessionStorage.setItem('savage-tiempo-inicio', Date.now().toString());
             }
             timestampInicio = parseInt(sessionStorage.getItem('savage-tiempo-inicio'));
             intervaloCronometro = setInterval(actualizarCronometro, 1000);
 
+            iniciarValidacionSesion();
             obtenerCatalogo();
         });
 
         /* ==========================================================================
+           LÓGICA DE AVISOS Y MODALES CUSTOM (Reemplaza a window.alert)
+           ========================================================================== */
+        function mostrarAviso(titulo, mensaje, icono = '📋', callback = null) {
+            document.getElementById('aviso-titulo').textContent = titulo;
+            document.getElementById('aviso-mensaje').textContent = mensaje;
+            document.getElementById('aviso-icono').textContent = icono;
+            callbackAviso = callback;
+            document.getElementById('modal-aviso').style.display = 'flex';
+        }
+
+        function cerrarModalAviso() {
+            document.getElementById('modal-aviso').style.display = 'none';
+            if (callbackAviso) {
+                callbackAviso();
+                callbackAviso = null;
+            }
+        }
+
+        /* ==========================================================================
+           VALIDACIÓN EN TIEMPO REAL: ¿El mozo cerró la mesa?
+           ========================================================================== */
+        async function validarSesionActiva() {
+            if(!pinMesa) return; 
+
+            try {
+                const resp = await fetch('http://localhost:8080/api/v1/acceso-mesa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pinMesa })
+                });
+                
+                // Si la sesión se cerró, el backend bloquea el acceso.
+                if (!resp.ok) {
+                    clearInterval(intervaloValidacion); // Paramos la validación para que no tire doble cartel
+                    mostrarAviso(
+                        "Sesión Finalizada", 
+                        "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", 
+                        "👋", 
+                        cerrarSesionCliente
+                    );
+                }
+            } catch (error) {
+                console.error("Error validando la sesión:", error);
+            }
+        }
+
+        function iniciarValidacionSesion() {
+            intervaloValidacion = setInterval(validarSesionActiva, 10000);
+        }
+
+        /* ==========================================================================
            LÓGICA DE FILTROS NUTRICIONALES
            ========================================================================== */
+        function esVegetariano(item) { return item.vegetariano === true; }
+        function esSinTacc(item) { return item.sin_tacc === true; }
+
         function aplicarFiltro(filtro, btnElement) {
             const botones = document.querySelectorAll('.btn-filtro');
             botones.forEach(btn => {
@@ -214,8 +285,8 @@
 
             let filtrados = window.productosGlobal;
             
-            if (filtro === 'veggie') filtrados = window.productosGlobal.filter(item => item.vegetariano === true);
-            if (filtro === 'sintacc') filtrados = window.productosGlobal.filter(item => item.sin_tacc === true);
+            if (filtro === 'veggie') filtrados = window.productosGlobal.filter(item => esVegetariano(item));
+            if (filtro === 'sintacc') filtrados = window.productosGlobal.filter(item => esSinTacc(item));
 
             if (filtrados.length === 0) {
                 contenedorLista.innerHTML = '<p style="color: var(--text-muted); font-size: 16px; margin-top: 20px;">No disponemos de productos en esta categoría por el momento.</p>';
@@ -225,15 +296,14 @@
             filtrados.forEach(item => {
                 const nombreSeguro = item.nombre.replace(/'/g, "\\'");
                 const descSegura = (item.descripcion || 'Especialidad de la casa.').replace(/'/g, "\\'");
-                const porcionesSegura = item.categoria === 1 ? 'Individual' : '1 Persona'; // Lógica básica de porciones
+                const porcionesSegura = (item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona';
                 
-                // Formateamos la imagen como viene de la BD de David
                 let imagenUrl = item.imagen_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
                 if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
                 
                 let badgesExtra = '';
-                if (item.vegetariano === true) badgesExtra += '<span title="Apto Vegetariano" style="font-size: 10px; margin-left: 6px; background: #2ecc71; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">VEG</span>';
-                if (item.sin_tacc === true) badgesExtra += '<span title="Sin TACC" style="font-size: 10px; margin-left: 6px; background: #f39c12; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">SIN TACC</span>';
+                if (esVegetariano(item)) badgesExtra += '<span title="Apto Vegetariano" style="font-size: 10px; margin-left: 6px; background: #2ecc71; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">VEG</span>';
+                if (esSinTacc(item)) badgesExtra += '<span title="Sin TACC" style="font-size: 10px; margin-left: 6px; background: #f39c12; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">SIN TACC</span>';
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'product-card';
@@ -286,13 +356,8 @@
 
                 const itemsCrudos = await respuesta.json();
                 
-                // Limpia el mensaje de error de conexión
                 document.getElementById('caja-error-conexion').style.display = 'none';
-
-                // Filtrado base: Ignora productos inactivos
                 window.productosGlobal = itemsCrudos.filter(item => item.activo !== false);
-                
-                // Dispara el primer renderizado mostrando todo
                 renderizarTarjetas('todos');
                 
             } catch (error) {
@@ -303,7 +368,7 @@
         }
 
         /* ==========================================================================
-           GESTIÓN DEL CARRITO (Estado Local)
+           GESTIÓN DEL CARRITO Y MODALES
            ========================================================================== */
         function agregarAlCarrito(idProducto, nombre, precio, botonElement) {
             window.carrito.push({ id: idProducto, nombre: nombre, precio: precio });
@@ -327,9 +392,6 @@
             document.getElementById('texto-pedido').textContent = `Mi pedido (${window.carrito.length})`;
         }
 
-        /* ==========================================================================
-           CONTROLADORES DE MODALES Y ANIMACIONES
-           ========================================================================== */
         function animarBoton(botonElement) {
             const textoOriginal = botonElement.innerHTML;
             botonElement.innerHTML = 'Agregado';
@@ -358,7 +420,6 @@
             document.getElementById('titulo-modal-mesa').textContent = `MESA #${numero}`;
             document.getElementById('span-comensales').textContent = `${comensales} Persona(s)`;
             document.getElementById('span-pin').textContent = pin;
-            
             document.getElementById('modal-mesa').style.display = 'flex'; 
         }
         function cerrarModalMesa() { document.getElementById('modal-mesa').style.display = 'none'; }
@@ -411,8 +472,47 @@
             document.getElementById('modal-carrito').style.display = 'flex';
         }
 
-        function confirmarPedido() {
-            alert("¡Funcionalidad de envío a cocina en desarrollo! Próximamente integrado a la API.");
+        /* ==========================================================================
+           CONEXIÓN CON EL BACKEND PARA ENVIAR EL PEDIDO A COCINA
+           ========================================================================== */
+        async function confirmarPedido() {
+            if (window.carrito.length === 0) return;
+
+            const btn = document.getElementById('btn-confirmar-modal');
+            const textoOriginal = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando a cocina...';
+
+            const payload = {
+                id_comanda_uuid: crypto.randomUUID(),
+                mesa_id: parseInt(sessionStorage.getItem('savage-mesa-numero')),
+                pin: sessionStorage.getItem('savage-mesa-pin'),
+                items: window.carrito.map(item => ({ id: item.id }))
+            };
+
+            try {
+                const resp = await fetch('http://localhost:8080/api/v1/pedidos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (resp.ok) {
+                    cerrarModalCarrito();
+                    mostrarAviso("¡Pedido Confirmado!", "Tu pedido fue enviado a la cocina y ya se está preparando.", "✅");
+                    window.carrito = [];
+                    window.totalPedido = 0;
+                    actualizarBarraFlotante();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    mostrarAviso("Error", err.error || "No se pudo enviar el pedido. Verificá con el mozo si la mesa sigue abierta.", "❌");
+                }
+            } catch (error) {
+                mostrarAviso("Error de Conexión", "No se pudo contactar con el servidor.", "⚠️");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+            }
         }
 
         function cerrarSesionCliente() {
