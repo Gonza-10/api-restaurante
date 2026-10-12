@@ -6,7 +6,6 @@
     <title>Gestión de Salón - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        /* Estilos específicos para el mapa de mesas */
         .salon-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -14,7 +13,7 @@
             padding: 10px 0;
         }
         .mesa-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--glass-bg, rgba(255, 255, 255, 0.03));
             border: 2px solid var(--glass-border);
             border-radius: 16px;
             padding: 20px;
@@ -32,14 +31,16 @@
             background: rgba(46, 204, 113, 0.05);
         }
         .mesa-card.libre { border-color: rgba(46, 204, 113, 0.4); }
-        .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.6; cursor: not-allowed; }
+        .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.7; cursor: not-allowed; }
 
         .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
         .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
         
-        /* Panel lateral de sesiones */
+        /* Nuevo estilo para el mozo en la tarjeta de la mesa */
+        .mesa-mozo { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
         .sesiones-panel {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--glass-bg, rgba(255, 255, 255, 0.02));
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             padding: 25px;
@@ -50,13 +51,14 @@
             top: 20px;
         }
         .sesion-card {
-            background: #0b0b0b;
-            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--input-bg, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--glass-border);
             border-radius: 12px;
             padding: 15px 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s ease;
         }
         .pin-display {
             font-family: monospace;
@@ -65,8 +67,6 @@
             font-weight: bold;
             letter-spacing: 3px;
         }
-        
-        /* Top bar */
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -75,25 +75,61 @@
             border-bottom: 1px solid var(--glass-border);
             margin-bottom: 30px;
         }
+        #toast-exito {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ecc71;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 3000;
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        .btn-logout {
+            background: transparent; 
+            color: var(--text-muted); 
+            border: 1px solid var(--glass-border); 
+            padding: 8px 16px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            color: var(--text-main) !important;
+            border-color: var(--text-main) !important;
+            background: rgba(128,128,128,0.1);
+        }
     </style>
 </head>
 <body>
+    <div id="toast-exito">¡Mesa abierta con éxito!</div>
+
     <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-        <!-- Barra de navegación -->
         <div class="top-bar">
             <div class="brand">
-                <h1 class="logo-restaurante" style="font-size: 26px;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+                <!-- APLICAMOS LA TIPOGRAFÍA 'Elemental End' AL LOGO -->
+                <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; font-size: 26px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
             </div>
             <div style="display: flex; align-items: center; gap: 20px;">
                 <span id="nombre-mozo" style="color: var(--text-main); font-size: 15px; font-weight: bold;">Cargando usuario...</span>
-                <button onclick="cerrarSesion()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.color='white'; this.style.borderColor='white';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--glass-border)';">
+                <button onclick="cerrarSesion()" class="btn-logout">
                     Cerrar Sesión
                 </button>
             </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start;">
-            <!-- MAPA DE MESAS (Izquierda) -->
             <div>
                 <h2 style="font-size: 24px; margin-bottom: 5px;">Mapa de Mesas</h2>
                 <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Hacé clic en una mesa libre para sentar a los clientes.</p>
@@ -102,7 +138,6 @@
                 </div>
             </div>
 
-            <!-- MIS SESIONES ACTIVAS (Derecha) -->
             <div class="sesiones-panel">
                 <h2 style="font-size: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; margin-bottom: 5px;">Mis Mesas Activas</h2>
                 <div id="mis-sesiones" style="display: flex; flex-direction: column; gap: 12px;">
@@ -118,15 +153,15 @@
             <button type="button" onclick="cerrarModalAbrir()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
             
             <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Abrir Mesa <span id="span-nro-mesa" style="color: var(--primary-orange);"></span></h2>
-            <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Capacidad de la mesa: <span id="span-capacidad" style="font-weight: bold; color: white;"></span> comensales</p>
+            <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Capacidad de la mesa: <span id="span-capacidad" style="font-weight: bold; color: var(--text-main);"></span> comensales</p>
 
             <form id="form-abrir-mesa" style="display: flex; flex-direction: column; gap: 16px;">
                 <input type="hidden" id="input-nro-mesa">
                 <input type="hidden" id="input-capacidad-max">
 
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="color: #d7d7d7; font-size: 13px; font-weight: 700;">¿Cuántas personas se sientan?</label>
-                    <input type="number" id="input-comensales" min="1" required style="width: 100%; height: 52px; padding: 0 16px; border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 12px; background: #0b0b0b; color: white; font-size: 15px; outline: none;">
+                    <label style="color: var(--text-main); font-size: 13px; font-weight: 700;">¿Cuántas personas se sientan?</label>
+                    <input type="number" id="input-comensales" min="1" required style="width: 100%; height: 52px; padding: 0 16px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--input-bg, #0b0b0b); color: var(--text-main); font-size: 15px; outline: none;">
                 </div>
 
                 <div id="error-abrir" class="message error" style="display: none; margin: 0;"></div>
@@ -138,13 +173,39 @@
         </div>
     </div>
 
-    <!-- Vinculamos la lógica de seguridad y red global -->
+    <!-- MODAL CUSTOM ESTÉTICO PARA AVISOS GENERALES -->
+    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
+            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso del Sistema</h2>
+            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer;">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA -->
+    <div id="modal-confirmar-cierre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar Mesa</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">¿Estás seguro de CERRAR esta mesa?<br>El cliente será desconectado y no podrá seguir pidiendo.</p>
+            <input type="hidden" id="input-sesion-a-cerrar">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="cerrarModalCierre()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">
+                    Cancelar
+                </button>
+                <button onclick="ejecutarCierreMesa()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: #e74c3c; color: white; border: none; cursor: pointer;">
+                    Sí, Cerrar Mesa
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
-    
-    <!-- Lógica específica del Mozo -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Verificamos que sea un Mozo válido
             const usuario = obtenerUsuarioActual();
             if (!usuario || (usuario.rol !== 'Mozo' && usuario.rol !== 'Admin' && usuario.rol !== 'Gerente')) {
                 alert("Acceso denegado. Pantalla exclusiva de salón.");
@@ -155,13 +216,40 @@
             cargarTablero();
         });
 
+        function mostrarToast(mensaje) {
+            const toast = document.getElementById('toast-exito');
+            toast.textContent = mensaje;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3500);
+        }
+
+        function mostrarAviso(titulo, mensaje) {
+            document.getElementById('aviso-titulo').textContent = titulo;
+            document.getElementById('aviso-mensaje').textContent = mensaje;
+            document.getElementById('modal-aviso').style.display = 'flex';
+        }
+
+        function cerrarModalAviso() {
+            document.getElementById('modal-aviso').style.display = 'none';
+        }
+
+        function confirmarCierreMesa(idSesion) {
+            document.getElementById('input-sesion-a-cerrar').value = idSesion;
+            document.getElementById('modal-confirmar-cierre').style.display = 'flex';
+        }
+
+        function cerrarModalCierre() {
+            document.getElementById('modal-confirmar-cierre').style.display = 'none';
+        }
+
         async function cargarTablero() {
             await Promise.all([cargarMesas(), cargarMisSesiones()]);
         }
 
         async function cargarMesas() {
             try {
-                // apiFetch ya inyecta el token automáticamente gracias a lo que programamos antes
                 const resp = await apiFetch('http://localhost:8080/api/v1/mesas');
                 const mesas = await resp.json();
                 const contenedor = document.getElementById('mapa-mesas');
@@ -170,12 +258,21 @@
                 mesas.forEach(mesa => {
                     const div = document.createElement('div');
                     div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'}`;
+                    
+                    // Lógica temporal para mostrar un mozo si la mesa está ocupada
+                    let infoMozo = '';
+                    if (mesa.estado) {
+                        // Mock temporal: Asignamos a "Juan Perez" a todas las ocupadas por ahora
+                        infoMozo = `<div class="mesa-mozo">Atendiendo: Juan Perez</div>`;
+                    }
+
                     div.innerHTML = `
                         <div class="mesa-numero">${mesa.numero}</div>
                         <div class="mesa-capacidad">Máx: ${mesa.capacidad_maxima} pers.</div>
                         <div style="margin-top: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: ${mesa.estado ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)'}; color: ${mesa.estado ? '#e74c3c' : '#2ecc71'}">
                             ${mesa.estado ? 'OCUPADA' : 'LIBRE'}
                         </div>
+                        ${infoMozo}
                     `;
                     if (!mesa.estado) {
                         div.onclick = () => abrirModalMesa(mesa);
@@ -189,7 +286,6 @@
 
         async function cargarMisSesiones() {
             try {
-                // Filtramos solo las sesiones abiertas (no traemos las cerradas/pagadas)
                 const resp = await apiFetch('http://localhost:8080/api/v1/sesiones-mesa?estado=Abierto');
                 const sesiones = await resp.json();
                 const contenedor = document.getElementById('mis-sesiones');
@@ -204,17 +300,26 @@
                     const div = document.createElement('div');
                     div.className = 'sesion-card';
                     div.innerHTML = `
-                        <div>
-                            <div style="color: var(--text-main); font-weight: bold; font-size: 18px;">Mesa ${s.numero_mesa}</div>
-                            <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">👤 ${s.cantidad_comensales} personas</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="color: var(--text-main); font-weight: bold; font-size: 18px;">Mesa ${s.numero_mesa}</div>
+                                <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">👤 ${s.cantidad_comensales} personas</div>
+                            </div>
+                            <div style="text-align: center; border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); padding: 0 15px;">
+                                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">PIN Cliente</div>
+                                <div class="pin-display">${s.codigo_pin}</div>
+                            </div>
+                            <button onclick="confirmarCierreMesa(${s.id})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
+                                Cerrar
+                            </button>
                         </div>
-                        <div style="text-align: center; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 15px;">
-                            <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">PIN Cliente</div>
-                            <div class="pin-display">${s.codigo_pin}</div>
+                        
+                        <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; color: var(--text-muted);">Seguimiento de cocina:</span>
+                            <button onclick="mostrarAviso('Historial de Pedidos', 'Próximamente disponible: Seguimiento en tiempo real de los ítems solicitados por la Mesa ${s.numero_mesa}.')" style="background: var(--glass-border); color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer;">
+                                Ver Pedidos ➔
+                            </button>
                         </div>
-                        <button onclick="cerrarMesa(${s.id})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
-                            Cerrar
-                        </button>
                     `;
                     contenedor.appendChild(div);
                 });
@@ -223,7 +328,6 @@
             }
         }
 
-        // --- MANEJO DEL MODAL ---
         function abrirModalMesa(mesa) {
             document.getElementById('span-nro-mesa').textContent = mesa.numero;
             document.getElementById('span-capacidad').textContent = mesa.capacidad_maxima;
@@ -247,7 +351,6 @@
             const errorBox = document.getElementById('error-abrir');
             const btn = document.getElementById('btn-abrir');
 
-            // Validación de capacidad en el front
             if (comensales > max) {
                 errorBox.textContent = `Error: La mesa admite un máximo de ${max} comensales.`;
                 errorBox.style.display = 'flex';
@@ -265,12 +368,9 @@
                 });
 
                 if (resp.status === 201) {
-                    const data = await resp.json();
                     cerrarModalAbrir();
                     cargarTablero(); 
-                    
-                    // Alerta visual para que el mozo no se olvide el PIN
-                    setTimeout(() => alert(`¡ÉXITO!\nMesa ${nroMesa} abierta correctamente.\n\nEl PIN para el cliente es:  [ ${data.codigo_pin} ]\n\nDictale este PIN al cliente para que ingrese desde su celular.`), 200);
+                    mostrarToast(`¡Mesa ${nroMesa} abierta con éxito!`);
                 } else {
                     const err = await resp.json().catch(()=>({}));
                     errorBox.textContent = err.error || "La mesa ya se encuentra ocupada.";
@@ -285,8 +385,9 @@
             }
         });
 
-        async function cerrarMesa(idSesion) {
-            if(!confirm("¿Estás seguro de CERRAR esta mesa?\nEl cliente será desconectado y no podrá seguir pidiendo.")) return;
+        async function ejecutarCierreMesa() {
+            const idSesion = document.getElementById('input-sesion-a-cerrar').value;
+            cerrarModalCierre();
             
             try {
                 const resp = await apiFetch(`http://localhost:8080/api/v1/sesiones-mesa/${idSesion}/cerrar`, {
@@ -294,13 +395,14 @@
                 });
                 
                 if (resp.ok) {
-                    cargarTablero(); // Se refresca el mapa entero
+                    cargarTablero();
+                    mostrarToast("Mesa cerrada correctamente.");
                 } else {
                     const err = await resp.json().catch(()=>({}));
-                    alert(err.error || "No se pudo cerrar la mesa.");
+                    mostrarAviso("Error", err.error || "No se pudo cerrar la mesa.");
                 }
             } catch (error) {
-                alert("Fallo de conexión al servidor.");
+                mostrarAviso("Error", "Fallo de conexión al servidor.");
             }
         }
     </script>
