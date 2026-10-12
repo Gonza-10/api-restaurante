@@ -110,6 +110,29 @@
             height: 16px;
             cursor: pointer;
         }
+        /* =========================================
+           MEJORAS VISUALES PARA EL MENÚ DESPLEGABLE
+           ========================================= */
+        .admin-select:focus {
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2);
+        }
+
+        .admin-select option {
+            background-color: #121212; /* Fondo oscuro elegante */
+            color: #ffffff;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* Color cuando se pasa el mouse o se selecciona (soportado en Chrome/Edge modernos) */
+        .admin-select option:checked, 
+        .admin-select option:hover {
+            background-color: var(--primary-orange) !important;
+            color: white !important;
+            box-shadow: 0 0 10px 100px var(--primary-orange) inset;
+        }
     </style>
 </head>
 <body>
