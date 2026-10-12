@@ -13,6 +13,52 @@ const alertaExito = document.getElementById('caja-exito');
 const formulario = document.getElementById('formulario-registro');
 
 /* ==========================================================================
+   SISTEMA DE AUTENTICACIÓN Y SEGURIDAD JWT
+   ========================================================================== */
+
+function obtenerToken() {
+    return sessionStorage.getItem('savage_token');
+}
+
+function obtenerUsuarioActual() {
+    const usr = sessionStorage.getItem('savage_usuario');
+    return usr ? JSON.parse(usr) : null;
+}
+
+function cerrarSesion() {
+    sessionStorage.removeItem('savage_token');
+    sessionStorage.removeItem('savage_usuario');
+    window.location.href = 'login.html';
+}
+
+// Reemplazo global de fetch() para inyectar automáticamente el Token
+async function apiFetch(ruta, opciones = {}) {
+    const token = obtenerToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        ...opciones.headers
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        const response = await fetch(ruta, { ...opciones, headers });
+        
+        // Si el token venció o se alteró, forzamos cierre de sesión automático
+        if (response.status === 401) {
+            cerrarSesion();
+            throw new Error("Sesión expirada o inválida.");
+        }
+        return response;
+    } catch (error) {
+        console.error("Error en petición a la API:", error);
+        throw error;
+    }
+}
+
+/* ==========================================================================
    SISTEMA DE TEMA (MODO CLARO / OSCURO CON LOCALSTORAGE)
    ========================================================================== */
 function inicializarTema() {

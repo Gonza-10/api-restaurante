@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Savage Grill</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="login-page">
+        <!-- Panel Izquierdo: Branding -->
+        <div class="hero-panel">
+            <div class="brand">
+                <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+            </div>
+            
+            <div class="hero-copy">
+                <span class="eyebrow">PORTAL DEL STAFF</span>
+                <h1>Gestión<br>Operativa</h1>
+                <p>Ingresá con tus credenciales para acceder a tu módulo de trabajo asignado.</p>
+            </div>
+        </div>
+
+        <!-- Panel Derecho: Formulario -->
+        <div class="form-panel">
+            <div class="login-card">
+                <div class="login-header">
+                    <h2>Bienvenido</h2>
+                    <p>Iniciá sesión para continuar</p>
+                </div>
+
+                <form id="form-login" style="margin-top: 30px;">
+                    
+                    <fieldset class="input-fieldset">
+                        <legend>Usuario</legend>
+                        <input type="text" id="campo-usuario" class="text-input" placeholder="Ej: jperez" required autocomplete="username">
+                    </fieldset>
+
+                    <fieldset class="input-fieldset">
+                        <legend>Contraseña</legend>
+                        <input type="password" id="campo-contrasena" class="text-input" placeholder="••••••••" required autocomplete="current-password">
+                    </fieldset>
+                    
+                    <div id="caja-error" class="message error" style="display: none; margin-top: 10px;"></div>
+
+                    <button type="submit" id="btn-login" class="btn-primary" style="margin-top: 25px;">
+                        Ingresar <span class="btn-arrow">→</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login');
+            const cajaError = document.getElementById('caja-error');
+            const usuario = document.getElementById('campo-usuario').value.trim();
+            const contrasena = document.getElementById('campo-contrasena').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="display:inline-block; width:15px; height:15px; border:2px solid white; border-top:2px solid transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 10px; vertical-align: middle;"></span> Conectando...';
+            cajaError.style.display = 'none';
+
+            try {
+                // Post directo al login (esta ruta NO necesita token previo)
+                const respuesta = await fetch('http://localhost:8080/api/v1/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario, contrasena })
+                });
+
+                if (respuesta.status === 200) {
+                    const data = await respuesta.json();
+                    
+                    // Guardamos el token y los datos del empleado en la sesión del navegador
+                    sessionStorage.setItem('savage_token', data.token);
+                    sessionStorage.setItem('savage_usuario', JSON.stringify(data.empleado));
+
+                    // Redirección dinámica según el rol
+                    const rol = data.empleado.rol;
+                    if (rol === 'Mozo') window.location.href = 'mozo.html';
+                    else if (rol === 'Cocina') window.location.href = 'cocina.html';
+                    else if (rol === 'Admin' || rol === 'Gerente') window.location.href = 'admin.html';
+                    else {
+                        cajaError.textContent = "Rol no reconocido por el sistema.";
+                        cajaError.style.display = 'flex';
+                    }
+                } else if (respuesta.status === 401) {
+                    cajaError.textContent = "Usuario o contraseña incorrectos.";
+                    cajaError.style.display = 'flex';
+                } else if (respuesta.status === 429) {
+                    cajaError.textContent = "Demasiados intentos. Esperá 5 minutos.";
+                    cajaError.style.display = 'flex';
+                } else {
+                    const errData = await respuesta.json().catch(() => ({}));
+                    cajaError.textContent = errData.error || "Datos inválidos. Verificá los campos.";
+                    cajaError.style.display = 'flex';
+                }
+            } catch (error) {
+                cajaError.textContent = "Error de conexión con el servidor.";
+                cajaError.style.display = 'flex';
+            } finally {
+                if (cajaError.style.display === 'flex') {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Ingresar <span class="btn-arrow">→</span>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
