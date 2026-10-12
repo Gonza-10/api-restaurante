@@ -6,6 +6,7 @@ from .views import (
     ProductoViewSet,
     MesaViewSet,
     EmpleadoViewSet,
+    RolViewSet,
     PedidoCabeceraViewSet,
     PedidoDetalleViewSet,
     ComandaCreateView,
@@ -21,6 +22,7 @@ router = DefaultRouter(trailing_slash=False)
 router.register(r'categorias', CategoriaViewSet)
 router.register(r'productos', ProductoViewSet, basename='producto')
 router.register(r'mesas', MesaViewSet, basename='mesa')
+router.register(r'roles', RolViewSet, basename='rol')
 router.register(r'empleados', EmpleadoViewSet, basename='empleado')
 router.register(r'sesiones-mesa', PedidoCabeceraViewSet, basename='sesion-mesa')
 router.register(r'detalles-pedido', PedidoDetalleViewSet)

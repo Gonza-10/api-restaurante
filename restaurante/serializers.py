@@ -7,7 +7,7 @@ from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import Producto, Mesa, Categoria, Empleado, PedidoCabecera, PedidoDetalle
+from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 
 
 # ==================== MENÚ ====================
@@ -94,6 +94,12 @@ class MesaSerializer(serializers.ModelSerializer):
 
 
 # ==================== IDENTIDAD Y ACCESO ====================
+
+class RolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rol
+        fields = ['id', 'nombre']
+
 
 class EmpleadoSerializer(serializers.ModelSerializer):
     usuario = serializers.CharField(

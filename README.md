@@ -157,6 +157,7 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | Productos | `/api/v1/productos` | GET, POST, PATCH, DELETE (filtros combinables, ver abajo) |
 | Imagen de producto | `POST /api/v1/productos/{id}/imagen` · `DELETE /api/v1/productos/{id}/imagen` | POST: sube una foto propia (`multipart/form-data`, campo `imagen`; JPG/PNG/WEBP, máx. 2 MB). DELETE: quita la imagen. Para usar una imagen de internet: `PATCH /productos/{id}` con `"imagen_url": "https://..."` |
 | Mesas | `/api/v1/mesas` | GET, POST, PATCH, DELETE (baja lógica: `Activa=0`; filtro `?incluir_inactivas=true`; el `Numero` es único) |
+| Roles | `GET /api/v1/roles` | Lista `[{id, nombre}]` (Mozo, Cocina, Admin, Gerente), para el formulario de empleados. Solo Gerente |
 | Empleados | `/api/v1/empleados` | GET, POST, PATCH, DELETE |
 | **Abrir mesa** | `POST /api/v1/sesiones-mesa/abrir` | El mozo sienta clientes: `{"numero_mesa": 2, "cantidad_comensales": 3}`. Valida que la mesa exista, esté libre y que los comensales no superen su capacidad. Genera el PIN, toma al mozo del token y ocupa la mesa. `201` con el `codigo_pin` |
 | **Cerrar mesa** | `POST /api/v1/sesiones-mesa/{id}/cerrar` | Cierra la sesión (fecha puesta por el servidor) y libera la mesa. El PIN deja de servir |
@@ -177,7 +178,7 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Menú (`productos`, `categorias`) | Público | Admin, Gerente |
 | Imagen de producto | Público | Admin, Gerente |
 | Mesas | Mozo, Admin, Gerente | Admin, Gerente |
-| Empleados | Gerente | Gerente (el DELETE es baja lógica; no puede darse de baja ni cambiarse el rol a sí mismo, y debe quedar al menos un Gerente activo) |
+| Roles y empleados | Gerente | Gerente (el DELETE es baja lógica; no puede darse de baja ni cambiarse el rol a sí mismo, y debe quedar al menos un Gerente activo) |
 | Abrir / cerrar mesa, detalle de pedido | Mozo, Admin, Gerente | Mozo, Admin, Gerente (un Mozo solo ve y cierra sus propias sesiones) |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |

@@ -22,12 +22,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import FileResponse, Http404
 
-from .models import Categoria, Producto, Mesa, Empleado, PedidoCabecera, PedidoDetalle, ComandaRecibida
+from .models import Categoria, Producto, Mesa, Empleado, Rol, PedidoCabecera, PedidoDetalle, ComandaRecibida
 from .serializers import (
     CategoriaSerializer,
     ProductoSerializer,
     MesaSerializer,
     EmpleadoSerializer,
+    RolSerializer,
     PedidoCabeceraSerializer,
     PedidoDetalleSerializer,
     ComandaEntradaSerializer,
@@ -260,6 +261,13 @@ class MesaViewSet(viewsets.ModelViewSet):
         mesa.activa = False
         mesa.save(update_fields=['activa'])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RolViewSet(viewsets.ReadOnlyModelViewSet):
+    """Lista de roles, para armar el formulario de empleados (el que los gestiona es el Gerente)."""
+    queryset = Rol.objects.order_by('id')
+    serializer_class = RolSerializer
+    roles_lectura = SOLO_GERENTE
 
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
