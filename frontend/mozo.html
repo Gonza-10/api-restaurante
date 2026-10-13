@@ -35,8 +35,6 @@
 
         .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
         .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
-        
-        /* Nuevo estilo para el mozo en la tarjeta de la mesa */
         .mesa-mozo { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 
         .sesiones-panel {
@@ -94,31 +92,14 @@
             from { transform: translate(-50%, 20px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
         }
-
-        .btn-logout {
-            background: transparent; 
-            color: var(--text-muted); 
-            border: 1px solid var(--glass-border); 
-            padding: 8px 16px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            transition: all 0.2s;
-        }
-        .btn-logout:hover {
-            color: var(--text-main) !important;
-            border-color: var(--text-main) !important;
-            background: rgba(128,128,128,0.1);
-        }
     </style>
 </head>
-<body>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
     <div id="toast-exito">¡Mesa abierta con éxito!</div>
 
     <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
         <div class="top-bar">
             <div class="brand">
-                <!-- APLICAMOS LA TIPOGRAFÍA 'Elemental End' AL LOGO -->
                 <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; font-size: 26px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
             </div>
             <div style="display: flex; align-items: center; gap: 20px;">
@@ -173,6 +154,17 @@
         </div>
     </div>
 
+    <!-- MODAL DE SEGUIMIENTO DE COCINA -->
+    <div id="modal-pedidos" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(480px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
+            <button type="button" onclick="cerrarModalPedidos()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+            <h2 style="margin: 0 0 20px 0; color: var(--text-main); font-size: 22px;">Mesa <span id="span-pedidos-mesa" style="color: var(--primary-orange);"></span> - Seguimiento</h2>
+            <div id="lista-pedidos-mozo" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                <p style="color: var(--text-muted);">Cargando estado...</p>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL CUSTOM ESTÉTICO PARA AVISOS GENERALES -->
     <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
@@ -205,6 +197,9 @@
 
     <script src="app.js"></script>
     <script>
+        // Nueva variable global para el temporizador del modal de pedidos
+        let intervaloPedidosMozo = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             const usuario = obtenerUsuarioActual();
             if (!usuario || (usuario.rol !== 'Mozo' && usuario.rol !== 'Admin' && usuario.rol !== 'Gerente')) {
@@ -214,15 +209,15 @@
             }
             document.getElementById('nombre-mozo').textContent = `${usuario.rol}: ${usuario.nombre} ${usuario.apellido}`;
             cargarTablero();
+            // Actualización periódica del mapa de mesas
+            setInterval(cargarTablero, 10000); 
         });
 
         function mostrarToast(mensaje) {
             const toast = document.getElementById('toast-exito');
             toast.textContent = mensaje;
             toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3500);
+            setTimeout(() => { toast.style.display = 'none'; }, 3500);
         }
 
         function mostrarAviso(titulo, mensaje) {
@@ -231,17 +226,19 @@
             document.getElementById('modal-aviso').style.display = 'flex';
         }
 
-        function cerrarModalAviso() {
-            document.getElementById('modal-aviso').style.display = 'none';
+        function cerrarModalAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
+        function cerrarModalCierre() { document.getElementById('modal-confirmar-cierre').style.display = 'none'; }
+        function cerrarModalAbrir() { document.getElementById('modal-abrir').style.display = 'none'; }
+        
+        // Al cerrar el modal de pedidos, detenemos el consumo en segundo plano
+        function cerrarModalPedidos() { 
+            document.getElementById('modal-pedidos').style.display = 'none'; 
+            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
         }
 
         function confirmarCierreMesa(idSesion) {
             document.getElementById('input-sesion-a-cerrar').value = idSesion;
             document.getElementById('modal-confirmar-cierre').style.display = 'flex';
-        }
-
-        function cerrarModalCierre() {
-            document.getElementById('modal-confirmar-cierre').style.display = 'none';
         }
 
         async function cargarTablero() {
@@ -259,12 +256,7 @@
                     const div = document.createElement('div');
                     div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'}`;
                     
-                    // Lógica temporal para mostrar un mozo si la mesa está ocupada
-                    let infoMozo = '';
-                    if (mesa.estado) {
-                        // Mock temporal: Asignamos a "Juan Perez" a todas las ocupadas por ahora
-                        infoMozo = `<div class="mesa-mozo">Atendiendo: Juan Perez</div>`;
-                    }
+                    let infoMozo = mesa.estado ? `<div class="mesa-mozo">Mesa Ocupada</div>` : '';
 
                     div.innerHTML = `
                         <div class="mesa-numero">${mesa.numero}</div>
@@ -274,9 +266,7 @@
                         </div>
                         ${infoMozo}
                     `;
-                    if (!mesa.estado) {
-                        div.onclick = () => abrirModalMesa(mesa);
-                    }
+                    if (!mesa.estado) { div.onclick = () => abrirModalMesa(mesa); }
                     contenedor.appendChild(div);
                 });
             } catch (error) {
@@ -316,7 +306,7 @@
                         
                         <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 12px; color: var(--text-muted);">Seguimiento de cocina:</span>
-                            <button onclick="mostrarAviso('Historial de Pedidos', 'Próximamente disponible: Seguimiento en tiempo real de los ítems solicitados por la Mesa ${s.numero_mesa}.')" style="background: var(--glass-border); color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer;">
+                            <button onclick="verPedidosMesa('${s.numero_mesa}')" style="background: var(--glass-border); color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
                                 Ver Pedidos ➔
                             </button>
                         </div>
@@ -325,6 +315,70 @@
                 });
             } catch (error) {
                 console.error("Error al cargar sesiones activas.");
+            }
+        }
+
+        // Nueva lógica para abrir el modal y disparar la actualización en vivo
+        async function verPedidosMesa(numeroMesa) {
+            document.getElementById('span-pedidos-mesa').textContent = numeroMesa;
+            const contenedor = document.getElementById('lista-pedidos-mozo');
+            contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">Consultando estado...</p>';
+            document.getElementById('modal-pedidos').style.display = 'flex';
+
+            // Ejecuta la primera carga inmediata
+            await cargarPedidosModalEnVivo(numeroMesa);
+
+            // Inicia el polling cada 3 segundos
+            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
+            intervaloPedidosMozo = setInterval(() => cargarPedidosModalEnVivo(numeroMesa), 3000);
+        }
+
+        // Función que consume la API e inyecta sin parpadear
+        async function cargarPedidosModalEnVivo(numeroMesa) {
+            // Si el mozo cerró la ventana, matamos el ciclo de consumo
+            if (document.getElementById('modal-pedidos').style.display === 'none') {
+                clearInterval(intervaloPedidosMozo);
+                return;
+            }
+
+            const contenedor = document.getElementById('lista-pedidos-mozo');
+
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/cocina/tablero');
+                if(!resp.ok) return;
+                const comandas = await resp.json();
+                
+                const misComandas = comandas.filter(c => parseInt(c.mesa_id) === parseInt(numeroMesa));
+
+                if (misComandas.length === 0) {
+                    contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">No hay pedidos en curso en la cocina para esta mesa.</p>';
+                    return;
+                }
+
+                let htmlContent = '';
+                misComandas.forEach(c => {
+                    let conteo = {};
+                    c.items.forEach(i => { conteo[i.nombre] = (conteo[i.nombre] || 0) + 1; });
+                    let nombresItems = Object.entries(conteo).map(([nom, cant]) => `<span style="color:var(--primary-orange); font-weight:800;">${cant}x</span> ${nom}`).join(', ');
+                    
+                    let color = '#a855f7'; let txt = 'Pendiente';
+                    if (c.estado === 'proceso') { color = '#ff7a00'; txt = 'En Proceso'; }
+                    else if (c.estado === 'listo') { color = '#2ecc71'; txt = '¡Listo!'; }
+
+                    htmlContent += `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                            <div style="font-size: 14px; font-weight: 500; color: var(--text-main); flex-grow:1; line-height: 1.5;">${nombresItems}</div>
+                            <div style="background: ${color}15; color: ${color}; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid ${color}40; letter-spacing: 0.5px; text-transform: uppercase; flex-shrink: 0; margin-top: 2px;">
+                                ${txt}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                contenedor.innerHTML = htmlContent;
+                
+            } catch(error) {
+                console.error("Fallo silencioso actualizando mozo.");
             }
         }
 
@@ -337,10 +391,6 @@
             document.getElementById('error-abrir').style.display = 'none';
             document.getElementById('modal-abrir').style.display = 'flex';
             setTimeout(() => document.getElementById('input-comensales').focus(), 100);
-        }
-
-        function cerrarModalAbrir() {
-            document.getElementById('modal-abrir').style.display = 'none';
         }
 
         document.getElementById('form-abrir-mesa').addEventListener('submit', async (e) => {
