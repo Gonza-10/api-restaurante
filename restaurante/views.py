@@ -501,7 +501,7 @@ def _armar_tablero_cocina():
 # ==================== COMANDAS ====================
 
 class ComandaCreateView(APIView):
-    roles_lectura = COCINA   # GET: tablero de cocina
+    roles_lectura = None   # GET: tablero de cocina
     roles_escritura = None   # POST: el cliente envia su comanda (mas adelante, protegido por PIN)
 
     def get(self, request):
@@ -562,7 +562,7 @@ class ComandaCreateView(APIView):
 
 
 class TableroCocinaView(APIView):
-    roles_lectura = COCINA
+    roles_lectura = None
 
     def get(self, request):
         resultado = _armar_tablero_cocina()
@@ -571,7 +571,7 @@ class TableroCocinaView(APIView):
 
 
 class ComandaEstadoUpdateView(APIView):
-    roles_escritura = COCINA
+    roles_escritura = None
     ESTADOS_VALIDOS = {'pendiente', 'proceso', 'listo', 'entregado'}
 
     def patch(self, request, uuid_comanda):
@@ -614,7 +614,8 @@ class TicketPDFView(APIView):
         )
         if not os.path.exists(ruta):
             raise Http404('El ticket todavia no fue generado o la comanda no existe.')
-        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+
 
 
 # ==================== LOGIN ====================

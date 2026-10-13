@@ -10,12 +10,18 @@
         body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px; flex-grow: 1; overflow: hidden; }
         .kanban-column { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+        body.light-mode .kanban-column { background: #f8fafc; border-color: #e2e8f0; }
+
         .kanban-header { padding: 20px; border-bottom: 1px solid var(--glass-border); text-align: center; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
+        body.light-mode .kanban-header { border-bottom-color: #e2e8f0; }
+
         .kanban-body { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         
         /* Tarjetas de comandas */
         .comanda-card { background: rgba(18,18,18,0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        body.light-mode .comanda-card { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .comanda-card:hover { transform: translateY(-3px); }
+
         .comanda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed var(--text-muted); padding-bottom: 10px; }
         .mesa-badge { background: var(--primary-orange); color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .tiempo-badge { color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
@@ -33,12 +39,13 @@
         <div style="display: flex; align-items: center; gap: 15px;">
             <div id="indicador-conexion" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4CAF50; font-weight: bold;">
                 <div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div>
-                RabbitMQ Conectado
+                Sistema En Línea
             </div>
             <!-- Reloj Digital en tiempo real -->
             <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">
                 00:00:00
             </span>
+
         </div>
     </header>
 
@@ -77,9 +84,10 @@
          LÓGICA ASÍNCRONA DEL MÓDULO DE COCINA
          ========================================================================== -->
     <script>
-        // Contratos de API consensuados con el Backend
-        const API_PEDIDOS_URL = 'http://localhost:8080/api/v1/pedidos'; 
-        const INTERVALO_POLLING = 5000; // Consulta al servidor cada 5 segundos
+        // Rutas exactas del backend de David
+        const API_TABLERO_URL = 'http://localhost:8080/api/v1/cocina/tablero';
+        const API_ESTADO_URL = 'http://localhost:8080/api/v1/pedidos';
+        const INTERVALO_POLLING = 3000; // Consulta al servidor cada 3 segundos
 
         // Estado local de la vista
         let comandas = [];
@@ -87,7 +95,8 @@
         // Reloj digital para la cabecera en formato 24hs
         setInterval(() => {
             const ahora = new Date();
-            document.getElementById('reloj-cocina').textContent = ahora.toLocaleTimeString('es-AR', { hour12: false });
+            const reloj = document.getElementById('reloj-cocina');
+            if (reloj) reloj.textContent = ahora.toLocaleTimeString('es-AR', { hour12: false });
         }, 1000);
 
         /* ==========================================================================
@@ -98,6 +107,8 @@
             const colProceso = document.getElementById('columna-proceso');
             const colListos = document.getElementById('columna-listos');
             
+            if (!colPendientes || !colProceso || !colListos) return;
+
             colPendientes.innerHTML = '';
             colProceso.innerHTML = '';
             colListos.innerHTML = '';
@@ -106,9 +117,11 @@
 
             comandas.forEach(comanda => {
                 let itemsHTML = '';
-                comanda.items.forEach(item => {
-                    itemsHTML += `<div class="item-pedido"><span>1x ${item.nombre}</span></div>`;
-                });
+                if (comanda.items && Array.isArray(comanda.items)) {
+                    comanda.items.forEach(item => {
+                        itemsHTML += `<div class="item-pedido"><span>1x ${item.nombre || 'Plato'}</span></div>`;
+                    });
+                }
 
                 let botonesHTML = '';
                 if (comanda.estado === 'pendiente') {
@@ -119,7 +132,7 @@
                     botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">✔ Marcar como Listo</button>`;
                 } else if (comanda.estado === 'listo') {
                     contListos++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'">Despachado (Ocultar)</button>`;
+                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">Despachado (Ocultar)</button>`;
                 }
 
                 const tarjeta = document.createElement('div');
@@ -127,50 +140,52 @@
                 tarjeta.innerHTML = `
                     <div class="comanda-header">
                         <span class="mesa-badge">Mesa #${comanda.mesa_id}</span>
-                        <span class="tiempo-badge">⏱ ${new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false})}</span>
+                        <span class="tiempo-badge">⏱ ${comanda.timestamp ? new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false}) : '--:--'}</span>
                     </div>
                     <div style="margin-bottom: 10px;">
                         ${itemsHTML}
                     </div>
-                    <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 8px;">
+                    <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--glass-border); padding-top: 8px; margin-top: 8px;">
                         Ref: ${comanda.id_comanda_uuid ? comanda.id_comanda_uuid.substring(0,8) : 'N/A'}...
                     </div>
                     ${botonesHTML}
                 `;
 
                 if (comanda.estado === 'pendiente') colPendientes.appendChild(tarjeta);
-                if (comanda.estado === 'proceso') colProceso.appendChild(tarjeta);
-                if (comanda.estado === 'listo') colListos.appendChild(tarjeta);
+                else if (comanda.estado === 'proceso') colProceso.appendChild(tarjeta);
+                else if (comanda.estado === 'listo') colListos.appendChild(tarjeta);
             });
 
-            document.getElementById('contador-pendientes').textContent = contPendientes;
-            document.getElementById('contador-proceso').textContent = contProceso;
-            document.getElementById('contador-listos').textContent = contListos;
+            const elPend = document.getElementById('contador-pendientes');
+            const elProc = document.getElementById('contador-proceso');
+            const elList = document.getElementById('contador-listos');
+            if(elPend) elPend.textContent = contPendientes;
+            if(elProc) elProc.textContent = contProceso;
+            if(elList) elList.textContent = contListos;
         }
 
         /* ==========================================================================
            INTEGRACIÓN REST (Comunicación con Backend)
            ========================================================================== */
-        
-        // Petición GET periódica para sincronizar la vista con RabbitMQ
         async function sincronizarComandas() {
             try {
-                const respuesta = await fetch(API_PEDIDOS_URL);
+                const respuesta = await fetch(API_TABLERO_URL);
                 if (respuesta.ok) {
                     comandas = await respuesta.json();
                     renderizarTablero();
-                    document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> RabbitMQ Sincronizado';
+                    const indicador = document.getElementById('indicador-conexion');
+                    if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> Sistema En Línea';
                 }
             } catch (error) {
                 console.error("Fallo de conexión con el backend:", error);
-                document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Backend Desconectado';
+                const indicador = document.getElementById('indicador-conexion');
+                if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Sin Conexión';
             }
         }
 
-        // Petición PATCH para avanzar el flujo de la orden
         async function cambiarEstado(idComanda, nuevoEstado) {
-            // Actualización optimista de UI local
             const index = comandas.findIndex(c => c.id_comanda_uuid === idComanda);
+            if (index === -1) return;
             const estadoAnterior = comandas[index].estado;
             
             if (nuevoEstado === 'entregado') {
@@ -181,7 +196,7 @@
             renderizarTablero();
 
             try {
-                const respuesta = await fetch(`${API_PEDIDOS_URL}/${idComanda}/estado`, {
+                const respuesta = await fetch(`${API_ESTADO_URL}/${idComanda}/estado`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ estado: nuevoEstado })
@@ -190,7 +205,6 @@
                 if (!respuesta.ok) throw new Error("Rechazo del servidor");
             } catch (error) {
                 console.error("Fallo al actualizar estado. Realizando Rollback visual:", error);
-                // Si el servidor falla, revertimos la tarjeta a su estado original
                 if (nuevoEstado !== 'entregado') {
                     comandas[index].estado = estadoAnterior;
                     renderizarTablero();
@@ -203,7 +217,7 @@
         setInterval(sincronizarComandas, INTERVALO_POLLING);
     </script>
     <script>
-        // Inyector local de Modo Claro/Oscuro
+        // Inyector local de Modo Claro/Oscuro sincronizado globalmente
         document.addEventListener('DOMContentLoaded', () => {
             const temaGuardado = localStorage.getItem('savage-tema');
             if (temaGuardado === 'light') document.body.classList.add('light-mode');
