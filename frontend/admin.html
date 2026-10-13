@@ -13,7 +13,7 @@
             gap: 6px;
         }
         .admin-label {
-            color: #d7d7d7;
+            color: var(--text-muted);
             font-size: 13px;
             font-weight: 700;
         }
@@ -21,26 +21,43 @@
             width: 100%;
             height: 52px;
             padding: 0 16px;
-            border: 1px solid rgba(255, 255, 255, 0.13);
+            border: 1px solid var(--glass-border);
             border-radius: 12px;
             outline: none;
-            background: #0b0b0b;
-            color: var(--text);
+            background: rgba(0,0,0,0.5);
+            color: var(--text-main);
             font-size: 15px;
             transition: all 0.2s ease;
         }
-        .admin-input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px var(--accent-soft);
+        body.light-mode .admin-input {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #1a1a1a;
         }
+        .admin-input:focus {
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.1);
+        }
+        /* Select Naranja Personalizado */
         .admin-select {
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FF7A00%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
             background-repeat: no-repeat, repeat;
             background-position: right .7em top 50%, 0 0;
             background-size: .65em auto, 100%;
         }
+        .admin-select option {
+            background-color: #121212;
+            color: #ffffff;
+            padding: 12px;
+        }
+        body.light-mode .admin-select option {
+            background-color: #ffffff;
+            color: #1a1a1a;
+        }
+        .admin-select option:checked { background-color: var(--primary-orange); color: white; }
+
         .admin-textarea {
             height: auto;
             min-height: 80px;
@@ -51,23 +68,27 @@
         /* Estilo general del contenedor de archivo */
         .admin-file {
             padding: 8px;
-            border: 1px dashed rgba(255, 255, 255, 0.25);
+            border: 1px dashed var(--glass-border);
             background: rgba(255, 255, 255, 0.02);
             font-size: 13px;
             color: var(--text-muted);
             cursor: pointer;
             height: auto;
         }
+        body.light-mode .admin-file {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
         .admin-file:hover {
             border-color: var(--primary-orange);
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 122, 0, 0.05);
         }
         
         /* Estilo específico para ocultar/modificar el botón nativo de Windows */
         input[type="file"]::file-selector-button {
             background: rgba(255, 255, 255, 0.08);
             color: var(--text-main);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
             padding: 8px 16px;
             border-radius: 8px;
             cursor: pointer;
@@ -75,6 +96,10 @@
             font-size: 13px;
             transition: all 0.2s ease;
             margin-right: 12px;
+        }
+        body.light-mode input[type="file"]::file-selector-button {
+            background: #ffffff;
+            border-color: #e2e8f0;
         }
         input[type="file"]::file-selector-button:hover {
             background: var(--primary-orange);
@@ -94,15 +119,19 @@
             padding: 8px 16px;
             border-radius: 20px;
             background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
             font-size: 13px;
             color: var(--text-main);
             cursor: pointer;
             transition: all 0.2s ease;
         }
+        body.light-mode .admin-checkbox-label {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
         .admin-checkbox-label:hover {
             background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
+            border-color: var(--primary-orange);
         }
         .admin-checkbox-label input[type="checkbox"] {
             accent-color: var(--primary-orange);
@@ -110,40 +139,22 @@
             height: 16px;
             cursor: pointer;
         }
-        /* =========================================
-           MEJORAS VISUALES PARA EL MENÚ DESPLEGABLE
-           ========================================= */
-        .admin-select:focus {
-            border-color: var(--primary-orange);
-            box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2);
-        }
-
-        .admin-select option {
-            background-color: #121212; /* Fondo oscuro elegante */
-            color: #ffffff;
-            padding: 12px;
-            font-size: 15px;
-            font-weight: 500;
-        }
-
-        /* Color cuando se pasa el mouse o se selecciona (soportado en Chrome/Edge modernos) */
-        .admin-select option:checked, 
-        .admin-select option:hover {
-            background-color: var(--primary-orange) !important;
-            color: white !important;
-            box-shadow: 0 0 10px 100px var(--primary-orange) inset;
-        }
     </style>
 </head>
-<body>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
     <div class="login-page">
         <div class="login-shell">
             
             <!-- PANEL IZQUIERDO: Hero -->
-            <div class="hero-panel">
-                <div class="brand">
-                    <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+            <div class="hero-panel" style="position: relative;">
+                <!-- Botón Volver (Solo visible si es Gerente) -->
+                <button id="btn-volver-gerente" onclick="window.location.href='gerente.html'" style="display: none; position: absolute; top: 25px; left: 30px; background: transparent; color: var(--primary-orange); border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-orange)';">
+                    ← Volver al Portal
+                </button>
+
+                <div class="brand" style="margin-top: 50px;">
+                    <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
                 </div>
                 
                 <div class="hero-copy">
@@ -156,7 +167,6 @@
             <!-- PANEL DERECHO: Formulario -->
             <div class="form-panel" style="overflow-y: auto; position: relative;">
                 
-                <!-- Botón de Cerrar Sesión Admin -->
                 <button onclick="cerrarSesion()" style="position: absolute; top: 25px; right: 30px; background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; z-index: 100; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
                     Cerrar Sesión
                 </button>
@@ -298,7 +308,7 @@
                 <div id="editar-error" class="message error" style="display: none; margin: 0;"></div>
 
                 <div style="display: flex; gap: 12px; margin-top: 10px;">
-                    <button type="button" onclick="cerrarModalEditar()" style="flex: 1; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-main); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                    <button type="button" onclick="cerrarModalEditar()" style="flex: 1; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: var(--text-main); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
                         Cancelar
                     </button>
                     <button type="submit" id="btn-guardar-edicion" style="flex: 1; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-hover)'" onmouseout="this.style.background='var(--primary-orange)'">
@@ -310,5 +320,27 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuario = obtenerUsuarioActual();
+            if (usuario && usuario.rol === 'Gerente') {
+                document.getElementById('btn-volver-gerente').style.display = 'block';
+            }
+            
+            // Inicializar el sistema de temas local
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
+            const actualizarTexto = () => { btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro'; };
+            actualizarTexto();
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTexto();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            document.body.appendChild(btnTema);
+        });
+    </script>
 </body>
 </html>

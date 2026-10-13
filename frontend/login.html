@@ -80,9 +80,12 @@
                     sessionStorage.setItem('savage_usuario', JSON.stringify(data.empleado));
 
                     const rol = data.empleado.rol;
+                    
+                    // LÓGICA DE RUTEO CORREGIDA
                     if (rol === 'Mozo') window.location.href = 'mozo.html';
                     else if (rol === 'Cocina') window.location.href = 'cocina.html';
-                    else if (rol === 'Admin' || rol === 'Gerente') window.location.href = 'admin.html';
+                    else if (rol === 'Admin') window.location.href = 'admin.html';
+                    else if (rol === 'Gerente') window.location.href = 'gerente.html';
                     else {
                         cajaError.textContent = "Rol no reconocido.";
                         cajaError.style.display = 'flex';
