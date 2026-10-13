@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Pedido - Savage Grill</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .carrito-container {
+            display: grid;
+            grid-template-columns: 1.3fr 0.9fr;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+            padding-bottom: 100px;
+        }
+        @media (max-width: 900px) {
+            .carrito-container { grid-template-columns: 1fr; }
+        }
+        .item-carrito-card {
+            background: rgba(18, 18, 18, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: border-color 0.2s;
+        }
+        body.light-mode .item-carrito-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .item-carrito-card:hover {
+            border-color: rgba(255, 122, 0, 0.4);
+        }
+        .metodo-pago-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        body.light-mode .metodo-pago-label {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            color: #1a1a1a;
+        }
+        .metodo-pago-label:hover {
+            border-color: rgba(255, 122, 0, 0.5);
+            background: rgba(255,122,0,0.03);
+        }
+        .badge-estado {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-pendiente { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-proceso { background: rgba(255, 122, 0, 0.15); color: #ff7a00; border: 1px solid rgba(255, 122, 0, 0.3); }
+        .badge-listo { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+    </style>
+</head>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
+        <h1 class="logo-restaurante" style="margin: 0; font-family: 'Elemental End', sans-serif; cursor: pointer;" onclick="window.location.href='catalogo.html'">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+                Mesa #<span id="txt-nro-mesa">--</span>
+            </span>
+            <button onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
+                ← Volver al Menú
+            </button>
+        </div>
+    </header>
+
+    <div class="carrito-container">
+        
+        <div style="display: flex; flex-direction: column; gap: 25px;">
+            <div>
+                <h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos listos para enviar a cocina en este nuevo pedido.</p>
+                
+                <div id="contenedor-items-carrito" style="display: flex; flex-direction: column; gap: 12px;">
+                    <p style="color: var(--text-muted);">Tu carrito está vacío.</p>
+                </div>
+            </div>
+
+            <button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
+                Enviar Selección a Cocina
+            </button>
+
+            <div style="margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 25px;">
+                <h3 style="font-size: 18px; font-weight: 800; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Pedidos en Curso de la Mesa</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Seguimiento en tiempo real de lo que ya fue solicitado a cocina.</p>
+                
+                <div id="contenedor-historial-pedidos" style="display: flex; flex-direction: column; gap: 10px;">
+                    <p style="color: var(--text-muted); font-size: 13px;">No hay pedidos en preparación actualmente.</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
+                
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
+                    <span>Subtotal Seleccionado</span>
+                    <span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
+                    <span>Costo de Servicio (Cubierto)</span>
+                    <span id="lbl-cubierto" style="color: var(--text-main); font-weight: 600;">$0.00</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total Acumulado</span>
+                    <span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
+                </div>
+            </div>
+
+            <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-main); font-weight: 800;">Método de Pago</h3>
+                <p style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px;">Seleccioná cómo vas a abonar al finalizar tu estadía.</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label class="metodo-pago-label">
+                        <input type="radio" name="metodo_pago" value="efectivo" checked style="accent-color: var(--primary-orange);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-orange);"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
+                        Efectivo (al mozo)
+                    </label>
+                    <label class="metodo-pago-label">
+                        <input type="radio" name="metodo_pago" value="tarjeta" style="accent-color: var(--primary-orange);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-orange);"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                        Tarjeta de Crédito / Débito
+                    </label>
+                    <label class="metodo-pago-label">
+                        <input type="radio" name="metodo_pago" value="transferencia" style="accent-color: var(--primary-orange);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-orange);"><circle cx="12" cy="12" r="9"></circle><path d="M12 6v12M15 9.5C15 8.12 13.66 7 12 7s-3 1.12-3 2.5 1.36 2.5 3 2.5 3 1.12 3 2.5-1.36 2.5-3 2.5-3-1.12-3-2.5"></path></svg>
+                        Transferencia Bancaria / QR
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="confirmarCierreMesa()" style="width: 100%; padding: 16px; border-radius: 12px; background: transparent; color: var(--primary-orange); border: 2px solid var(--primary-orange); font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-orange)';">
+                Solicitar Cierre de Mesa y Pago
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Modal Custom de Avisos -->
+    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(425px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
+            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <div id="modal-botones" style="display: flex; gap: 10px;">
+                <button onclick="cerrarModalAviso()" style="flex: 1; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px;">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let callbackAviso = null;
+        const VALOR_CUBIERTO_POR_PERSONA = 1500;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
+            const actualizarTextoTema = () => {
+                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+            };
+            actualizarTextoTema();
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTextoTema();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            document.body.appendChild(btnTema);
+
+            const mesaNum = sessionStorage.getItem('savage-mesa-numero');
+            if (!mesaNum) {
+                window.location.href = 'pin.html';
+                return;
+            }
+            document.getElementById('txt-nro-mesa').textContent = mesaNum;
+            cargarHistorialPedidos(); // Llama internamente a cargarCarritoStorage para unificar precios
+        });
+
+        function mostrarAviso(titulo, mensaje, callback = null, mostrarCancelar = false) {
+            document.getElementById('aviso-titulo').textContent = titulo;
+            document.getElementById('aviso-mensaje').textContent = mensaje;
+            callbackAviso = callback;
+
+            const contenedorBotones = document.getElementById('modal-botones');
+            if (mostrarCancelar) {
+                contenedorBotones.innerHTML = `
+                    <button onclick="cerrarModalAviso()" style="flex: 1; padding: 14px; border-radius: 10px; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer; font-size: 15px;">Cancelar</button>
+                    <button onclick="ejecutarAccionConfirmar()" style="flex: 1; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px;">Sí, Cerrar Mesa</button>
+                `;
+            } else {
+                contenedorBotones.innerHTML = `
+                    <button onclick="cerrarModalAviso()" style="flex: 1; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px;">Entendido</button>
+                `;
+            }
+
+            document.getElementById('modal-aviso').style.display = 'flex';
+        }
+
+        function cerrarModalAviso() {
+            document.getElementById('modal-aviso').style.display = 'none';
+            callbackAviso = null;
+        }
+
+        function ejecutarAccionConfirmar() {
+            const cb = callbackAviso;
+            cerrarModalAviso();
+            if (cb) cb();
+        }
+
+        function obtenerCarrito() {
+            try { return JSON.parse(sessionStorage.getItem('savage-carrito')) || []; } 
+            catch (e) { return []; }
+        }
+
+        function guardarCarrito(carrito) {
+            sessionStorage.setItem('savage-carrito', JSON.stringify(carrito));
+            cargarCarritoStorage();
+        }
+
+        function cargarCarritoStorage() {
+            const carrito = obtenerCarrito();
+            const historial = JSON.parse(sessionStorage.getItem('savage-historial-pedidos')) || [];
+            const contenedor = document.getElementById('contenedor-items-carrito');
+            const comensales = parseInt(sessionStorage.getItem('savage-comensales')) || 2;
+            const costoCubiertoTotal = comensales * VALOR_CUBIERTO_POR_PERSONA;
+            
+            let subtotalGral = 0;
+
+            // 1. Sumamos el historial (platos que ya mandó a pedir)
+            historial.forEach(comanda => {
+                if (comanda.items && Array.isArray(comanda.items)) {
+                    comanda.items.forEach(item => {
+                        subtotalGral += parseFloat(item.precio) || 0;
+                    });
+                }
+            });
+
+            // 2. Sumamos lo que tiene seleccionado en el carrito actualmente
+            carrito.forEach(item => {
+                subtotalGral += (item.precio * item.cantidad);
+            });
+            
+            if (carrito.length === 0) {
+                contenedor.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 25px 0; font-size: 14px;">No hay platos nuevos seleccionados. <a href="catalogo.html" style="color: var(--primary-orange); font-weight: bold;">Volvé al menú</a> para agregar más.</p>';
+                document.getElementById('lbl-subtotal').textContent = `$${subtotalGral.toFixed(2)}`;
+                document.getElementById('lbl-cubierto').textContent = `$${costoCubiertoTotal.toFixed(2)} (${comensales} personas)`;
+                document.getElementById('lbl-total').textContent = `$${(subtotalGral + costoCubiertoTotal).toFixed(2)}`;
+                document.getElementById('btn-enviar-cocina').style.opacity = '0.5';
+                document.getElementById('btn-enviar-cocina').style.pointerEvents = 'none';
+                return;
+            }
+
+            document.getElementById('btn-enviar-cocina').style.opacity = '1';
+            document.getElementById('btn-enviar-cocina').style.pointerEvents = 'auto';
+            contenedor.innerHTML = '';
+
+            carrito.forEach((item, index) => {
+                const subtotalItem = item.precio * item.cantidad;
+
+                let img = item.imagen || item.foto || item.url_imagen || '';
+                if (img.startsWith('/')) { img = `http://localhost:8080${img}`; }
+                if (!img) { img = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'; }
+
+                contenedor.innerHTML += `
+                    <div class="item-carrito-card">
+                        <img src="${img}" alt="${item.nombre}" style="width: 55px; height: 55px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'">
+                        
+                        <div style="flex-grow: 1; min-width: 0;">
+                            <h4 style="margin: 0 0 3px 0; color: var(--text-main); font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nombre}</h4>
+                            <span style="color: var(--primary-orange); font-weight: bold; font-size: 13px;">$${item.precio.toFixed(2)} c/u</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--glass-border);">
+                            <button onclick="cambiarCantidad(${index}, -1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 14px;">-</button>
+                            <span style="font-weight: bold; font-size: 13px; min-width: 16px; text-align: center;">${item.cantidad}</span>
+                            <button onclick="cambiarCantidad(${index}, 1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 14px;">+</button>
+                        </div>
+                        
+                        <div style="text-align: right; min-width: 70px;">
+                            <div style="font-weight: 900; font-size: 15px; color: var(--text-main);">$${subtotalItem.toFixed(2)}</div>
+                        </div>
+
+                        <button onclick="eliminarItem(${index})" style="background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0;" title="Quitar">✕</button>
+                    </div>
+                `;
+            });
+
+            const totalFinal = subtotalGral + costoCubiertoTotal;
+
+            document.getElementById('lbl-subtotal').textContent = `$${subtotalGral.toFixed(2)}`;
+            document.getElementById('lbl-cubierto').textContent = `$${costoCubiertoTotal.toFixed(2)} (${comensales} personas)`;
+            document.getElementById('lbl-total').textContent = `$${totalFinal.toFixed(2)}`;
+        }
+
+        function cambiarCantidad(index, delta) {
+            let carrito = obtenerCarrito();
+            carrito[index].cantidad += delta;
+            if (carrito[index].cantidad <= 0) {
+                carrito.splice(index, 1);
+            }
+            guardarCarrito(carrito);
+        }
+
+        function eliminarItem(index) {
+            let carrito = obtenerCarrito();
+            carrito.splice(index, 1);
+            guardarCarrito(carrito);
+        }
+
+        async function cargarHistorialPedidos() {
+            const contenedorHistorial = document.getElementById('contenedor-historial-pedidos');
+            const mesaActual = sessionStorage.getItem('savage-mesa-numero');
+
+            try {
+                const resp = await fetch('http://localhost:8080/api/v1/cocina/tablero');
+                if (!resp.ok) return;
+                
+                const comandasTablero = await resp.json();
+                const misComandasActivas = comandasTablero.filter(c => parseInt(c.mesa_id) === parseInt(mesaActual));
+
+                // Usamos LocalStorage o SessionStorage para no perder lo que se despacha
+                let historial = JSON.parse(sessionStorage.getItem('savage-historial-pedidos')) || [];
+
+                // 1. Agregar nuevos pedidos al historial o actualizar el estado de los existentes
+                misComandasActivas.forEach(comandaActiva => {
+                    const index = historial.findIndex(c => c.id_comanda_uuid === comandaActiva.id_comanda_uuid);
+                    if (index > -1) {
+                        historial[index].estado = comandaActiva.estado; 
+                    } else {
+                        historial.push(comandaActiva); 
+                    }
+                });
+
+                // 2. Si un pedido estaba en el historial y ya no está en la cocina, se marcó como "Entregado"
+                historial.forEach(item => {
+                    const sigueEnTablero = misComandasActivas.find(c => c.id_comanda_uuid === item.id_comanda_uuid);
+                    if (!sigueEnTablero && item.estado !== 'entregado') {
+                        item.estado = 'entregado';
+                    }
+                });
+
+                // Mantenemos ordenado por horario
+                historial.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                sessionStorage.setItem('savage-historial-pedidos', JSON.stringify(historial));
+
+                // Recalculamos los precios totales para sumar este historial
+                cargarCarritoStorage();
+
+                if (historial.length === 0) {
+                    contenedorHistorial.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No hay pedidos en preparación actualmente.</p>';
+                    return;
+                }
+
+                contenedorHistorial.innerHTML = '';
+                historial.forEach(comanda => {
+                    let conteo = {};
+                    comanda.items.forEach(i => { conteo[i.nombre] = (conteo[i.nombre] || 0) + 1; });
+                    let nombresItems = Object.entries(conteo).map(([nom, cant]) => `<span style="color:var(--text-main); font-weight:800;">${cant}x</span> ${nom}`).join(', ');
+
+                    let badgeClass = 'badge-pendiente';
+                    let textoEstado = 'Pendiente';
+                    let extraStyle = '';
+
+                    if (comanda.estado === 'proceso') {
+                        badgeClass = 'badge-proceso';
+                        textoEstado = 'En Proceso';
+                    } else if (comanda.estado === 'listo') {
+                        badgeClass = 'badge-listo';
+                        textoEstado = '¡Listo para Servir!';
+                    } else if (comanda.estado === 'entregado') {
+                        badgeClass = '';
+                        textoEstado = 'Despachado';
+                        extraStyle = 'background: rgba(128,128,128,0.15); color: #aaaaaa; border: 1px solid rgba(128,128,128,0.3);';
+                    }
+
+                    contenedorHistorial.innerHTML += `
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; ${comanda.estado === 'entregado' ? 'opacity: 0.6;' : ''}">
+                            <div style="min-width: 0; flex-grow: 1;">
+                                <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: normal; word-break: break-word; line-height: 1.5; margin-bottom: 6px;">${nombresItems}</div>
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: bold;">Hora: ${new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false})}</span>
+                            </div>
+                            <span class="badge-estado ${badgeClass}" style="margin-top: 2px; flex-shrink: 0; ${extraStyle}">${textoEstado}</span>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error("Error sincronizando historial:", e);
+            }
+        }
+
+        setInterval(cargarHistorialPedidos, 4000);
+
+        async function enviarPedidoACocina() {
+            const carrito = obtenerCarrito();
+            if (carrito.length === 0) return;
+
+            const btn = document.getElementById('btn-enviar-cocina');
+            btn.disabled = true;
+            btn.style.backgroundColor = '#f39c12';
+            btn.textContent = 'Enviando a cocina...';
+
+            let itemsPlana = [];
+            carrito.forEach(item => {
+                for(let i = 0; i < item.cantidad; i++) {
+                    itemsPlana.push({ id: item.id });
+                }
+            });
+
+            const payload = {
+                id_comanda_uuid: crypto.randomUUID(),
+                mesa_id: parseInt(sessionStorage.getItem('savage-mesa-numero')),
+                pin: sessionStorage.getItem('savage-mesa-pin'),
+                items: itemsPlana
+            };
+
+            try {
+                const resp = await fetch('http://localhost:8080/api/v1/pedidos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (resp.ok) {
+                    sessionStorage.removeItem('savage-carrito');
+                    
+                    btn.style.backgroundColor = '#4CAF50';
+                    btn.textContent = '¡Pedido Enviado con Éxito!';
+                    
+                    setTimeout(() => {
+                        cargarHistorialPedidos();
+                        btn.disabled = false;
+                        btn.style.backgroundColor = 'var(--primary-orange)';
+                        btn.textContent = 'Enviar Selección a Cocina';
+                    }, 1500);
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    let mensajeError = "No se pudo enviar el pedido.";
+                    if (typeof err === 'object' && err !== null) {
+                        mensajeError = Object.values(err).flat().join(' ');
+                    }
+                    mostrarAviso("Aviso", mensajeError);
+                    btn.disabled = false;
+                    btn.style.backgroundColor = 'var(--primary-orange)';
+                    btn.textContent = 'Enviar Selección a Cocina';
+                }
+            } catch (error) {
+                mostrarAviso("Error de Conexión", "No se pudo contactar con el servidor backend.");
+                btn.disabled = false;
+                btn.style.backgroundColor = 'var(--primary-orange)';
+                btn.textContent = 'Enviar Selección a Cocina';
+            }
+        }
+
+        function confirmarCierreMesa() {
+            const metodoSeleccionado = document.querySelector('input[name="metodo_pago"]:checked').value;
+            mostrarAviso(
+                "¿Cerrar Mesa y Pagar?", 
+                `Estás a punto de solicitar el cierre de tu mesa seleccionando pago por ${metodoSeleccionado.toUpperCase()}. Una vez cerrado, no podrás realizar más pedidos. ¿Deseas continuar?`, 
+                () => {
+                    mostrarAviso("¡Solicitud Enviada!", "Se ha notificado al mozo para proceder con el cobro y cierre de la mesa. ¡Gracias por visitarnos!", () => {
+                        sessionStorage.clear();
+                        window.location.href = 'pin.html';
+                    });
+                }, 
+                true
+            );
+        }
+    </script>
+</body>
+</html>

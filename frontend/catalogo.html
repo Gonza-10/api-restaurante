@@ -88,7 +88,6 @@
             <h2 id="titulo-modal-mesa" style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">MESA #--</h2>
             
             <div style="display: flex; flex-direction: column; gap: 16px;">
-                <!-- Fila del mozo agregada y lista para recibir datos de la API -->
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span>
                     <span id="span-mozo" style="font-weight: 600;">(Pendiente API)</span>
@@ -137,7 +136,7 @@
         </div>
     </div>
 
-    <!-- 3. Modal de Confirmación Transaccional DETALLADO (Checkout) -->
+    <!-- 3. Modal de Confirmación Transaccional DETALLADO (Checkout - Por si se usa de respaldo) -->
     <div id="modal-carrito" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(400px, 90%); padding: 30px; position: relative; max-height: 90vh; display: flex; flex-direction: column;">
             <button onclick="cerrarModalCarrito()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
@@ -237,9 +236,8 @@
                     body: JSON.stringify({ pin: pinMesa })
                 });
                 
-                // Si la sesión se cerró, el backend bloquea el acceso.
                 if (!resp.ok) {
-                    clearInterval(intervaloValidacion); // Paramos la validación para que no tire doble cartel
+                    clearInterval(intervaloValidacion);
                     mostrarAviso(
                         "Sesión Finalizada", 
                         "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", 
@@ -298,7 +296,7 @@
                 const descSegura = (item.descripcion || 'Especialidad de la casa.').replace(/'/g, "\\'");
                 const porcionesSegura = (item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona';
                 
-                let imagenUrl = item.imagen_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
+                let imagenUrl = item.imagen_url || item.imagen || item.foto || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
                 if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
                 
                 let badgesExtra = '';
@@ -371,7 +369,17 @@
            GESTIÓN DEL CARRITO Y MODALES
            ========================================================================== */
         function agregarAlCarrito(idProducto, nombre, precio, botonElement) {
-            window.carrito.push({ id: idProducto, nombre: nombre, precio: precio });
+            // Buscamos la imagen real del producto directamente desde el catálogo global
+            const productoOriginal = window.productosGlobal.find(p => p.id === idProducto);
+            let imagenUrl = productoOriginal ? (productoOriginal.imagen_url || productoOriginal.imagen || productoOriginal.foto || '') : '';
+            if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
+
+            window.carrito.push({ 
+                id: idProducto, 
+                nombre: nombre, 
+                precio: precio, 
+                imagen: imagenUrl 
+            });
             window.totalPedido += precio;
             actualizarBarraFlotante();
             animarBoton(botonElement);
@@ -443,7 +451,7 @@
             document.getElementById('detalle-porciones').textContent = porciones;
     
             const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
-            btnDetalleAgregar.onclick = function() { agregarAlCarrito(idProducto, nombre, precio, this); };
+            btnDetalleAgregar.onclick = function() { agregarAlCarrito(idProducto, nombre, precio, this); cerrarModalDetalle(); };
             document.getElementById('modal-detalle').style.display = 'flex';
         }
 
@@ -466,14 +474,34 @@
             document.getElementById('modal-total-pago').textContent = `$${window.totalPedido.toFixed(2)}`;
         }
 
+        /* ==========================================================================
+           PASARELA HACIA LA PANTALLA DEDICADA DEL CARRITO (`carrito.html`)
+           ========================================================================== */
         function abrirModalCarrito() {
             if (window.carrito.length === 0) return; 
-            renderizarListaModal();
-            document.getElementById('modal-carrito').style.display = 'flex';
+            
+            let carritoAgrupado = [];
+            window.carrito.forEach(item => {
+                let existente = carritoAgrupado.find(p => p.id === item.id);
+                if (existente) {
+                    existente.cantidad += 1;
+                } else {
+                    carritoAgrupado.push({
+                        id: item.id,
+                        nombre: item.nombre,
+                        precio: item.precio,
+                        imagen: item.imagen || '',
+                        cantidad: 1
+                    });
+                }
+            });
+
+            sessionStorage.setItem('savage-carrito', JSON.stringify(carritoAgrupado));
+            window.location.href = 'carrito.html';
         }
 
         /* ==========================================================================
-           CONEXIÓN CON EL BACKEND PARA ENVIAR EL PEDIDO A COCINA
+           CONEXIÓN CON EL BACKEND PARA ENVIAR EL PEDIDO A COCINA (Respaldo)
            ========================================================================== */
         async function confirmarPedido() {
             if (window.carrito.length === 0) return;
