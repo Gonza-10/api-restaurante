@@ -43,14 +43,28 @@
             </div>
         </div>
 
-        <!-- Barra de Filtros Nutricionales -->
-        <div style="margin-bottom: 30px;">
-            <span style="color: var(--primary-orange); font-weight: bold; letter-spacing: 2px; font-size: 14px; display: block; margin-bottom: 15px;">NUESTRA CARTA</span>
+        <!-- BLOQUE DE FILTROS DINÁMICOS -->
+        <div style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px;">
+            <span style="color: var(--primary-orange); font-weight: bold; letter-spacing: 2px; font-size: 14px;">NUESTRA CARTA</span>
             
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn-filtro" onclick="aplicarFiltro('todos', this)" style="background: var(--primary-orange); color: white; border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Todos</button>
-                <button class="btn-filtro" onclick="aplicarFiltro('veggie', this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Vegetariano</button>
-                <button class="btn-filtro" onclick="aplicarFiltro('sintacc', this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                <input type="text" id="filtro-texto" placeholder="Buscar plato o ingrediente..." style="flex-grow: 1; padding: 12px 16px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; outline: none;">
+                
+                <input type="number" id="filtro-min" placeholder="Precio Min ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
+                <input type="number" id="filtro-max" placeholder="Precio Max ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
+                
+                <select id="filtro-orden" style="padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--glass-border); color: white;">
+                    <option value="">Ordenar por defecto</option>
+                    <option value="precio">Menor Precio</option>
+                    <option value="-precio">Mayor Precio</option>
+                    <option value="nombre">Nombre (A-Z)</option>
+                </select>
+                
+                <button onclick="aplicarFiltrosAvanzados()" style="padding: 12px 24px; border-radius: 10px; background: var(--primary-orange); color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s;">Buscar</button>
+            </div>
+
+            <div id="contenedor-categorias" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <p style="color: var(--text-muted); font-size: 14px;">Cargando categorías...</p>
             </div>
         </div>
 
@@ -183,6 +197,9 @@
         let timestampInicio = Date.now();
         let callbackAviso = null;
         const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
+        
+        // ESTADO PARA LOS FILTROS DINÁMICOS
+        let filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
 
         document.addEventListener('DOMContentLoaded', () => {
             const mesaNum = sessionStorage.getItem('savage-mesa-numero');
@@ -201,8 +218,100 @@
             intervaloCronometro = setInterval(actualizarCronometro, 1000);
 
             iniciarValidacionSesion();
-            obtenerCatalogo();
+            
+            // Carga inicial dinámica
+            cargarCategoriasCatalogo();
+            aplicarFiltrosAvanzados();
         });
+
+        /* ==========================================================================
+           LÓGICA DE FILTROS DINÁMICOS (Backend API)
+           ========================================================================== */
+        async function cargarCategoriasCatalogo() {
+            try {
+                const resp = await fetch('http://localhost:8080/api/v1/categorias');
+                if (!resp.ok) return;
+                const categorias = await resp.json();
+                
+                const contenedor = document.getElementById('contenedor-categorias');
+                let html = `<button class="btn-filtro active" onclick="aplicarFiltroCategoria('', this)" style="background: var(--primary-orange); color: white; border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Todos</button>`;
+                
+                categorias.forEach(cat => {
+                    html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${cat.id}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${cat.nombre}</button>`;
+                });
+                
+                html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('vegetariano', this)" style="background: transparent; color: #2ecc71; border: 1px solid #2ecc71; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Vegetariano</button>`;
+                html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('sin_tacc', this)" style="background: transparent; color: #f39c12; border: 1px solid #f39c12; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>`;
+                
+                contenedor.innerHTML = html;
+            } catch (e) {
+                console.error("Error cargando categorías");
+            }
+        }
+
+        function aplicarFiltroCategoria(idCat, btnElement) {
+            filtroActual = { categoria: idCat, vegetariano: '', sin_tacc: '' };
+            actualizarBotonesFiltro(btnElement);
+            aplicarFiltrosAvanzados();
+        }
+
+        function aplicarFiltroDietario(tipo, btnElement) {
+            filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
+            filtroActual[tipo] = 'true';
+            actualizarBotonesFiltro(btnElement);
+            aplicarFiltrosAvanzados();
+        }
+
+        function actualizarBotonesFiltro(btnActivo) {
+            document.querySelectorAll('.btn-filtro').forEach(btn => {
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-main)';
+                btn.style.borderColor = 'var(--glass-border)';
+            });
+            btnActivo.style.color = 'white';
+            
+            // Estilos específicos para que combinen con la UI
+            if(btnActivo.textContent === 'Vegetariano') {
+                btnActivo.style.background = '#2ecc71';
+                btnActivo.style.borderColor = '#2ecc71';
+            } else if (btnActivo.textContent === 'Sin TACC') {
+                btnActivo.style.background = '#f39c12';
+                btnActivo.style.borderColor = '#f39c12';
+            } else {
+                btnActivo.style.background = 'var(--primary-orange)';
+                btnActivo.style.borderColor = 'var(--primary-orange)';
+            }
+        }
+
+        async function aplicarFiltrosAvanzados() {
+            const texto = document.getElementById('filtro-texto').value.trim();
+            const min = document.getElementById('filtro-min').value;
+            const max = document.getElementById('filtro-max').value;
+            const orden = document.getElementById('filtro-orden').value;
+
+            let url = new URL('http://localhost:8080/api/v1/productos');
+            // Por defecto en cliente solo vemos inactivos=false
+            url.searchParams.append('incluir_inactivos', 'false');
+
+            if (filtroActual.categoria) url.searchParams.append('categoria', filtroActual.categoria);
+            if (filtroActual.vegetariano) url.searchParams.append('vegetariano', 'true');
+            if (filtroActual.sin_tacc) url.searchParams.append('sin_tacc', 'true');
+            if (texto) url.searchParams.append('buscar', texto);
+            if (min) url.searchParams.append('precio_min', min);
+            if (max) url.searchParams.append('precio_max', max);
+            if (orden) url.searchParams.append('orden', orden);
+
+            try {
+                const respuesta = await fetch(url);
+                if (!respuesta.ok) throw new Error();
+                window.productosGlobal = await respuesta.json(); 
+                document.getElementById('caja-error-conexion').style.display = 'none';
+                renderizarTarjetas(); 
+            } catch (error) {
+                document.getElementById('caja-error-conexion').style.display = 'block';
+                document.getElementById('listado').innerHTML = '';
+            }
+        }
 
         /* ==========================================================================
            LÓGICA DE AVISOS Y MODALES CUSTOM (Reemplaza a window.alert)
@@ -255,36 +364,13 @@
         }
 
         /* ==========================================================================
-           LÓGICA DE FILTROS NUTRICIONALES
-           ========================================================================== */
-        function esVegetariano(item) { return item.vegetariano === true; }
-        function esSinTacc(item) { return item.sin_tacc === true; }
-
-        function aplicarFiltro(filtro, btnElement) {
-            const botones = document.querySelectorAll('.btn-filtro');
-            botones.forEach(btn => {
-                btn.style.background = 'transparent';
-                btn.style.color = 'var(--text-main)';
-                btn.style.borderColor = 'var(--glass-border)';
-            });
-            btnElement.style.background = 'var(--primary-orange)';
-            btnElement.style.color = 'white';
-            btnElement.style.borderColor = 'var(--primary-orange)';
-
-            renderizarTarjetas(filtro);
-        }
-
-        /* ==========================================================================
            RENDERIZADO Y CARGA DEL CATÁLOGO DESDE LA API
            ========================================================================== */
-        function renderizarTarjetas(filtro) {
+        function renderizarTarjetas() {
             const contenedorLista = document.getElementById('listado');
             contenedorLista.innerHTML = ''; 
 
             let filtrados = window.productosGlobal;
-            
-            if (filtro === 'veggie') filtrados = window.productosGlobal.filter(item => esVegetariano(item));
-            if (filtro === 'sintacc') filtrados = window.productosGlobal.filter(item => esSinTacc(item));
 
             if (filtrados.length === 0) {
                 contenedorLista.innerHTML = '<p style="color: var(--text-muted); font-size: 16px; margin-top: 20px;">No disponemos de productos en esta categoría por el momento.</p>';
@@ -300,8 +386,8 @@
                 if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
                 
                 let badgesExtra = '';
-                if (esVegetariano(item)) badgesExtra += '<span title="Apto Vegetariano" style="font-size: 10px; margin-left: 6px; background: #2ecc71; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">VEG</span>';
-                if (esSinTacc(item)) badgesExtra += '<span title="Sin TACC" style="font-size: 10px; margin-left: 6px; background: #f39c12; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">SIN TACC</span>';
+                if (item.vegetariano) badgesExtra += '<span title="Apto Vegetariano" style="font-size: 10px; margin-left: 6px; background: #2ecc71; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">VEG</span>';
+                if (item.sin_tacc) badgesExtra += '<span title="Sin TACC" style="font-size: 10px; margin-left: 6px; background: #f39c12; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">SIN TACC</span>';
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'product-card';
@@ -347,29 +433,10 @@
             });
         }
 
-        async function obtenerCatalogo() {
-            try {
-                const respuesta = await fetch('http://localhost:8080/api/v1/productos');
-                if (!respuesta.ok) throw new Error(`Error HTTP: ${respuesta.status}`);
-
-                const itemsCrudos = await respuesta.json();
-                
-                document.getElementById('caja-error-conexion').style.display = 'none';
-                window.productosGlobal = itemsCrudos.filter(item => item.activo !== false);
-                renderizarTarjetas('todos');
-                
-            } catch (error) {
-                console.error(error);
-                document.getElementById('caja-error-conexion').style.display = 'block';
-                document.getElementById('listado').innerHTML = '';
-            }
-        }
-
         /* ==========================================================================
            GESTIÓN DEL CARRITO Y MODALES
            ========================================================================== */
         function agregarAlCarrito(idProducto, nombre, precio, botonElement) {
-            // Buscamos la imagen real del producto directamente desde el catálogo global
             const productoOriginal = window.productosGlobal.find(p => p.id === idProducto);
             let imagenUrl = productoOriginal ? (productoOriginal.imagen_url || productoOriginal.imagen || productoOriginal.foto || '') : '';
             if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;

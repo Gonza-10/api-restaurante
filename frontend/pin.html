@@ -119,7 +119,8 @@
                     // Redirección al catálogo
                     window.location.href = 'catalogo.html';
                 } else if (respuesta.status === 429) {
-                    errorBox.textContent = "Demasiados intentos. Esperá unos minutos.";
+                    const err = await respuesta.json();
+                    errorBox.textContent = err.error || "Demasiados intentos. Esperá unos minutos.";
                     errorBox.style.display = 'flex';
                 } else {
                     errorBox.textContent = "PIN incorrecto o mesa sin sesión abierta.";

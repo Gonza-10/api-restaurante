@@ -9,10 +9,8 @@
 <body>
 
     <div class="login-page">
-        <!-- ACÁ FALTABA ESTE CONTENEDOR QUE DIVIDE EN DOS -->
         <div class="login-shell">
             
-            <!-- Panel Izquierdo: Branding -->
             <div class="hero-panel">
                 <div class="brand">
                     <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
@@ -25,7 +23,6 @@
                 </div>
             </div>
 
-            <!-- Panel Derecho: Formulario -->
             <div class="form-panel">
                 <div class="login-card">
                     <div class="login-header">
@@ -54,7 +51,7 @@
                 </div>
             </div>
 
-        </div> <!-- Cierre del login-shell -->
+        </div>
     </div>
 
     <script src="app.js"></script>
@@ -90,7 +87,11 @@
                         cajaError.textContent = "Rol no reconocido.";
                         cajaError.style.display = 'flex';
                     }
-                } else if (respuesta.status === 401) {
+                } else if (respuesta.status === 429) {
+                    const err = await respuesta.json();
+                    cajaError.textContent = err.error || "Demasiados intentos. Esperá unos minutos.";
+                    cajaError.style.display = 'flex';
+                } else if (respuesta.status === 401 || respuesta.status === 403) {
                     cajaError.textContent = "Usuario o contraseña incorrectos.";
                     cajaError.style.display = 'flex';
                 } else {
