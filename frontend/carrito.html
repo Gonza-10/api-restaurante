@@ -18,6 +18,7 @@
         @media (max-width: 900px) {
             .carrito-container { grid-template-columns: 1fr; }
         }
+        /* Tarjeta adaptativa al Modo Claro / Oscuro */
         .item-carrito-card {
             background: rgba(18, 18, 18, 0.7);
             border: 1px solid var(--glass-border);
@@ -65,6 +66,7 @@
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            text-align: center;
         }
         .badge-pendiente { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
         .badge-proceso { background: rgba(255, 122, 0, 0.15); color: #ff7a00; border: 1px solid rgba(255, 122, 0, 0.3); }
@@ -87,6 +89,7 @@
 
     <div class="carrito-container">
         
+        <!-- ZONA 1: Listado de Selección Actual + Historial de Pedidos en Curso -->
         <div style="display: flex; flex-direction: column; gap: 25px;">
             <div>
                 <h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
@@ -97,10 +100,12 @@
                 </div>
             </div>
 
+            <!-- Botón de Envío a Cocina con animación verde -->
             <button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
                 Enviar Selección a Cocina
             </button>
 
+            <!-- SECCIÓN: Historial de pedidos anteriores de esta mesa -->
             <div style="margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 25px;">
                 <h3 style="font-size: 18px; font-weight: 800; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Pedidos en Curso de la Mesa</h3>
                 <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Seguimiento en tiempo real de lo que ya fue solicitado a cocina.</p>
@@ -111,8 +116,10 @@
             </div>
         </div>
 
+        <!-- COLUMNA DERECHA: Zona 2 (Resumen), Zona 3 (Métodos de Pago) y Cierre de Mesa -->
         <div style="display: flex; flex-direction: column; gap: 20px;">
             
+            <!-- ZONA 2: Resumen de la Mesa -->
             <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
                 
@@ -132,6 +139,7 @@
                 </div>
             </div>
 
+            <!-- ZONA 3: Método de Pago con íconos limpios (SVG) -->
             <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-main); font-weight: 800;">Método de Pago</h3>
                 <p style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px;">Seleccioná cómo vas a abonar al finalizar tu estadía.</p>
@@ -155,6 +163,7 @@
                 </div>
             </div>
 
+            <!-- Botón de Cierre de Mesa (Naranja corporativo destacado) -->
             <button onclick="confirmarCierreMesa()" style="width: 100%; padding: 16px; border-radius: 12px; background: transparent; color: var(--primary-orange); border: 2px solid var(--primary-orange); font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-orange)';">
                 Solicitar Cierre de Mesa y Pago
             </button>
@@ -203,7 +212,8 @@
                 return;
             }
             document.getElementById('txt-nro-mesa').textContent = mesaNum;
-            cargarHistorialPedidos(); // Llama internamente a cargarCarritoStorage para unificar precios
+            cargarCarritoStorage();
+            cargarHistorialPedidos();
         });
 
         function mostrarAviso(titulo, mensaje, callback = null, mostrarCancelar = false) {
@@ -238,8 +248,11 @@
         }
 
         function obtenerCarrito() {
-            try { return JSON.parse(sessionStorage.getItem('savage-carrito')) || []; } 
-            catch (e) { return []; }
+            try {
+                return JSON.parse(sessionStorage.getItem('savage-carrito')) || [];
+            } catch (e) {
+                return [];
+            }
         }
 
         function guardarCarrito(carrito) {
@@ -390,6 +403,7 @@
                     let badgeClass = 'badge-pendiente';
                     let textoEstado = 'Pendiente';
                     let extraStyle = '';
+                    let btnTicket = '';
 
                     if (comanda.estado === 'proceso') {
                         badgeClass = 'badge-proceso';
@@ -397,10 +411,20 @@
                     } else if (comanda.estado === 'listo') {
                         badgeClass = 'badge-listo';
                         textoEstado = '¡Listo para Servir!';
+                        btnTicket = `
+                            <a href="http://localhost:8080/api/v1/tickets/${comanda.id_comanda_uuid}.pdf" target="_blank" style="text-decoration: none; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--glass-border); padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; transition: all 0.2s; min-width: 100px;" onmouseover="this.style.background='rgba(255, 122, 0, 0.1)'; this.style.color='var(--primary-orange)'; this.style.borderColor='rgba(255, 122, 0, 0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)'; this.style.borderColor='var(--glass-border)';">
+                                📄 Ver Ticket
+                            </a>
+                        `;
                     } else if (comanda.estado === 'entregado') {
                         badgeClass = '';
                         textoEstado = 'Despachado';
                         extraStyle = 'background: rgba(128,128,128,0.15); color: #aaaaaa; border: 1px solid rgba(128,128,128,0.3);';
+                        btnTicket = `
+                            <a href="http://localhost:8080/api/v1/tickets/${comanda.id_comanda_uuid}.pdf" target="_blank" style="text-decoration: none; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--glass-border); padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; transition: all 0.2s; min-width: 100px;" onmouseover="this.style.background='rgba(255, 122, 0, 0.1)'; this.style.color='var(--primary-orange)'; this.style.borderColor='rgba(255, 122, 0, 0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)'; this.style.borderColor='var(--glass-border)';">
+                                📄 Ver Ticket
+                            </a>
+                        `;
                     }
 
                     contenedorHistorial.innerHTML += `
@@ -409,7 +433,10 @@
                                 <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: normal; word-break: break-word; line-height: 1.5; margin-bottom: 6px;">${nombresItems}</div>
                                 <span style="font-size: 11px; color: var(--text-muted); font-weight: bold;">Hora: ${new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false})}</span>
                             </div>
-                            <span class="badge-estado ${badgeClass}" style="margin-top: 2px; flex-shrink: 0; ${extraStyle}">${textoEstado}</span>
+                            <div style="display: flex; flex-direction: column; align-items: stretch; gap: 8px; flex-shrink: 0; margin-top: 2px;">
+                                <span class="badge-estado ${badgeClass}" style="${extraStyle}">${textoEstado}</span>
+                                ${btnTicket}
+                            </div>
                         </div>
                     `;
                 });
