@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Salón - Savage Grill</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .salon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            padding: 10px 0;
+        }
+        .mesa-card {
+            background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+            border: 2px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .mesa-card.libre:hover { 
+            transform: translateY(-5px); 
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.05);
+        }
+        .mesa-card.libre { border-color: rgba(46, 204, 113, 0.4); }
+        .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.7; cursor: not-allowed; }
+
+        .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
+        .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
+        .mesa-mozo { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+        .sesiones-panel {
+            background: var(--glass-bg, rgba(255, 255, 255, 0.02));
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: sticky;
+            top: 20px;
+        }
+        .sesion-card {
+            background: var(--input-bg, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        .pin-display {
+            font-family: monospace;
+            font-size: 26px;
+            color: var(--primary-orange);
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 0;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 30px;
+        }
+        #toast-exito {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ecc71;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 3000;
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+    </style>
+</head>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+    <div id="toast-exito">¡Mesa abierta con éxito!</div>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+        <div class="top-bar">
+            <div class="brand">
+                <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; font-size: 26px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <span id="nombre-mozo" style="color: var(--text-main); font-size: 15px; font-weight: bold;">Cargando usuario...</span>
+                <button onclick="cerrarSesion()" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start;">
+            <div>
+                <h2 style="font-size: 24px; margin-bottom: 5px;">Mapa de Mesas</h2>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Hacé clic en una mesa libre para sentar a los clientes.</p>
+                <div id="mapa-mesas" class="salon-grid">
+                    <p style="color: var(--text-muted);">Cargando mapa interactivo...</p>
+                </div>
+            </div>
+
+            <div class="sesiones-panel">
+                <h2 style="font-size: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; margin-bottom: 5px;">Mis Mesas Activas</h2>
+                <div id="mis-sesiones" style="display: flex; flex-direction: column; gap: 12px;">
+                    <p style="color: var(--text-muted); font-size: 14px;">No tenés mesas abiertas en este momento.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ABRIR MESA -->
+    <div id="modal-abrir" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 2500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(400px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border);">
+            <button type="button" onclick="cerrarModalAbrir()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+            
+            <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Abrir Mesa <span id="span-nro-mesa" style="color: var(--primary-orange);"></span></h2>
+            <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Capacidad de la mesa: <span id="span-capacidad" style="font-weight: bold; color: var(--text-main);"></span> comensales</p>
+
+            <form id="form-abrir-mesa" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="input-nro-mesa">
+                <input type="hidden" id="input-capacidad-max">
+
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="color: var(--text-main); font-size: 13px; font-weight: 700;">¿Cuántas personas se sientan?</label>
+                    <input type="number" id="input-comensales" min="1" required style="width: 100%; height: 52px; padding: 0 16px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--input-bg, #0b0b0b); color: var(--text-main); font-size: 15px; outline: none;">
+                </div>
+
+                <div id="error-abrir" class="message error" style="display: none; margin: 0;"></div>
+
+                <button type="submit" id="btn-abrir" style="padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white; margin-top: 10px; font-size: 15px;">
+                    Generar PIN y Abrir Mesa
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE SEGUIMIENTO DE COCINA -->
+    <div id="modal-pedidos" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(480px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
+            <button type="button" onclick="cerrarModalPedidos()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+            <h2 style="margin: 0 0 20px 0; color: var(--text-main); font-size: 22px;">Mesa <span id="span-pedidos-mesa" style="color: var(--primary-orange);"></span> - Seguimiento</h2>
+            <div id="lista-pedidos-mozo" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                <p style="color: var(--text-muted);">Cargando estado...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM ESTÉTICO PARA AVISOS GENERALES -->
+    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
+            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso del Sistema</h2>
+            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer;">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA -->
+    <div id="modal-confirmar-cierre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar Mesa</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">¿Estás seguro de CERRAR esta mesa?<br>El cliente será desconectado y no podrá seguir pidiendo.</p>
+            <input type="hidden" id="input-sesion-a-cerrar">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="cerrarModalCierre()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">
+                    Cancelar
+                </button>
+                <button onclick="ejecutarCierreMesa()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: #e74c3c; color: white; border: none; cursor: pointer;">
+                    Sí, Cerrar Mesa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Nueva variable global para el temporizador del modal de pedidos
+        let intervaloPedidosMozo = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuario = obtenerUsuarioActual();
+            if (!usuario || (usuario.rol !== 'Mozo' && usuario.rol !== 'Admin' && usuario.rol !== 'Gerente')) {
+                alert("Acceso denegado. Pantalla exclusiva de salón.");
+                window.location.href = 'login.html';
+                return;
+            }
+            document.getElementById('nombre-mozo').textContent = `${usuario.rol}: ${usuario.nombre} ${usuario.apellido}`;
+            cargarTablero();
+            // Actualización periódica del mapa de mesas
+            setInterval(cargarTablero, 10000); 
+        });
+
+        function mostrarToast(mensaje) {
+            const toast = document.getElementById('toast-exito');
+            toast.textContent = mensaje;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3500);
+        }
+
+        function mostrarAviso(titulo, mensaje) {
+            document.getElementById('aviso-titulo').textContent = titulo;
+            document.getElementById('aviso-mensaje').textContent = mensaje;
+            document.getElementById('modal-aviso').style.display = 'flex';
+        }
+
+        function cerrarModalAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
+        function cerrarModalCierre() { document.getElementById('modal-confirmar-cierre').style.display = 'none'; }
+        function cerrarModalAbrir() { document.getElementById('modal-abrir').style.display = 'none'; }
+        
+        // Al cerrar el modal de pedidos, detenemos el consumo en segundo plano
+        function cerrarModalPedidos() { 
+            document.getElementById('modal-pedidos').style.display = 'none'; 
+            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
+        }
+
+        function confirmarCierreMesa(idSesion) {
+            document.getElementById('input-sesion-a-cerrar').value = idSesion;
+            document.getElementById('modal-confirmar-cierre').style.display = 'flex';
+        }
+
+        async function cargarTablero() {
+            await Promise.all([cargarMesas(), cargarMisSesiones()]);
+        }
+
+        async function cargarMesas() {
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/mesas');
+                const mesas = await resp.json();
+                const contenedor = document.getElementById('mapa-mesas');
+                contenedor.innerHTML = '';
+
+                mesas.forEach(mesa => {
+                    const div = document.createElement('div');
+                    div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'}`;
+                    
+                    let infoMozo = mesa.estado ? `<div class="mesa-mozo">Mesa Ocupada</div>` : '';
+
+                    div.innerHTML = `
+                        <div class="mesa-numero">${mesa.numero}</div>
+                        <div class="mesa-capacidad">Máx: ${mesa.capacidad_maxima} pers.</div>
+                        <div style="margin-top: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: ${mesa.estado ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)'}; color: ${mesa.estado ? '#e74c3c' : '#2ecc71'}">
+                            ${mesa.estado ? 'OCUPADA' : 'LIBRE'}
+                        </div>
+                        ${infoMozo}
+                    `;
+                    if (!mesa.estado) { div.onclick = () => abrirModalMesa(mesa); }
+                    contenedor.appendChild(div);
+                });
+            } catch (error) {
+                document.getElementById('mapa-mesas').innerHTML = '<p style="color: var(--error);">Error al cargar las mesas.</p>';
+            }
+        }
+
+        async function cargarMisSesiones() {
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/sesiones-mesa?estado=Abierto');
+                const sesiones = await resp.json();
+                const contenedor = document.getElementById('mis-sesiones');
+                
+                if (sesiones.length === 0) {
+                    contenedor.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">No tenés mesas abiertas en este momento.</p>';
+                    return;
+                }
+
+                contenedor.innerHTML = '';
+                sesiones.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'sesion-card';
+                    div.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="color: var(--text-main); font-weight: bold; font-size: 18px;">Mesa ${s.numero_mesa}</div>
+                                <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">👤 ${s.cantidad_comensales} personas</div>
+                            </div>
+                            <div style="text-align: center; border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); padding: 0 15px;">
+                                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">PIN Cliente</div>
+                                <div class="pin-display">${s.codigo_pin}</div>
+                            </div>
+                            <button onclick="confirmarCierreMesa(${s.id})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
+                                Cerrar
+                            </button>
+                        </div>
+                        
+                        <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; color: var(--text-muted);">Seguimiento de cocina:</span>
+                            <button onclick="verPedidosMesa('${s.numero_mesa}')" style="background: var(--glass-border); color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                                Ver Pedidos ➔
+                            </button>
+                        </div>
+                    `;
+                    contenedor.appendChild(div);
+                });
+            } catch (error) {
+                console.error("Error al cargar sesiones activas.");
+            }
+        }
+
+        // Nueva lógica para abrir el modal y disparar la actualización en vivo
+        async function verPedidosMesa(numeroMesa) {
+            document.getElementById('span-pedidos-mesa').textContent = numeroMesa;
+            const contenedor = document.getElementById('lista-pedidos-mozo');
+            contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">Consultando estado...</p>';
+            document.getElementById('modal-pedidos').style.display = 'flex';
+
+            // Ejecuta la primera carga inmediata
+            await cargarPedidosModalEnVivo(numeroMesa);
+
+            // Inicia el polling cada 3 segundos
+            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
+            intervaloPedidosMozo = setInterval(() => cargarPedidosModalEnVivo(numeroMesa), 3000);
+        }
+
+        // Función que consume la API e inyecta sin parpadear
+        async function cargarPedidosModalEnVivo(numeroMesa) {
+            // Si el mozo cerró la ventana, matamos el ciclo de consumo
+            if (document.getElementById('modal-pedidos').style.display === 'none') {
+                clearInterval(intervaloPedidosMozo);
+                return;
+            }
+
+            const contenedor = document.getElementById('lista-pedidos-mozo');
+
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/cocina/tablero');
+                if(!resp.ok) return;
+                const comandas = await resp.json();
+                
+                const misComandas = comandas.filter(c => parseInt(c.mesa_id) === parseInt(numeroMesa));
+
+                if (misComandas.length === 0) {
+                    contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">No hay pedidos en curso en la cocina para esta mesa.</p>';
+                    return;
+                }
+
+                let htmlContent = '';
+                misComandas.forEach(c => {
+                    let conteo = {};
+                    c.items.forEach(i => { conteo[i.nombre] = (conteo[i.nombre] || 0) + 1; });
+                    let nombresItems = Object.entries(conteo).map(([nom, cant]) => `<span style="color:var(--primary-orange); font-weight:800;">${cant}x</span> ${nom}`).join(', ');
+                    
+                    let color = '#a855f7'; let txt = 'Pendiente';
+                    if (c.estado === 'proceso') { color = '#ff7a00'; txt = 'En Proceso'; }
+                    else if (c.estado === 'listo') { color = '#2ecc71'; txt = '¡Listo!'; }
+
+                    htmlContent += `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                            <div style="font-size: 14px; font-weight: 500; color: var(--text-main); flex-grow:1; line-height: 1.5;">${nombresItems}</div>
+                            <div style="background: ${color}15; color: ${color}; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid ${color}40; letter-spacing: 0.5px; text-transform: uppercase; flex-shrink: 0; margin-top: 2px;">
+                                ${txt}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                contenedor.innerHTML = htmlContent;
+                
+            } catch(error) {
+                console.error("Fallo silencioso actualizando mozo.");
+            }
+        }
+
+        function abrirModalMesa(mesa) {
+            document.getElementById('span-nro-mesa').textContent = mesa.numero;
+            document.getElementById('span-capacidad').textContent = mesa.capacidad_maxima;
+            document.getElementById('input-nro-mesa').value = mesa.numero;
+            document.getElementById('input-capacidad-max').value = mesa.capacidad_maxima;
+            document.getElementById('input-comensales').value = '';
+            document.getElementById('error-abrir').style.display = 'none';
+            document.getElementById('modal-abrir').style.display = 'flex';
+            setTimeout(() => document.getElementById('input-comensales').focus(), 100);
+        }
+
+        document.getElementById('form-abrir-mesa').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nroMesa = parseInt(document.getElementById('input-nro-mesa').value);
+            const comensales = parseInt(document.getElementById('input-comensales').value);
+            const max = parseInt(document.getElementById('input-capacidad-max').value);
+            const errorBox = document.getElementById('error-abrir');
+            const btn = document.getElementById('btn-abrir');
+
+            if (comensales > max) {
+                errorBox.textContent = `Error: La mesa admite un máximo de ${max} comensales.`;
+                errorBox.style.display = 'flex';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+            errorBox.style.display = 'none';
+
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/sesiones-mesa/abrir', {
+                    method: 'POST',
+                    body: JSON.stringify({ numero_mesa: nroMesa, cantidad_comensales: comensales })
+                });
+
+                if (resp.status === 201) {
+                    cerrarModalAbrir();
+                    cargarTablero(); 
+                    mostrarToast(`¡Mesa ${nroMesa} abierta con éxito!`);
+                } else {
+                    const err = await resp.json().catch(()=>({}));
+                    errorBox.textContent = err.error || "La mesa ya se encuentra ocupada.";
+                    errorBox.style.display = 'flex';
+                }
+            } catch (error) {
+                errorBox.textContent = "Error de red al intentar abrir la mesa.";
+                errorBox.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generar PIN y Abrir Mesa';
+            }
+        });
+
+        async function ejecutarCierreMesa() {
+            const idSesion = document.getElementById('input-sesion-a-cerrar').value;
+            cerrarModalCierre();
+            
+            try {
+                const resp = await apiFetch(`http://localhost:8080/api/v1/sesiones-mesa/${idSesion}/cerrar`, {
+                    method: 'POST'
+                });
+                
+                if (resp.ok) {
+                    cargarTablero();
+                    mostrarToast("Mesa cerrada correctamente.");
+                } else {
+                    const err = await resp.json().catch(()=>({}));
+                    mostrarAviso("Error", err.error || "No se pudo cerrar la mesa.");
+                }
+            } catch (error) {
+                mostrarAviso("Error", "Fallo de conexión al servidor.");
+            }
+        }
+    </script>
+</body>
+</html>

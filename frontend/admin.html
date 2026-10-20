@@ -5,17 +5,156 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Menú - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ESTILOS EXCLUSIVOS PARA EL FORMULARIO ADMIN Y MODAL */
+        .admin-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .admin-label {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .admin-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            outline: none;
+            background: rgba(0,0,0,0.5);
+            color: var(--text-main);
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        body.light-mode .admin-input {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #1a1a1a;
+        }
+        .admin-input:focus {
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.1);
+        }
+        /* Select Naranja Personalizado */
+        .admin-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FF7A00%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat, repeat;
+            background-position: right .7em top 50%, 0 0;
+            background-size: .65em auto, 100%;
+        }
+        .admin-select option {
+            background-color: #121212;
+            color: #ffffff;
+            padding: 12px;
+        }
+        body.light-mode .admin-select option {
+            background-color: #ffffff;
+            color: #1a1a1a;
+        }
+        .admin-select option:checked { background-color: var(--primary-orange); color: white; }
+
+        .admin-textarea {
+            height: auto;
+            min-height: 80px;
+            padding: 12px 16px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        /* Estilo general del contenedor de archivo */
+        .admin-file {
+            padding: 8px;
+            border: 1px dashed var(--glass-border);
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            height: auto;
+        }
+        body.light-mode .admin-file {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+        .admin-file:hover {
+            border-color: var(--primary-orange);
+            background: rgba(255, 122, 0, 0.05);
+        }
+        
+        /* Estilo específico para ocultar/modificar el botón nativo de Windows */
+        input[type="file"]::file-selector-button {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+        }
+        body.light-mode input[type="file"]::file-selector-button {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background: var(--primary-orange);
+            color: white;
+            border-color: var(--primary-orange);
+        }
+
+        /* Checkboxes tipo píldora */
+        .admin-checkbox-container {
+            display: flex;
+            gap: 12px;
+        }
+        .admin-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            font-size: 13px;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        body.light-mode .admin-checkbox-label {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+        .admin-checkbox-label:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--primary-orange);
+        }
+        .admin-checkbox-label input[type="checkbox"] {
+            accent-color: var(--primary-orange);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+    </style>
 </head>
-<body>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
     <div class="login-page">
-        <!-- Contenedor Principal (Panel Dividido) -->
         <div class="login-shell">
             
             <!-- PANEL IZQUIERDO: Hero -->
-            <div class="hero-panel">
-                <div class="brand">
-                    <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+            <div class="hero-panel" style="position: relative;">
+                <!-- Botón Volver (Solo visible si es Gerente) -->
+                <button id="btn-volver-gerente" onclick="window.location.href='gerente.html'" style="display: none; position: absolute; top: 25px; left: 30px; background: transparent; color: var(--primary-orange); border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-orange)';">
+                    ← Volver al Portal
+                </button>
+
+                <div class="brand" style="margin-top: 50px;">
+                    <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
                 </div>
                 
                 <div class="hero-copy">
@@ -26,31 +165,69 @@
             </div>
 
             <!-- PANEL DERECHO: Formulario -->
-            <div class="form-panel">
-                <div class="login-card">
+            <div class="form-panel" style="overflow-y: auto; position: relative;">
+                
+                <button onclick="cerrarSesion()" style="position: absolute; top: 25px; right: 30px; background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; z-index: 100; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
+                    Cerrar Sesión
+                </button>
+
+                <div class="login-card" style="margin-top: 70px; margin-bottom: 50px;">
                     <div class="login-header">
                         <h2>Nuevo Producto</h2>
                         <p>Ingresá los datos para enviar al servidor</p>
                     </div>
 
-                    <!-- Formulario conectado a JS -->
-                    <form id="formulario-registro" style="margin-top: 30px;">
+                    <form id="formulario-registro" style="margin-top: 25px; display: flex; flex-direction: column; gap: 18px;">
                         
-                        <fieldset class="input-fieldset">
-                            <legend>Nombre / Identificador</legend>
-                            <input type="text" id="campo-nombre" class="text-input" placeholder="Ej: Hamburguesa Completa" required>
-                        </fieldset>
+                        <div class="admin-form-group">
+                            <label class="admin-label">Nombre / Identificador</label>
+                            <input type="text" id="campo-nombre" class="admin-input" placeholder="Ej: Hamburguesa Completa" required>
+                        </div>
 
-                        <fieldset class="input-fieldset">
-                            <legend>Precio de Lista ($)</legend>
-                            <input type="number" id="campo-precio" class="text-input" placeholder="0.00" step="0.01" required>
-                        </fieldset>
+                        <div style="display: flex; gap: 15px;">
+                            <div class="admin-form-group" style="flex: 1;">
+                                <label class="admin-label">Precio de Lista ($)</label>
+                                <input type="number" id="campo-precio" class="admin-input" placeholder="0.00" step="0.01" required>
+                            </div>
+
+                            <div class="admin-form-group" style="flex: 1;">
+                                <label class="admin-label">Categoría</label>
+                                <select id="campo-categoria" class="admin-input admin-select" required>
+                                    <option value="" disabled selected>Cargando...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="admin-checkbox-container">
+                            <label class="admin-checkbox-label">
+                                <input type="checkbox" id="campo-vegetariano">
+                                Vegetariano
+                            </label>
+                            <label class="admin-checkbox-label">
+                                <input type="checkbox" id="campo-sintacc">
+                                Sin TACC
+                            </label>
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="admin-label">Descripción del Plato</label>
+                            <textarea id="campo-descripcion" class="admin-input admin-textarea" placeholder="Ingredientes y detalles..."></textarea>
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="admin-label">URL de Imagen (Opcional)</label>
+                            <input type="url" id="campo-imagen-url" class="admin-input" placeholder="https://...">
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="admin-label">O subir foto local</label>
+                            <input type="file" id="campo-imagen-archivo" class="admin-input admin-file" accept="image/jpeg, image/png, image/webp">
+                        </div>
                         
-                        <!-- Mensajes de estado -->
-                        <div id="caja-error" class="message error" style="display: none;"></div>
-                        <div id="caja-exito" class="message success" style="display: none;"></div>
+                        <div id="caja-error" class="message error" style="display: none; margin: 0;"></div>
+                        <div id="caja-exito" class="message success" style="display: none; margin: 0;"></div>
 
-                        <button type="submit" class="btn-primary" style="margin-top: 15px;">
+                        <button type="submit" id="btn-submit-registro" class="btn-primary" style="margin-top: 10px;">
                             Guardar Producto <span class="btn-arrow">→</span>
                         </button>
                     </form>
@@ -74,7 +251,7 @@
 
     <!-- MODAL DE EDICIÓN DE PRODUCTO -->
     <div id="modal-editar" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 2500; justify-content: center; align-items: center;">
-        <div class="product-card" style="width: min(440px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border);">
+        <div class="product-card" style="width: min(480px, 95%); padding: 35px; position: relative; border: 1px solid var(--glass-border); max-height: 90vh; overflow-y: auto;">
             <button type="button" onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
             
             <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Editar Producto</h2>
@@ -83,42 +260,58 @@
             <form id="formulario-editar" style="display: flex; flex-direction: column; gap: 16px;">
                 <input type="hidden" id="editar-id">
 
-                <fieldset class="input-fieldset" style="margin: 0;">
-                    <legend>Nombre del Producto</legend>
-                    <input type="text" id="editar-nombre" class="text-input" required>
-                </fieldset>
+                <div class="admin-form-group">
+                    <label class="admin-label">Nombre del Producto</label>
+                    <input type="text" id="editar-nombre" class="admin-input" required>
+                </div>
 
-                <fieldset class="input-fieldset" style="margin: 0;">
-                    <legend>Precio de Lista ($)</legend>
-                    <input type="number" id="editar-precio" class="text-input" step="0.01" min="0.01" required>
-                </fieldset>
+                <div style="display: flex; gap: 15px;">
+                    <div class="admin-form-group" style="flex: 1;">
+                        <label class="admin-label">Precio de Lista ($)</label>
+                        <input type="number" id="editar-precio" class="admin-input" step="0.01" min="0.01" required>
+                    </div>
 
-                <fieldset class="input-fieldset" style="margin: 0;">
-                    <legend>Categoría</legend>
-                    <select id="editar-categoria" class="text-input" style="background: transparent; color: var(--text-main); border: none; width: 100%; outline: none; cursor: pointer;">
-                        <option value="2" style="background: #181818; color: white;">Principales</option>
-                        <option value="1" style="background: #181818; color: white;">Bebidas</option>
-                    </select>
-                </fieldset>
+                    <div class="admin-form-group" style="flex: 1;">
+                        <label class="admin-label">Categoría</label>
+                        <select id="editar-categoria" class="admin-input admin-select" required>
+                            <option value="" disabled>Cargando...</option>
+                        </select>
+                    </div>
+                </div>
 
-                <div style="display: flex; gap: 20px; padding: 6px 4px;">
-                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
-                        <input type="checkbox" id="editar-vegetariano" style="accent-color: var(--primary-orange); width: 16px; height: 16px; cursor: pointer;">
+                <div class="admin-checkbox-container">
+                    <label class="admin-checkbox-label">
+                        <input type="checkbox" id="editar-vegetariano">
                         Vegetariano
                     </label>
-                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer;">
-                        <input type="checkbox" id="editar-sintacc" style="accent-color: var(--primary-orange); width: 16px; height: 16px; cursor: pointer;">
+                    <label class="admin-checkbox-label">
+                        <input type="checkbox" id="editar-sintacc">
                         Sin TACC
                     </label>
                 </div>
 
+                <div class="admin-form-group">
+                    <label class="admin-label">Descripción del Plato</label>
+                    <textarea id="editar-descripcion" class="admin-input admin-textarea"></textarea>
+                </div>
+
+                <div class="admin-form-group">
+                    <label class="admin-label">URL de Imagen</label>
+                    <input type="url" id="editar-imagen-url" class="admin-input" placeholder="https://...">
+                </div>
+
+                <div class="admin-form-group">
+                    <label class="admin-label">O reemplazar con foto local</label>
+                    <input type="file" id="editar-imagen-archivo" class="admin-input admin-file" accept="image/jpeg, image/png, image/webp">
+                </div>
+
                 <div id="editar-error" class="message error" style="display: none; margin: 0;"></div>
 
-                <div style="display: flex; gap: 10px; margin-top: 8px;">
-                    <button type="button" onclick="cerrarModalEditar()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted);">
+                <div style="display: flex; gap: 12px; margin-top: 10px;">
+                    <button type="button" onclick="cerrarModalEditar()" style="flex: 1; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: var(--text-main); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
                         Cancelar
                     </button>
-                    <button type="submit" id="btn-guardar-edicion" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white;">
+                    <button type="submit" id="btn-guardar-edicion" style="flex: 1; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-hover)'" onmouseout="this.style.background='var(--primary-orange)'">
                         Guardar Cambios
                     </button>
                 </div>
@@ -127,5 +320,27 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuario = obtenerUsuarioActual();
+            if (usuario && usuario.rol === 'Gerente') {
+                document.getElementById('btn-volver-gerente').style.display = 'block';
+            }
+            
+            // Inicializar el sistema de temas local
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
+            const actualizarTexto = () => { btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro'; };
+            actualizarTexto();
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTexto();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            document.body.appendChild(btnTema);
+        });
+    </script>
 </body>
 </html>
