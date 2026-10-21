@@ -144,6 +144,42 @@ JOIN (VALUES
 WHERE p.Descripcion IS NULL;
 ');
 
+-- Tiempo estimado (minutos) y porciones (personas que come): solo completa los que estan vacios,
+-- asi no pisa lo que se haya editado a mano. Son valores iniciales por tipo de producto.
+IF COL_LENGTH('dbo.Producto', 'TiempoEstimadoMin') IS NULL OR COL_LENGTH('dbo.Producto', 'Porciones') IS NULL
+    PRINT 'AVISO: faltan las columnas TiempoEstimadoMin/Porciones. Ejecutar antes Script_AE4_Tiempos_Migraciones.sql';
+ELSE
+    EXEC(N'
+UPDATE p
+SET p.TiempoEstimadoMin = CASE
+        WHEN p.Nombre = ''Coca-Cola 1L'' THEN 2
+        WHEN p.Nombre LIKE ''Agua%'' THEN 2
+        WHEN p.Nombre LIKE ''Jugo%'' OR p.Nombre LIKE ''Limonada%'' THEN 5
+        WHEN p.Nombre LIKE ''Pizza%'' OR p.Nombre LIKE ''Milanesa%'' THEN 25
+        WHEN p.Nombre LIKE ''Galeto%'' OR p.Nombre LIKE ''Bife%'' THEN 30
+        WHEN p.Nombre LIKE ''Ensalada%'' THEN 10
+        WHEN p.Nombre LIKE ''Empanadas%'' OR p.Nombre LIKE ''Tabla%'' THEN 15
+        WHEN c.Nombre = ''Bebidas'' THEN 3
+        WHEN c.Nombre = ''Tragos'' THEN 6
+        WHEN c.Nombre = ''Entradas'' THEN 12
+        WHEN c.Nombre = ''Postres'' THEN 6
+        ELSE 20
+    END
+FROM Producto p
+JOIN Categoria c ON c.Id = p.IdCategoria
+WHERE p.TiempoEstimadoMin IS NULL;
+
+UPDATE p
+SET p.Porciones = CASE
+        WHEN p.Nombre = ''Coca-Cola 1L'' THEN 4
+        WHEN p.Nombre LIKE ''Tabla%'' THEN 3
+        WHEN p.Nombre LIKE ''Pizza%'' OR p.Nombre LIKE ''Provoleta%'' OR p.Nombre LIKE ''Papas%'' OR p.Nombre LIKE ''Bastones%'' THEN 2
+        ELSE 1
+    END
+FROM Producto p
+WHERE p.Porciones IS NULL;
+');
+
 COMMIT TRANSACTION;
 
 -- Resumen

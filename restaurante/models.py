@@ -90,6 +90,8 @@ class Producto(models.Model):
     activo = models.BooleanField(default=True, db_column='Activo')
     descripcion = models.CharField(max_length=500, null=True, blank=True, db_column='Descripcion')
     imagen_url = models.CharField(max_length=500, null=True, blank=True, db_column='ImagenUrl')
+    tiempo_estimado = models.PositiveIntegerField(null=True, blank=True, db_column='TiempoEstimadoMin')  # minutos
+    porciones = models.PositiveIntegerField(null=True, blank=True, db_column='Porciones')  # personas que come
 
     class Meta:
         db_table = 'Producto'
@@ -120,6 +122,8 @@ class PedidoCabecera(models.Model):
     fecha_hora_cierre = models.DateTimeField(null=True, blank=True, db_column='FechaHoraCierre')
     cantidad_comensales = models.IntegerField(db_column='CantidadComensales')
     estado = models.CharField(max_length=20, default='Abierto', db_column='Estado')
+    # cuando el cliente pidio la cuenta (NULL = todavia no la pidio)
+    fecha_hora_solicita_cuenta = models.DateTimeField(null=True, blank=True, db_column='FechaHoraSolicitaCuenta')
 
     class Meta:
         db_table = 'PedidoCabecera'
@@ -138,6 +142,11 @@ class PedidoDetalle(models.Model):
     sub_total = models.DecimalField(max_digits=10, decimal_places=2, db_column='SubTotal')
     identificador_comensal = models.CharField(max_length=50, null=True, blank=True, db_column='IdentificadorComensal')
     estado_cocina = models.BooleanField(default=False, db_column='EstadoCocina')
+    # a que comanda pertenece el item; NULL en los items anteriores a esta columna
+    comanda = models.ForeignKey(
+        'ComandaRecibida', on_delete=models.PROTECT, null=True, blank=True,
+        db_column='IdComandaRecibida', related_name='detalles'
+    )
 
     class Meta:
         db_table = 'PedidoDetalle'

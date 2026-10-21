@@ -26,9 +26,11 @@ def insertar_comanda_control(uuid_str, id_pedido_cabecera):
     with connection.cursor() as cursor:
         cursor.execute(
             f"INSERT INTO ComandaRecibida (IdComandaUuid, IdPedidoCabecera, FechaHoraRecepcion) "
+            f"OUTPUT INSERTED.Id "
             f"VALUES ('{uuid_str}', %s, %s)",
             [id_pedido_cabecera, timezone.now()]
         )
+        return cursor.fetchone()[0]  # Id de la comanda, para ligarle sus items
 
 
 def procesar_comanda(ch, method, properties, body):
@@ -47,13 +49,14 @@ def procesar_comanda(ch, method, properties, body):
         with transaction.atomic():
             pedido_cabecera = PedidoCabecera.objects.get(id=datos['id_pedido_cabecera'])
 
-            insertar_comanda_control(uuid_str, pedido_cabecera.id)
+            id_comanda = insertar_comanda_control(uuid_str, pedido_cabecera.id)
 
             conteo = Counter(item['id'] for item in datos['items'])
             for id_producto, cantidad in conteo.items():
                 producto = Producto.objects.get(id=id_producto)
                 PedidoDetalle.objects.create(
                     pedido_cabecera=pedido_cabecera,
+                    comanda_id=id_comanda,
                     producto=producto,
                     cantidad=cantidad,
                     precio_unitario=producto.precio_actual,

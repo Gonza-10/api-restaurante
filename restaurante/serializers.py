@@ -10,6 +10,11 @@ from rest_framework.validators import UniqueValidator
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 
 
+def fecha_iso(valor):
+    """Fecha y hora en ISO 8601 con zona horaria (la del proyecto), igual que los DateTimeField de DRF."""
+    return serializers.DateTimeField().to_representation(valor) if valor else None
+
+
 # ==================== MENÚ ====================
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -26,10 +31,13 @@ class ProductoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url']
+        fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
+                  'tiempo_estimado', 'porciones']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'tiempo_estimado': {'required': False, 'allow_null': True, 'min_value': 1},
+            'porciones': {'required': False, 'allow_null': True, 'min_value': 1},
         }
 
     def validate_descripcion(self, value):
@@ -70,9 +78,35 @@ class MesaSerializer(serializers.ModelSerializer):
         )]
     )
 
+    # datos de la sesion abierta de la mesa (vacios si esta libre); MesaViewSet los precarga en 'sesiones_abiertas'
+    id_sesion = serializers.SerializerMethodField()
+    mozo_nombre = serializers.SerializerMethodField()
+    fecha_hora_inicio = serializers.SerializerMethodField()
+    solicita_cuenta = serializers.SerializerMethodField()
+
     class Meta:
         model = Mesa
         fields = '__all__'
+
+    def _sesion_abierta(self, obj):
+        abiertas = getattr(obj, 'sesiones_abiertas', None)
+        return abiertas[0] if abiertas else None
+
+    def get_id_sesion(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return sesion.id if sesion else None
+
+    def get_mozo_nombre(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return f'{sesion.empleado.nombre} {sesion.empleado.apellido}' if sesion else None
+
+    def get_fecha_hora_inicio(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return fecha_iso(sesion.fecha_hora_apertura) if sesion else None
+
+    def get_solicita_cuenta(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return bool(sesion and sesion.fecha_hora_solicita_cuenta)
 
     def validate_numero(self, value):
         if value <= 0:
@@ -108,12 +142,22 @@ class EmpleadoSerializer(serializers.ModelSerializer):
             message='Ese nombre de usuario ya está en uso.'
         )]
     )
-    contrasena_hash = serializers.CharField(write_only=True)  # nunca se devuelve en un GET
+    # el front envia "contrasena"; "contrasena_hash" se sigue aceptando por compatibilidad (coleccion de Postman)
+    contrasena = serializers.CharField(write_only=True, required=False)
+    contrasena_hash = serializers.CharField(write_only=True, required=False)  # nunca se devuelve en un GET
     fecha_ingreso = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Empleado
         fields = '__all__'
+
+    def validate(self, data):
+        clave = data.pop('contrasena', None)
+        if clave is not None:
+            data['contrasena_hash'] = clave
+        if self.instance is None and not data.get('contrasena_hash'):
+            raise serializers.ValidationError({'contrasena': 'La contraseña es obligatoria.'})
+        return data
 
     def create(self, validated_data):
         # nunca guardamos la contraseña tal cual la mandó el cliente
@@ -132,6 +176,7 @@ class EmpleadoSerializer(serializers.ModelSerializer):
 class PedidoDetalleSerializer(serializers.ModelSerializer):
     precio_unitario = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     sub_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    comanda = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = PedidoDetalle
@@ -170,6 +215,10 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
     codigo_pin = serializers.CharField(read_only=True)
     fecha_hora_apertura = serializers.DateTimeField(read_only=True)
     numero_mesa = serializers.IntegerField(source='mesa.numero', read_only=True)
+    mozo_nombre = serializers.SerializerMethodField()
+    fecha_hora_inicio = serializers.DateTimeField(source='fecha_hora_apertura', read_only=True)
+    fecha_hora_solicita_cuenta = serializers.DateTimeField(read_only=True)
+    solicita_cuenta = serializers.SerializerMethodField()
     detalles = PedidoDetalleSerializer(many=True, read_only=True)
     total = serializers.SerializerMethodField()
 
@@ -179,6 +228,12 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
 
     def get_total(self, obj):
         return sum((detalle.sub_total for detalle in obj.detalles.all()), Decimal('0.00'))
+
+    def get_mozo_nombre(self, obj):
+        return f'{obj.empleado.nombre} {obj.empleado.apellido}'
+
+    def get_solicita_cuenta(self, obj):
+        return obj.estado == 'Abierto' and obj.fecha_hora_solicita_cuenta is not None
 
     def validate_cantidad_comensales(self, value):
         if value <= 0:
@@ -248,6 +303,7 @@ class ComandaEntradaSerializer(serializers.Serializer):
 class ItemCocinaSerializer(serializers.Serializer):
     nombre = serializers.CharField()
     precio = serializers.DecimalField(max_digits=10, decimal_places=2)
+    cantidad = serializers.IntegerField()
 
 
 class ComandaCocinaSerializer(serializers.Serializer):
@@ -255,4 +311,37 @@ class ComandaCocinaSerializer(serializers.Serializer):
     mesa_id = serializers.CharField()
     items = ItemCocinaSerializer(many=True)
     estado = serializers.CharField()
-    timestamp = serializers.DateTimeField()
+    timestamp = serializers.DateTimeField()
+
+
+class AccesoClienteSerializer(serializers.Serializer):
+    """Lo que manda el cliente en los endpoints sin login: la mesa y el PIN que le dio el mozo."""
+    numero_mesa = serializers.IntegerField(
+        min_value=1,
+        error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe ser mayor a 0.'}
+    )
+    pin = serializers.RegexField(
+        r'^\d{4}$',
+        error_messages={'required': 'El PIN es obligatorio.', 'invalid': 'El PIN debe tener 4 digitos.', 'blank': 'El PIN es obligatorio.'}
+    )
+
+
+class ItemHistorialSerializer(serializers.Serializer):
+    nombre = serializers.CharField()
+    precio = serializers.DecimalField(max_digits=10, decimal_places=2)
+    cantidad = serializers.IntegerField()
+    sub_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class ComandaHistorialSerializer(serializers.Serializer):
+    id_comanda_uuid = serializers.UUIDField()
+    estado = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+    items = ItemHistorialSerializer(many=True)
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class HistorialMesaSerializer(serializers.Serializer):
+    numero_mesa = serializers.IntegerField()
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
+    comandas = ComandaHistorialSerializer(many=True)

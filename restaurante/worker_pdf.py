@@ -39,7 +39,7 @@ def generar_pdf_ticket(uuid_comanda: str):
     id_comanda_recibida, fecha_hora_recepcion, numero_mesa = fila
 
     comanda = ComandaRecibida.objects.select_related('pedido_cabecera').get(id=id_comanda_recibida)
-    detalles = comanda.pedido_cabecera.detalles.select_related('producto').all()
+    detalles = comanda.detalles.select_related('producto').all()  # solo los items de esta comanda
 
     pdf = FPDF()
     pdf.add_page()

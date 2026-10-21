@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction, IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -34,6 +34,10 @@ from .serializers import (
     ComandaEntradaSerializer,
     ComandaCocinaSerializer,
     SesionAbrirSerializer,
+    AccesoClienteSerializer,
+    HistorialMesaSerializer,
+    ComandaHistorialSerializer,
+    fecha_iso,
 )
 from .redis_client import redis_client
 from .auth import (
@@ -243,7 +247,11 @@ class MesaViewSet(viewsets.ModelViewSet):
     roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
-        queryset = Mesa.objects.all()
+        queryset = Mesa.objects.prefetch_related(Prefetch(
+            'pedidos',
+            queryset=PedidoCabecera.objects.filter(estado='Abierto').select_related('empleado'),
+            to_attr='sesiones_abiertas',
+        ))
         if self.action == 'list':
             incluir_inactivas = self.request.query_params.get('incluir_inactivas') == 'true'
             if not incluir_inactivas:
@@ -403,6 +411,12 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
 
         return Response({'error': 'No se pudo abrir la mesa. Intente de nuevo.'}, status=status.HTTP_409_CONFLICT)
 
+    @action(detail=True, methods=['get'], url_path='comandas')
+    def comandas(self, request, pk=None):
+        """Comandas de la sesion con sus items y estado (un Mozo solo ve las de sus propias sesiones)."""
+        sesion = self.get_object()
+        return Response(ComandaHistorialSerializer(_comandas_de_sesion(sesion), many=True).data)
+
     @action(detail=True, methods=['post'], url_path='cerrar')
     def cerrar(self, request, pk=None):
         """Cierra la sesion: la fecha la pone el servidor y la mesa queda libre, en una sola operacion."""
@@ -471,7 +485,7 @@ def _publicar_evento_comanda_lista(id_comanda_uuid: str):
 def _armar_tablero_cocina():
     comandas = ComandaRecibida.objects.select_related(
         'pedido_cabecera__mesa'
-    ).order_by('fecha_hora_recepcion')
+    ).prefetch_related('detalles__producto').order_by('fecha_hora_recepcion')
 
     resultado = []
     for comanda in comandas:
@@ -481,10 +495,10 @@ def _armar_tablero_cocina():
         if estado is None:
             continue
 
-        detalles = comanda.pedido_cabecera.detalles.select_related('producto').all()
+        # solo los items de ESTA comanda (no los de toda la sesion de la mesa)
         items = [
-            {'nombre': d.producto.nombre, 'precio': d.precio_unitario}
-            for d in detalles
+            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad}
+            for d in comanda.detalles.all()
         ]
 
         resultado.append({
@@ -701,7 +715,7 @@ class AccesoMesaView(APIView):
 
         sesion = None
         if re.fullmatch(r'\d{4}', pin):
-            sesion = PedidoCabecera.objects.select_related('mesa').filter(
+            sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').filter(
                 estado='Abierto', codigo_pin=pin, mesa__activa=True
             ).first()
         if sesion is None:
@@ -714,4 +728,108 @@ class AccesoMesaView(APIView):
         return Response({
             'numero_mesa': sesion.mesa.numero,
             'cantidad_comensales': sesion.cantidad_comensales,
+            'mozo_nombre': f'{sesion.empleado.nombre} {sesion.empleado.apellido}',
+            'fecha_hora_inicio': fecha_iso(sesion.fecha_hora_apertura),
+            'solicita_cuenta': sesion.fecha_hora_solicita_cuenta is not None,
         })
+
+
+# ==================== CLIENTE DE MESA (sin login: mesa + PIN) ====================
+
+def _sesion_cliente(request, numero_mesa, pin):
+    """Valida que la mesa tenga una sesion abierta y que el PIN sea el suyo (con limite de intentos por IP).
+    Devuelve (sesion, None) o (None, Response de error)."""
+    clave_pin = f'pin:fallos:{_ip(request)}'
+    if superado(clave_pin, PIN_MAX_FALLOS):
+        return None, Response(
+            {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    mesa = Mesa.objects.filter(numero=numero_mesa, activa=True).first()
+    if mesa is None:
+        return None, Response({'error': f'No existe la mesa numero {numero_mesa}.'}, status=status.HTTP_404_NOT_FOUND)
+
+    sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').filter(mesa=mesa, estado='Abierto').first()
+    if sesion is None:
+        return None, Response(
+            {'error': 'Esta mesa no tiene una sesion abierta. Avisa al mozo.'},
+            status=status.HTTP_409_CONFLICT
+        )
+
+    if not secrets.compare_digest(sesion.codigo_pin.strip().encode(), pin.encode()):
+        registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+        return None, Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
+
+    return sesion, None
+
+
+def _comandas_de_sesion(sesion):
+    """Comandas de una sesion con sus items y su estado. El estado vive en Redis mientras la comanda
+    esta activa; cuando ya no esta ahi, la comanda fue entregada."""
+    comandas = sesion.comandas.prefetch_related('detalles__producto').order_by('fecha_hora_recepcion')
+    resultado = []
+    for comanda in comandas:
+        items = [
+            {
+                'nombre': d.producto.nombre,
+                'precio': d.precio_unitario,
+                'cantidad': d.cantidad,
+                'sub_total': d.sub_total,
+            }
+            for d in comanda.detalles.all()
+        ]
+        resultado.append({
+            'id_comanda_uuid': str(comanda.id_comanda_uuid),
+            'estado': redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') or 'entregado',
+            'timestamp': comanda.fecha_hora_recepcion,
+            'items': items,
+            'total': sum((i['sub_total'] for i in items), Decimal('0.00')),
+        })
+    return resultado
+
+
+class SolicitarCuentaView(APIView):
+    """El cliente avisa al mozo que quiere la cuenta. Es idempotente: pedirla dos veces conserva la primera hora."""
+    authentication_classes = []  # un token vencido no debe impedir pedir la cuenta
+    roles_lectura = None
+    roles_escritura = None  # publico, protegido por el PIN de la mesa
+
+    def post(self, request):
+        entrada = AccesoClienteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
+        if error is not None:
+            return error
+
+        if sesion.fecha_hora_solicita_cuenta is None:
+            sesion.fecha_hora_solicita_cuenta = timezone.now()
+            sesion.save(update_fields=['fecha_hora_solicita_cuenta'])
+
+        return Response({
+            'mensaje': 'Cuenta solicitada. El mozo ya fue avisado.',
+            'solicita_cuenta': True,
+            'fecha_hora_solicita_cuenta': fecha_iso(sesion.fecha_hora_solicita_cuenta),
+        })
+
+
+class HistorialMesaView(APIView):
+    """El cliente consulta las comandas de su mesa y en que estado estan. Todos los dispositivos de la mesa
+    (mismo PIN) ven lo mismo. Es POST para que el PIN viaje en el cuerpo y no en la URL."""
+    authentication_classes = []
+    roles_lectura = None
+    roles_escritura = None  # publico, protegido por el PIN de la mesa
+
+    def post(self, request):
+        entrada = AccesoClienteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
+        if error is not None:
+            return error
+
+        comandas = _comandas_de_sesion(sesion)
+        return Response(HistorialMesaSerializer({
+            'numero_mesa': sesion.mesa.numero,
+            'total': sum((c['total'] for c in comandas), Decimal('0.00')),
+            'comandas': comandas,
+        }).data)

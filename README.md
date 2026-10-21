@@ -81,6 +81,9 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
    2. `sql/Script_AE4_Mesas_Migraciones.sql` — `Mesa.Activa` (baja lógica) y `Mesa.Numero` único.
    3. `sql/Script_AE4_Productos_Migraciones.sql` — `Producto.Descripcion` y `Producto.ImagenUrl`.
    4. `sql/Script_AE4_Sesiones_Migraciones.sql` — una sola sesión abierta por mesa, PIN único entre sesiones abiertas, y sincronización de `Mesa.Estado`.
+   5. `sql/Script_AE4_Comandas_Migraciones.sql` — `PedidoDetalle.IdComandaRecibida`: cada ítem queda ligado a la comanda que lo pidió.
+   6. `sql/Script_AE4_Cuenta_Migraciones.sql` — `PedidoCabecera.FechaHoraSolicitaCuenta`: cuándo el cliente pidió la cuenta.
+   7. `sql/Script_AE4_Tiempos_Migraciones.sql` — `Producto.TiempoEstimadoMin` y `Producto.Porciones` (los valores iniciales los carga el seed).
 5. Ejecutar `sql/Script_Seed_AE4.sql` para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos). Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo.
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
@@ -162,7 +165,10 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | **Abrir mesa** | `POST /api/v1/sesiones-mesa/abrir` | El mozo sienta clientes: `{"numero_mesa": 2, "cantidad_comensales": 3}`. Valida que la mesa exista, esté libre y que los comensales no superen su capacidad. Genera el PIN, toma al mozo del token y ocupa la mesa. `201` con el `codigo_pin` |
 | **Cerrar mesa** | `POST /api/v1/sesiones-mesa/{id}/cerrar` | Cierra la sesión (fecha puesta por el servidor) y libera la mesa. El PIN deja de servir |
 | Sesiones de mesa | `GET /api/v1/sesiones-mesa` | Lista (un Mozo ve solo las suyas). Filtros: `?estado=Abierto`, `?mesa=2`. No se crean ni modifican por CRUD genérico |
-| **Acceso por PIN** | `POST /api/v1/acceso-mesa` | El cliente ingresa el PIN: `{"pin": "4821"}` → `{"numero_mesa": 2, "cantidad_comensales": 3}`. `403` si el PIN es incorrecto o la sesión está cerrada |
+| **Acceso por PIN** | `POST /api/v1/acceso-mesa` | El cliente ingresa el PIN: `{"pin": "4821"}` → `{"numero_mesa": 2, "cantidad_comensales": 3, "mozo_nombre": "Juan Perez", "fecha_hora_inicio": "2026-10-21T12:00:00-03:00", "solicita_cuenta": false}`. `403` si el PIN es incorrecto o la sesión está cerrada |
+| **Solicitar cuenta** | `POST /api/v1/solicitar-cuenta` | El cliente pide la cuenta: `{"numero_mesa": 2, "pin": "4821"}`. Guarda la hora (`fecha_hora_solicita_cuenta`) en la sesión; pedirla de nuevo conserva la primera hora. El mozo la ve como `solicita_cuenta` en `sesiones-mesa` y `mesas` |
+| **Historial de la mesa (cliente)** | `POST /api/v1/mesa/historial` | `{"numero_mesa": 2, "pin": "4821"}` → comandas de la sesión con sus ítems (`cantidad`, `sub_total`), `estado` y `total`. Todos los dispositivos de la mesa ven lo mismo. El estado es el de Redis; si ya no está, es `entregado` |
+| **Comandas de una sesión (mozo)** | `GET /api/v1/sesiones-mesa/{id}/comandas` | Lo mismo que el historial de la mesa, para el mozo (un Mozo solo ve sus sesiones) |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |
 | **Comandas (cliente)** | `POST /api/v1/pedidos` | Crea una comanda, la encola en RabbitMQ (`202 Accepted`). Exige el `pin` de la mesa en el cuerpo: `{"id_comanda_uuid": "...", "mesa_id": 2, "pin": "4821", "items": [{"id": 1}]}`. `409` si la mesa no tiene sesión abierta, `403` si el PIN no coincide |
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
@@ -182,7 +188,7 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Abrir / cerrar mesa, detalle de pedido | Mozo, Admin, Gerente | Mozo, Admin, Gerente (un Mozo solo ve y cierra sus propias sesiones) |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |
-| Enviar comanda (`POST /pedidos`) y acceso por PIN | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
+| Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
 | Comprobante PDF | Público | — |
 
 **Filtros de `GET /api/v1/productos`** (todos opcionales y combinables entre sí; el listado completo, sin filtros, se cachea en Redis):
@@ -197,7 +203,7 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | `orden` | `?orden=precio` · `-precio` · `nombre` · `-nombre` | Orden del resultado |
 | `incluir_inactivos` | `?incluir_inactivos=true` | Incluye productos dados de baja (vista de admin) |
 
-Cada producto trae también `categoria_nombre`, para agrupar el menú sin una segunda consulta a `/categorias`. Un valor inválido devuelve `400` con el parámetro que falló.
+Cada producto trae también `categoria_nombre`, para agrupar el menú sin una segunda consulta a `/categorias`, y `tiempo_estimado` (minutos de preparación) y `porciones` (personas que come), ambos opcionales y editables con PATCH. Un valor inválido devuelve `400` con el parámetro que falló.
 
 > Imágenes de producto: `imagen_url` es un link `https://` externo o una ruta local `/media/productos/<archivo>`, que se sirve desde el mismo servidor (`http://localhost:8080/media/productos/<archivo>`; el front debe anteponer el host de la API). Las fotos subidas se guardan en la carpeta `media/` (no se versiona). El nombre lo genera el servidor y el formato se valida por contenido, no por extensión.
 

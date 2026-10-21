@@ -16,6 +16,8 @@ from .views import (
     LoginView,
     PerfilView,
     AccesoMesaView,
+    SolicitarCuentaView,
+    HistorialMesaView,
 )
 
 router = DefaultRouter(trailing_slash=False)
@@ -32,8 +34,11 @@ urlpatterns = [
     path('login', LoginView.as_view(), name='login'),
     path('me', PerfilView.as_view(), name='perfil'),
     path('acceso-mesa', AccesoMesaView.as_view(), name='acceso-mesa'),
+    path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
+    path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
     path('pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoUpdateView.as_view(), name='actualizar-estado-comanda'),
     path('cocina/tablero', TableroCocinaView.as_view(), name='tablero-cocina'),
     path('pedidos/<uuid:uuid_comanda>/ticket', TicketPDFView.as_view(), name='ticket-comanda'),
+    path('tickets/<uuid:uuid_comanda>.pdf', TicketPDFView.as_view(), name='ticket-comanda-pdf'),  # ruta que usa el front
 ]
