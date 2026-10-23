@@ -8,6 +8,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
+from .especiales import precios_especiales_vigentes
 
 
 def fecha_iso(valor):
@@ -28,17 +29,35 @@ class ProductoSerializer(serializers.ModelSerializer):
     vegetariano = serializers.BooleanField(source='es_vegetariano', required=False, default=False)
     sin_tacc = serializers.BooleanField(source='apto_celiaco', required=False, default=False)
     categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
+    # precio especial vigente (de la jornada abierta); null si el plato no es especial ahora
+    precio_especial = serializers.SerializerMethodField()
+    es_especial_hoy = serializers.SerializerMethodField()
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
-                  'tiempo_estimado', 'porciones']
+                  'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
             'tiempo_estimado': {'required': False, 'allow_null': True, 'min_value': 1},
             'porciones': {'required': False, 'allow_null': True, 'min_value': 1},
         }
+
+    def _precio_especial_vigente(self, obj):
+        precios = self.context.get('precios_especiales')
+        if precios is None:  # fuera del listado (por ejemplo, tras subir una imagen)
+            precios = precios_especiales_vigentes()
+        precio = precios.get(obj.id)
+        # un especial que no baja el precio no se muestra (el precio normal pudo cambiar despues)
+        return precio if precio is not None and precio < obj.precio_actual else None
+
+    def get_precio_especial(self, obj):
+        precio = self._precio_especial_vigente(obj)
+        return f'{precio:.2f}' if precio is not None else None
+
+    def get_es_especial_hoy(self, obj):
+        return self._precio_especial_vigente(obj) is not None
 
     def validate_descripcion(self, value):
         value = (value or '').strip()
@@ -215,6 +234,7 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
     codigo_pin = serializers.CharField(read_only=True)
     fecha_hora_apertura = serializers.DateTimeField(read_only=True)
     numero_mesa = serializers.IntegerField(source='mesa.numero', read_only=True)
+    jornada = serializers.PrimaryKeyRelatedField(read_only=True)
     mozo_nombre = serializers.SerializerMethodField()
     fecha_hora_inicio = serializers.DateTimeField(source='fecha_hora_apertura', read_only=True)
     fecha_hora_solicita_cuenta = serializers.DateTimeField(read_only=True)

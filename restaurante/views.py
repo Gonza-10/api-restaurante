@@ -45,6 +45,8 @@ from .auth import (
     ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
 )
 from .limites import superado, registrar_fallo, limpiar
+from .jornadas import jornada_abierta
+from .especiales import precios_especiales_vigentes
 
 CACHE_TTL_SEGUNDOS = 60
 
@@ -155,6 +157,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 raise ValidationError({'orden': f"Valor invalido. Opciones: {', '.join(ORDENES_PRODUCTO)}."})
             return queryset.order_by(ORDENES_PRODUCTO[orden], 'id')
         return queryset.order_by('id')
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        contexto['precios_especiales'] = precios_especiales_vigentes()  # una sola consulta por pedido
+        return contexto
 
     def list(self, request, *args, **kwargs):
         incluir_inactivos = _es_verdadero(request.query_params.get('incluir_inactivos'))
@@ -376,6 +383,13 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
         numero = entrada.validated_data['numero_mesa']
         comensales = entrada.validated_data['cantidad_comensales']
 
+        jornada = jornada_abierta()
+        if jornada is None:
+            return Response(
+                {'error': 'No hay una jornada abierta. Un Admin o Gerente debe comenzarla antes de abrir mesas.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
         mesa = Mesa.objects.filter(numero=numero, activa=True).first()
         if mesa is None:
             return Response({'error': f'No existe la mesa numero {numero}.'}, status=status.HTTP_404_NOT_FOUND)
@@ -400,6 +414,7 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
                         fecha_hora_apertura=timezone.now(),
                         cantidad_comensales=comensales,
                         estado='Abierto',
+                        jornada=jornada,
                     )
                     mesa.estado = True
                     mesa.save(update_fields=['estado'])
@@ -554,6 +569,18 @@ class ComandaCreateView(APIView):
         if not secrets.compare_digest(pedido_cabecera.codigo_pin.strip().encode(), datos['pin'].encode()):
             registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
             return Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # una mesa de una jornada ya cerrada se puede cobrar, pero no pide mas. Las sesiones anteriores a las
+        # jornadas (sin jornada) piden mientras haya alguna jornada abierta.
+        if pedido_cabecera.jornada_id is not None:
+            toma_pedidos = pedido_cabecera.jornada.estado == 'Abierta'
+        else:
+            toma_pedidos = jornada_abierta() is not None
+        if not toma_pedidos:
+            return Response(
+                {'error': 'El local no esta tomando pedidos: la jornada esta cerrada. Pedi la cuenta al mozo.'},
+                status=status.HTTP_409_CONFLICT
+            )
 
         payload = {
             'id_comanda_uuid': str(datos['id_comanda_uuid']),

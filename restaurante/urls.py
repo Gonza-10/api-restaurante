@@ -19,6 +19,14 @@ from .views import (
     SolicitarCuentaView,
     HistorialMesaView,
 )
+from .views_operacion import (
+    TurnoViewSet,
+    JornadaViewSet,
+    JornadaActualView,
+    JornadaAbrirView,
+    JornadaCerrarView,
+    EspecialViewSet,
+)
 
 router = DefaultRouter(trailing_slash=False)
 router.register(r'categorias', CategoriaViewSet)
@@ -28,12 +36,18 @@ router.register(r'roles', RolViewSet, basename='rol')
 router.register(r'empleados', EmpleadoViewSet, basename='empleado')
 router.register(r'sesiones-mesa', PedidoCabeceraViewSet, basename='sesion-mesa')
 router.register(r'detalles-pedido', PedidoDetalleViewSet)
+router.register(r'turnos', TurnoViewSet, basename='turno')
+router.register(r'jornadas', JornadaViewSet, basename='jornada')
+router.register(r'especiales', EspecialViewSet, basename='especial')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('login', LoginView.as_view(), name='login'),
     path('me', PerfilView.as_view(), name='perfil'),
     path('acceso-mesa', AccesoMesaView.as_view(), name='acceso-mesa'),
+    path('jornada/actual', JornadaActualView.as_view(), name='jornada-actual'),
+    path('jornada/abrir', JornadaAbrirView.as_view(), name='jornada-abrir'),
+    path('jornada/cerrar', JornadaCerrarView.as_view(), name='jornada-cerrar'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),

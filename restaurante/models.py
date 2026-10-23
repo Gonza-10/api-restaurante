@@ -111,6 +111,77 @@ class ProductoSugerido(models.Model):
         unique_together = (('producto', 'producto_sugerido'),)
 
 
+# ==================== JORNADAS Y ESPECIALES ====================
+
+class Turno(models.Model):
+    """Horario de atencion del local (almuerzo, cena...). Si el cierre es menor o igual a la apertura,
+    el turno termina al dia siguiente."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    nombre = models.CharField(max_length=30, db_column='Nombre')
+    hora_apertura = models.TimeField(db_column='HoraApertura')
+    hora_cierre = models.TimeField(db_column='HoraCierre')
+    activo = models.BooleanField(default=True, db_column='Activo')
+
+    class Meta:
+        db_table = 'Turno'
+        managed = False
+
+    def __str__(self):
+        return self.nombre
+
+
+class Jornada(models.Model):
+    """Periodo en que el local esta abierto al publico. Una sola abierta a la vez."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    turno = models.ForeignKey(Turno, on_delete=models.PROTECT, db_column='IdTurno', related_name='jornadas')
+    fecha = models.DateField(db_column='Fecha')  # fecha local de apertura
+    fecha_hora_apertura = models.DateTimeField(db_column='FechaHoraApertura')
+    empleado_apertura = models.ForeignKey(
+        Empleado, on_delete=models.PROTECT, db_column='IdEmpleadoApertura', related_name='jornadas_abiertas'
+    )
+    fecha_hora_cierre = models.DateTimeField(null=True, blank=True, db_column='FechaHoraCierre')
+    empleado_cierre = models.ForeignKey(
+        Empleado, on_delete=models.PROTECT, null=True, blank=True,
+        db_column='IdEmpleadoCierre', related_name='jornadas_cerradas'
+    )
+    estado = models.CharField(max_length=10, default='Abierta', db_column='Estado')  # Abierta / Cerrada
+
+    class Meta:
+        db_table = 'Jornada'
+        managed = False
+
+    def __str__(self):
+        return f'Jornada {self.fecha} ({self.turno.nombre})'
+
+
+class DiaEspecial(models.Model):
+    """Configuracion de una fecha puntual: sus especiales reemplazan a los semanales o se suman a ellos."""
+    fecha = models.DateField(primary_key=True, db_column='Fecha')
+    reemplaza = models.BooleanField(default=False, db_column='Reemplaza')
+    nota = models.CharField(max_length=100, null=True, blank=True, db_column='Nota')
+
+    class Meta:
+        db_table = 'DiaEspecial'
+        managed = False
+
+
+class Especial(models.Model):
+    """Plato con precio especial: regla semanal (dia_semana, 1=lunes ... 7=domingo) o fecha puntual.
+    Sin turno vale todo el dia."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, db_column='IdProducto', related_name='especiales')
+    precio_especial = models.DecimalField(max_digits=10, decimal_places=2, db_column='PrecioEspecial')
+    turno = models.ForeignKey(
+        Turno, on_delete=models.PROTECT, null=True, blank=True, db_column='IdTurno', related_name='especiales'
+    )
+    dia_semana = models.PositiveSmallIntegerField(null=True, blank=True, db_column='DiaSemana')
+    fecha = models.DateField(null=True, blank=True, db_column='Fecha')
+
+    class Meta:
+        db_table = 'Especial'
+        managed = False
+
+
 # ==================== PEDIDOS ====================
 
 class PedidoCabecera(models.Model):
@@ -124,6 +195,10 @@ class PedidoCabecera(models.Model):
     estado = models.CharField(max_length=20, default='Abierto', db_column='Estado')
     # cuando el cliente pidio la cuenta (NULL = todavia no la pidio)
     fecha_hora_solicita_cuenta = models.DateTimeField(null=True, blank=True, db_column='FechaHoraSolicitaCuenta')
+    # jornada en la que se abrio la mesa (NULL en las sesiones anteriores a las jornadas)
+    jornada = models.ForeignKey(
+        Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='sesiones'
+    )
 
     class Meta:
         db_table = 'PedidoCabecera'

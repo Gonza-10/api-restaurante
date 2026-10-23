@@ -84,6 +84,8 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
    5. `sql/Script_AE4_Comandas_Migraciones.sql` — `PedidoDetalle.IdComandaRecibida`: cada ítem queda ligado a la comanda que lo pidió.
    6. `sql/Script_AE4_Cuenta_Migraciones.sql` — `PedidoCabecera.FechaHoraSolicitaCuenta`: cuándo el cliente pidió la cuenta.
    7. `sql/Script_AE4_Tiempos_Migraciones.sql` — `Producto.TiempoEstimadoMin` y `Producto.Porciones` (los valores iniciales los carga el seed).
+   8. `sql/Script_AE4_Jornada_Migraciones.sql` — tablas `Turno` (horarios de atención; carga Almuerzo 10:00–15:00 y Cena 20:00–00:30 de ejemplo) y `Jornada`, y `PedidoCabecera.IdJornada`.
+   9. `sql/Script_AE4_Especiales_Migraciones.sql` — tablas `Especial` y `DiaEspecial` (calendario de especiales). Requiere haber ejecutado antes el 8.
 5. Ejecutar `sql/Script_Seed_AE4.sql` para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos). Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo.
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
@@ -169,6 +171,15 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | **Solicitar cuenta** | `POST /api/v1/solicitar-cuenta` | El cliente pide la cuenta: `{"numero_mesa": 2, "pin": "4821"}`. Guarda la hora (`fecha_hora_solicita_cuenta`) en la sesión; pedirla de nuevo conserva la primera hora. El mozo la ve como `solicita_cuenta` en `sesiones-mesa` y `mesas` |
 | **Historial de la mesa (cliente)** | `POST /api/v1/mesa/historial` | `{"numero_mesa": 2, "pin": "4821"}` → comandas de la sesión con sus ítems (`cantidad`, `sub_total`), `estado` y `total`. Todos los dispositivos de la mesa ven lo mismo. El estado es el de Redis; si ya no está, es `entregado` |
 | **Comandas de una sesión (mozo)** | `GET /api/v1/sesiones-mesa/{id}/comandas` | Lo mismo que el historial de la mesa, para el mozo (un Mozo solo ve sus sesiones) |
+| **Estado del local** | `GET /api/v1/jornada/actual` | Si hay jornada abierta, de qué turno, desde cuándo, `sugerir_cierre` (pasó el horario del turno) y el turno que corresponde a esta hora. Público; los nombres del personal solo se ven con sesión iniciada |
+| **Comenzar jornada** | `POST /api/v1/jornada/abrir` | Admin o Gerente. `{"turno": 2}` (opcional: si falta, usa el turno que corresponde a la hora). `409` si ya hay una abierta. Sin jornada abierta no se abren mesas ni se aceptan comandas |
+| **Cerrar jornada** | `POST /api/v1/jornada/cerrar` | Admin o Gerente. No cierra las mesas que siguen sentadas: ya no piden, pero se pueden cobrar. Devuelve `advertencias` con las mesas que quedaron abiertas. Nunca se cierra sola |
+| Jornadas | `GET /api/v1/jornadas` | Historial (Admin, Gerente). Filtros: `?estado=Abierta`, `?fecha=2026-10-23`, `?turno=2` |
+| **Turnos** | `/api/v1/turnos` | Horarios de atención (`{"nombre": "Cena", "hora_apertura": "20:00", "hora_cierre": "00:30"}`; si el cierre es menor que la apertura, termina al día siguiente). GET público; POST, PATCH y DELETE (baja lógica) solo Gerente |
+| **Especiales** | `/api/v1/especiales` | Plato con precio especial: regla semanal (`{"producto": 5, "precio_especial": 6000, "dia_semana": 2}`, 1=lunes … 7=domingo) o fecha puntual (`"fecha": "2026-10-31"`, con `"reemplaza_semanales": true/false`). `"turno"` opcional (sin turno vale todo el día). El precio especial debe ser menor al normal. Filtros: `?dia_semana=`, `?fecha=`, `?producto=` |
+| Calendario de especiales | `GET /api/v1/especiales/calendario?mes=2026-10` | El mes día por día, con los especiales ya resueltos (cada uno indica su `origen`: `semanal` o `fecha`) |
+| Especiales vigentes | `GET /api/v1/especiales/vigentes` | Los que valen ahora: los de la fecha y el turno de la jornada abierta. Sin jornada, ninguno |
+| Fechas puntuales | `GET /api/v1/especiales/fechas` · `PUT` / `DELETE /api/v1/especiales/fechas/2026-10-31` | PUT: `{"reemplaza_semanales": true, "nota": "Día del Padre"}`. Con `true` y sin especiales cargados ese día, no hay especiales. DELETE borra la fecha y sus especiales |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |
 | **Comandas (cliente)** | `POST /api/v1/pedidos` | Crea una comanda, la encola en RabbitMQ (`202 Accepted`). Exige el `pin` de la mesa en el cuerpo: `{"id_comanda_uuid": "...", "mesa_id": 2, "pin": "4821", "items": [{"id": 1}]}`. `409` si la mesa no tiene sesión abierta, `403` si el PIN no coincide |
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
@@ -186,6 +197,10 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Mesas | Mozo, Admin, Gerente | Admin, Gerente |
 | Roles y empleados | Gerente | Gerente (el DELETE es baja lógica; no puede darse de baja ni cambiarse el rol a sí mismo, y debe quedar al menos un Gerente activo) |
 | Abrir / cerrar mesa, detalle de pedido | Mozo, Admin, Gerente | Mozo, Admin, Gerente (un Mozo solo ve y cierra sus propias sesiones) |
+| Turnos (horarios de atención) | Público | Gerente |
+| Estado de la jornada (`GET /jornada/actual`), especiales (calendario, vigentes) | Público | — |
+| Abrir / cerrar jornada, historial de jornadas | Admin, Gerente | Admin, Gerente |
+| Especiales (crear, editar, borrar, fechas puntuales) | Público | Admin, Gerente |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |
 | Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
@@ -205,9 +220,18 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 
 Cada producto trae también `categoria_nombre`, para agrupar el menú sin una segunda consulta a `/categorias`, y `tiempo_estimado` (minutos de preparación) y `porciones` (personas que come), ambos opcionales y editables con PATCH. Un valor inválido devuelve `400` con el parámetro que falló.
 
+Si el plato es especial en la jornada abierta, trae además `precio_especial` y `es_especial_hoy: true` (si no, `null` y `false`); `precio` sigue siendo el normal, para que el front muestre ambos. El listado cacheado se invalida al abrir o cerrar la jornada y al editar los especiales.
+
 > Imágenes de producto: `imagen_url` es un link `https://` externo o una ruta local `/media/productos/<archivo>`, que se sirve desde el mismo servidor (`http://localhost:8080/media/productos/<archivo>`; el front debe anteponer el host de la API). Las fotos subidas se guardan en la carpeta `media/` (no se versiona). El nombre lo genera el servidor y el formato se valida por contenido, no por extensión.
 
 > Nota: a diferencia de AE1, las rutas no llevan barra final (`/api/v1/productos`, no `/api/v1/productos/`), para evitar redirecciones que puedan degradar peticiones `POST` a `GET` en algunos navegadores.
+
+## Jornadas y especiales
+
+- **Jornada:** periodo en que el local está abierto al público. Hay una sola abierta a la vez y puede haber varias por día (un turno cada una: almuerzo, cena…). La abren y cierran Admin o Gerente con un botón; los horarios de los turnos solo *sugieren* el turno al abrir y *avisan* (`sugerir_cierre`) cuando conviene cerrar, pero nunca abren ni cierran nada solos.
+- **Sin jornada abierta** no se abren mesas ni se aceptan comandas. Cobrar las mesas que quedaron, el stock y lo administrativo siguen disponibles. Una mesa pertenece a la jornada en la que se abrió, aunque se cobre después de cerrarla o pasada la medianoche; las mesas de una jornada cerrada no aceptan pedidos nuevos. Las sesiones anteriores a las jornadas (sin jornada) piden mientras haya alguna abierta.
+- **Especiales:** reglas semanales (todos los martes, etc.) más excepciones por fecha. Una fecha puede *reemplazar* a los especiales semanales de ese día o *sumarse* a ellos (`reemplaza_semanales`). Si un plato está en las dos capas, gana la fecha. Cada especial puede limitarse a un turno. **El día y el turno que valen los define la jornada abierta**, no el reloj: una jornada abierta el viernes a las 20 sigue usando los especiales del viernes pasada la medianoche.
+- **Precio en la comanda:** el worker cobra el precio especial vigente de la jornada de la mesa y lo guarda en `PedidoDetalle.PrecioUnitario`, así que cambiar el calendario después no toca las comandas ya tomadas. Nunca se cobra más que el precio normal.
 
 ## Estructura del repositorio
 

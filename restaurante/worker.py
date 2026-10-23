@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.db import connection, IntegrityError, transaction
 from collections import Counter
 from restaurante.models import PedidoCabecera, PedidoDetalle, Producto
+from restaurante.especiales import precios_especiales, precio_a_cobrar
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
@@ -51,16 +52,23 @@ def procesar_comanda(ch, method, properties, body):
 
             id_comanda = insertar_comanda_control(uuid_str, pedido_cabecera.id)
 
+            # especiales de la jornada en que se abrio la mesa (sin jornada: precio normal)
+            precios_esp = {}
+            if pedido_cabecera.jornada_id is not None:
+                jornada = pedido_cabecera.jornada
+                precios_esp = precios_especiales(jornada.fecha, jornada.turno_id)
+
             conteo = Counter(item['id'] for item in datos['items'])
             for id_producto, cantidad in conteo.items():
                 producto = Producto.objects.get(id=id_producto)
+                precio = precio_a_cobrar(producto, precios_esp)  # nunca mas que el precio normal
                 PedidoDetalle.objects.create(
                     pedido_cabecera=pedido_cabecera,
                     comanda_id=id_comanda,
                     producto=producto,
                     cantidad=cantidad,
-                    precio_unitario=producto.precio_actual,
-                    sub_total=producto.precio_actual * cantidad,
+                    precio_unitario=precio,
+                    sub_total=precio * cantidad,
                     estado_cocina=False
                 )
 
