@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from .auth import ADMIN_GERENTE, SOLO_GERENTE
 from .catalogo import invalidar_cache_catalogo
 from .especiales import calendario_mes, especiales_de_fecha
-from .jornadas import jornada_abierta, turno_sugerido
+from .jornadas import advertencia_apertura, advertencia_cierre, jornada_abierta, turno_sugerido
 from .models import Turno, Jornada, Especial, DiaEspecial, PedidoCabecera
 from .serializers_operacion import (
     TurnoSerializer, JornadaSerializer, JornadaAbrirSerializer, EspecialSerializer, DIAS_SEMANA,
@@ -135,7 +135,10 @@ class JornadaAbrirView(APIView):
             return Response({'error': 'Ya hay una jornada abierta.'}, status=status.HTTP_409_CONFLICT)
 
         invalidar_cache_catalogo()  # los especiales vigentes dependen de la jornada
-        return Response(JornadaSerializer(jornada).data, status=status.HTTP_201_CREATED)
+        aviso = advertencia_apertura(turno)
+        datos = dict(JornadaSerializer(jornada).data)
+        datos['advertencias'] = [aviso] if aviso else []
+        return Response(datos, status=status.HTTP_201_CREATED)
 
 
 class JornadaCerrarView(APIView):
@@ -164,6 +167,9 @@ class JornadaCerrarView(APIView):
             .select_related('mesa').order_by('mesa__numero')
         )
         advertencias = []
+        aviso = advertencia_cierre(jornada)
+        if aviso:
+            advertencias.append(aviso)
         if abiertas:
             numeros = ', '.join(str(s.mesa.numero) for s in abiertas)
             advertencias.append(

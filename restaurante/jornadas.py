@@ -50,6 +50,29 @@ def sugerir_cierre(jornada, ahora=None):
     return (ahora or timezone.now()) > cierre_previsto(jornada)
 
 
+def _rango(turno):
+    return f"{turno.hora_apertura.strftime('%H:%M')} a {turno.hora_cierre.strftime('%H:%M')}"
+
+
+def advertencia_apertura(turno, ahora=None):
+    """Aviso (texto) si se abre un turno fuera de su horario; None si la hora cae dentro. Es solo un aviso:
+    el Gerente puede abrir cuando quiera (para prepararse antes, o para probar el sistema)."""
+    ahora = timezone.localtime(ahora or timezone.now())
+    if turno_contiene(turno, ahora.time()):
+        return None
+    return (f'Se abrio el turno {turno.nombre} fuera de su horario ({_rango(turno)}); '
+            f'son las {ahora.strftime("%H:%M")}.')
+
+
+def advertencia_cierre(jornada, ahora=None):
+    """Aviso (texto) si se cierra la jornada antes del horario previsto de cierre; None si no."""
+    ahora = ahora or timezone.now()
+    if ahora >= cierre_previsto(jornada):
+        return None
+    return (f'Se cerro la jornada antes del horario previsto del turno {jornada.turno.nombre} '
+            f'({_rango(jornada.turno)}).')
+
+
 def duracion_segundos(jornada, ahora=None):
     """Tiempo transcurrido desde la apertura hasta el cierre (o hasta ahora si sigue abierta)."""
     fin = jornada.fecha_hora_cierre or ahora or timezone.now()
