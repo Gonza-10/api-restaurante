@@ -7,11 +7,11 @@ GO
 --                 limita a almuerzo o cena; NULL = todo el dia.
 --   DiaEspecial : configuracion de una fecha puntual. Reemplaza = 1: ese dia valen SOLO los especiales de la fecha
 --                 (con 0 se SUMAN a los de la regla semanal). Una fecha sin filas y con Reemplaza = 1 es un dia sin especiales.
--- Requiere haber ejecutado antes Script_AE4_Jornada_Migraciones.sql (usa la tabla Turno).
+-- Requiere haber ejecutado antes 08_AE4_Jornada_Migraciones.sql (usa la tabla Turno).
 -- Es idempotente: se puede ejecutar mas de una vez.
 
 IF OBJECT_ID('dbo.Turno', 'U') IS NULL
-    RAISERROR('Falta la tabla Turno: ejecutar antes Script_AE4_Jornada_Migraciones.sql.', 16, 1);
+    RAISERROR('Falta la tabla Turno: ejecutar antes 08_AE4_Jornada_Migraciones.sql.', 16, 1);
 GO
 
 IF OBJECT_ID('dbo.DiaEspecial', 'U') IS NULL

@@ -3,7 +3,7 @@ GO
 
 -- Bug #5: tiempo estimado de preparacion (minutos) y porciones (personas que come) de cada producto.
 -- Las columnas son opcionales (NULL = sin dato). Los valores iniciales de los productos del menu
--- los carga Script_Seed_AE4.sql (volver a ejecutarlo despues de este script: es idempotente
+-- los carga 99_Seed_AE4.sql (volver a ejecutarlo despues de este script: es idempotente
 -- y solo completa los que estan vacios).
 -- Es idempotente: se puede ejecutar mas de una vez.
 

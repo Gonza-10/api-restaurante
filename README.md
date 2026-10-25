@@ -75,20 +75,25 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
 
 1. Tener SQL Server instalado localmente.
 2. Crear una base de datos vacía llamada `RestauranteDB`.
-3. Ejecutar `sql/Script_Creacion_RestauranteDB.sql` sobre ella (por ejemplo, desde SQL Server Management Studio) para crear el esquema base.
-4. Ejecutar, en este orden, los scripts de migración (todos son idempotentes: se pueden correr más de una vez, y en una base nueva completan lo que el script de creación no incluye):
-   1. `sql/Script_AE2_Migraciones.sql` — tabla `ComandaRecibida` (idempotencia de comandas).
-   2. `sql/Script_AE4_Mesas_Migraciones.sql` — `Mesa.Activa` (baja lógica) y `Mesa.Numero` único.
-   3. `sql/Script_AE4_Productos_Migraciones.sql` — `Producto.Descripcion` y `Producto.ImagenUrl`.
-   4. `sql/Script_AE4_Sesiones_Migraciones.sql` — una sola sesión abierta por mesa, PIN único entre sesiones abiertas, y sincronización de `Mesa.Estado`.
-   5. `sql/Script_AE4_Comandas_Migraciones.sql` — `PedidoDetalle.IdComandaRecibida`: cada ítem queda ligado a la comanda que lo pidió.
-   6. `sql/Script_AE4_Cuenta_Migraciones.sql` — `PedidoCabecera.FechaHoraSolicitaCuenta`: cuándo el cliente pidió la cuenta.
-   7. `sql/Script_AE4_Tiempos_Migraciones.sql` — `Producto.TiempoEstimadoMin` y `Producto.Porciones` (los valores iniciales los carga el seed).
-   8. `sql/Script_AE4_Jornada_Migraciones.sql` — tablas `Turno` (horarios de atención; carga Almuerzo 10:00–15:00 y Cena 20:00–00:30 de ejemplo) y `Jornada`, y `PedidoCabecera.IdJornada`.
-   9. `sql/Script_AE4_Especiales_Migraciones.sql` — tablas `Especial` y `DiaEspecial` (calendario de especiales). Requiere haber ejecutado antes el 8.
-   10. `sql/Script_AE4_Disponibilidad_Migraciones.sql` — `Producto.Disponible` (lo calcula el stock), `Producto.AgotadoManual` (override de Cocina) y quién/cuándo lo agotó. Los productos existentes quedan disponibles.
-5. Ejecutar `sql/Script_Seed_AE4.sql` para cargar datos de prueba reproducibles (4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos). Es idempotente: se puede volver a ejecutar sin duplicar filas. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo.
-6. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
+3. Los scripts de `sql/` llevan un número al principio del nombre (`NN_nombre.sql`): se ejecutan **en orden numérico** sobre `RestauranteDB` (por ejemplo, desde SQL Server Management Studio), desde el `00` hasta el `99`. Un script nuevo toma el número siguiente; el seed es siempre el último (`99`). Todos, salvo el `00`, son idempotentes: se pueden correr más de una vez, y en una base nueva completan lo que el script de creación no incluye.
+
+   | N.º | Script | Qué hace |
+   |---|---|---|
+   | 00 | `00_Creacion_RestauranteDB.sql` | Esquema base (solo en una base vacía; no es idempotente) |
+   | 01 | `01_AE2_Migraciones.sql` | Tabla `ComandaRecibida` (idempotencia de comandas) |
+   | 02 | `02_AE4_Mesas_Migraciones.sql` | `Mesa.Activa` (baja lógica) y `Mesa.Numero` único |
+   | 03 | `03_AE4_Productos_Migraciones.sql` | `Producto.Descripcion` y `Producto.ImagenUrl` |
+   | 04 | `04_AE4_Sesiones_Migraciones.sql` | Una sola sesión abierta por mesa, PIN único entre sesiones abiertas y sincronización de `Mesa.Estado` |
+   | 05 | `05_AE4_Comandas_Migraciones.sql` | `PedidoDetalle.IdComandaRecibida`: cada ítem queda ligado a la comanda que lo pidió |
+   | 06 | `06_AE4_Cuenta_Migraciones.sql` | `PedidoCabecera.FechaHoraSolicitaCuenta`: cuándo el cliente pidió la cuenta |
+   | 07 | `07_AE4_Tiempos_Migraciones.sql` | `Producto.TiempoEstimadoMin` y `Producto.Porciones` (los valores iniciales los carga el seed) |
+   | 08 | `08_AE4_Jornada_Migraciones.sql` | Tablas `Turno` (carga Almuerzo 10:00–15:00 y Cena 20:00–00:30 de ejemplo) y `Jornada`, y `PedidoCabecera.IdJornada` |
+   | 09 | `09_AE4_Especiales_Migraciones.sql` | Tablas `Especial` y `DiaEspecial` (calendario de especiales). Requiere el 08 |
+   | 10 | `10_AE4_Disponibilidad_Migraciones.sql` | `Producto.Disponible` (lo calcula el stock), `Producto.AgotadoManual` (override de Cocina) y quién/cuándo lo agotó |
+   | 11 | `11_AE4_Stock_Insumos_Migraciones.sql` | Stock, hito 1: `Proveedor`, `Insumo`, `InsumoProveedor`, `Compra`, `LoteInsumo`, `MovimientoStock` y la vista `vw_StockInsumo`. Requiere el 08 |
+   | 99 | `99_Seed_AE4.sql` | Datos de prueba reproducibles: 4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo |
+
+4. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
 
 ### 6. Levantar RabbitMQ y Redis (Docker)
 
@@ -117,7 +122,7 @@ Deberían aparecer dos contenedores: uno para RabbitMQ (puertos `5672` y `15672`
 
 ### Usuarios de prueba
 
-Cargados por `sql/Script_Seed_AE4.sql`. Todos usan la misma contraseña, **solo para desarrollo** (cambiarla antes de habilitar un login real; este repositorio es público):
+Cargados por `sql/99_Seed_AE4.sql`. Todos usan la misma contraseña, **solo para desarrollo** (cambiarla antes de habilitar un login real; este repositorio es público):
 
 | Usuario | Contraseña | Rol | Nombre |
 |---|---|---|---|
@@ -311,7 +316,7 @@ Django (ComandaEstadoUpdateView) ──si estado="listo"──► RabbitMQ (coma
 - Caché de catálogo con Redis (TTL + invalidación explícita).
 - Estado efímero de cocina gestionado en Redis (sin persistir en SQL Server).
 - Generación asíncrona de comprobante PDF.
-- Script de datos semilla (`sql/Script_Seed_AE4.sql`, reemplaza al de AE2), idempotente.
+- Script de datos semilla (`sql/99_Seed_AE4.sql`, reemplaza al de AE2), idempotente.
 
 **Diferido explícitamente a AE4 (fuera del alcance de AE2):**
 - `Reserva` — gestión de reservas.

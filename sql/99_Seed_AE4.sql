@@ -4,8 +4,8 @@
 -- (roles/categorias/productos por Nombre, mesas por Numero,
 -- empleados por Usuario). Se puede ejecutar mas de una vez
 -- y no modifica filas ya cargadas (salvo la clave de los 5 usuarios de demo).
--- Requisito: haber ejecutado Script_Creacion_RestauranteDB.sql
--- (o Script_AE4_Mesas_Migraciones.sql en una base existente).
+-- Requisito: haber ejecutado 00_Creacion_RestauranteDB.sql
+-- (o 02_AE4_Mesas_Migraciones.sql en una base existente).
 -- No carga sesiones de mesa: las abre el mozo desde la API.
 -- Las marcas de vegetariano / sin TACC son de ejemplo: revisar.
 -- =========================================================
@@ -99,7 +99,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Producto p WHERE p.Nombre = v.Nombre);
 
 -- Descripciones (solo completa las que estan vacias: no pisa lo que se haya editado a mano)
 IF COL_LENGTH('dbo.Producto', 'Descripcion') IS NULL
-    PRINT 'AVISO: falta la columna Descripcion. Ejecutar antes Script_AE4_Productos_Migraciones.sql';
+    PRINT 'AVISO: falta la columna Descripcion. Ejecutar antes 03_AE4_Productos_Migraciones.sql';
 ELSE
     EXEC(N'
 UPDATE p SET p.Descripcion = v.Descripcion
@@ -147,7 +147,7 @@ WHERE p.Descripcion IS NULL;
 -- Tiempo estimado (minutos) y porciones (personas que come): solo completa los que estan vacios,
 -- asi no pisa lo que se haya editado a mano. Son valores iniciales por tipo de producto.
 IF COL_LENGTH('dbo.Producto', 'TiempoEstimadoMin') IS NULL OR COL_LENGTH('dbo.Producto', 'Porciones') IS NULL
-    PRINT 'AVISO: faltan las columnas TiempoEstimadoMin/Porciones. Ejecutar antes Script_AE4_Tiempos_Migraciones.sql';
+    PRINT 'AVISO: faltan las columnas TiempoEstimadoMin/Porciones. Ejecutar antes 07_AE4_Tiempos_Migraciones.sql';
 ELSE
     EXEC(N'
 UPDATE p
