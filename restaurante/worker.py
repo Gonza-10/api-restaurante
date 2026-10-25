@@ -15,9 +15,9 @@ from django.utils import timezone
 from django.db import connection, IntegrityError, transaction
 from collections import Counter
 from restaurante.models import PedidoCabecera, PedidoDetalle, Producto
-from restaurante.especiales import precios_especiales, precio_a_cobrar
+from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
 
-r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
 
 
 def insertar_comanda_control(uuid_str, id_pedido_cabecera):
@@ -58,10 +58,11 @@ def procesar_comanda(ch, method, properties, body):
                 jornada = pedido_cabecera.jornada
                 precios_esp = precios_especiales(jornada.fecha, jornada.turno_id)
 
-            conteo = Counter(item['id'] for item in datos['items'])
-            for id_producto, cantidad in conteo.items():
+            # el cliente paga el precio que vio (si cambio despues) salvo que ahora sea menor; ver precio_segun_lo_que_vio
+            conteo = Counter((item['id'], item.get('precio')) for item in datos['items'])
+            for (id_producto, precio_visto), cantidad in conteo.items():
                 producto = Producto.objects.get(id=id_producto)
-                precio = precio_a_cobrar(producto, precios_esp)  # nunca mas que el precio normal
+                precio = precio_segun_lo_que_vio(precio_a_cobrar(producto, precios_esp), precio_visto)
                 PedidoDetalle.objects.create(
                     pedido_cabecera=pedido_cabecera,
                     comanda_id=id_comanda,

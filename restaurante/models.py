@@ -92,10 +92,22 @@ class Producto(models.Model):
     imagen_url = models.CharField(max_length=500, null=True, blank=True, db_column='ImagenUrl')
     tiempo_estimado = models.PositiveIntegerField(null=True, blank=True, db_column='TiempoEstimadoMin')  # minutos
     porciones = models.PositiveIntegerField(null=True, blank=True, db_column='Porciones')  # personas que come
+    # Disponibilidad: 'activo' es la decision de carta del Admin; estos dos los deciden el stock y Cocina
+    disponible = models.BooleanField(default=True, db_column='Disponible')  # lo calcula el stock (0 = faltan insumos)
+    agotado_manual = models.BooleanField(default=False, db_column='AgotadoManual')  # Cocina: "sin insumos"
+    fecha_hora_agotado = models.DateTimeField(null=True, blank=True, db_column='FechaHoraAgotado')
+    empleado_agotado = models.ForeignKey(
+        'Empleado', null=True, blank=True, on_delete=models.SET_NULL, db_column='IdEmpleadoAgotado', related_name='+'
+    )
 
     class Meta:
         db_table = 'Producto'
         managed = False
+
+    @property
+    def visible_cliente(self):
+        """El cliente solo ve el producto si esta en la carta, hay insumos y Cocina no lo agoto."""
+        return self.activo and self.disponible and not self.agotado_manual
 
     def __str__(self):
         return self.nombre

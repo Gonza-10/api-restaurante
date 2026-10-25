@@ -154,6 +154,8 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+# el front necesita leer la version del menu que viaja en el encabezado de GET /productos
+CORS_EXPOSE_HEADERS = ['X-Catalogo-Version']
 
 # Duracion de la sesion (token de login), en segundos
 TOKEN_TTL_SEGUNDOS = 12 * 60 * 60

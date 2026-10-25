@@ -19,6 +19,7 @@ from .views import (
     SolicitarCuentaView,
     HistorialMesaView,
 )
+from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
     TurnoViewSet,
     JornadaViewSet,
@@ -48,6 +49,10 @@ urlpatterns = [
     path('jornada/actual', JornadaActualView.as_view(), name='jornada-actual'),
     path('jornada/abrir', JornadaAbrirView.as_view(), name='jornada-abrir'),
     path('jornada/cerrar', JornadaCerrarView.as_view(), name='jornada-cerrar'),
+    path('catalogo/eventos', catalogo_eventos, name='catalogo-eventos'),
+    path('catalogo/version', CatalogoVersionView.as_view(), name='catalogo-version'),
+    path('productos/<int:pk>/agotar', ProductoDisponibilidadView.as_view(accion='agotar'), name='producto-agotar'),
+    path('productos/<int:pk>/reactivar', ProductoDisponibilidadView.as_view(accion='reactivar'), name='producto-reactivar'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),

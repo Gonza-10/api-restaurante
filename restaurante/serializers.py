@@ -32,11 +32,18 @@ class ProductoSerializer(serializers.ModelSerializer):
     # precio especial vigente (de la jornada abierta); null si el plato no es especial ahora
     precio_especial = serializers.SerializerMethodField()
     es_especial_hoy = serializers.SerializerMethodField()
+    # disponibilidad (solo lectura): se cambia con POST /productos/{id}/agotar y /reactivar, o la calcula el stock
+    disponible = serializers.BooleanField(read_only=True)
+    agotado_manual = serializers.BooleanField(read_only=True)
+    agotado_desde = serializers.SerializerMethodField()
+    agotado_por = serializers.SerializerMethodField()
+    visible = serializers.BooleanField(source='visible_cliente', read_only=True)
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
-                  'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy']
+                  'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy',
+                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
@@ -51,6 +58,19 @@ class ProductoSerializer(serializers.ModelSerializer):
         precio = precios.get(obj.id)
         # un especial que no baja el precio no se muestra (el precio normal pudo cambiar despues)
         return precio if precio is not None and precio < obj.precio_actual else None
+
+    def _es_personal(self):
+        # el menu es publico: quien agoto un plato (nombre del empleado) solo lo ve el personal logueado
+        solicitud = self.context.get('request')
+        return bool(getattr(getattr(solicitud, 'user', None), 'is_authenticated', False))
+
+    def get_agotado_desde(self, obj):
+        return fecha_iso(obj.fecha_hora_agotado) if obj.agotado_manual and self._es_personal() else None
+
+    def get_agotado_por(self, obj):
+        if not obj.agotado_manual or obj.empleado_agotado is None or not self._es_personal():
+            return None
+        return f'{obj.empleado_agotado.nombre} {obj.empleado_agotado.apellido}'
 
     def get_precio_especial(self, obj):
         precio = self._precio_especial_vigente(obj)
@@ -314,6 +334,8 @@ class ComandaEntradaSerializer(serializers.Serializer):
     )
     items = ItemComandaSerializer(many=True)
     timestamp = serializers.DateTimeField(required=False)
+    # version del menu que el cliente tenia al armar el pedido (header X-Catalogo-Version de GET /productos)
+    version_menu = serializers.IntegerField(required=False, min_value=0)
 
     def validate_items(self, value):
         if not value:

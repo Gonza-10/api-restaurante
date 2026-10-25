@@ -13,6 +13,7 @@ sigue usando los especiales del viernes pasada la medianoche. Sin jornada abiert
 """
 import calendar
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from .jornadas import jornada_abierta
 from .models import Especial, DiaEspecial
@@ -81,6 +82,21 @@ def precios_especiales_vigentes():
     if jornada is None:
         return {}
     return precios_especiales(jornada.fecha, jornada.turno_id)
+
+
+def precio_segun_lo_que_vio(precio_vigente, precio_visto):
+    """Precio final de un item. El cliente paga el precio que vio en su menu aunque haya subido mientras armaba el
+    pedido; si bajo, paga el nuevo. `precio_visto` lo calcula el servidor (nunca lo manda el cliente) y puede
+    faltar o venir mal: entonces rige el precio vigente."""
+    if precio_visto is None:
+        return precio_vigente
+    try:
+        visto = Decimal(str(precio_visto))
+    except (InvalidOperation, ValueError):
+        return precio_vigente
+    if not visto.is_finite() or visto <= 0:
+        return precio_vigente
+    return min(precio_vigente, visto)
 
 
 def precio_a_cobrar(producto, precios):

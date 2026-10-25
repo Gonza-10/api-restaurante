@@ -1389,6 +1389,760 @@
           ]
         }
       ]
+    },
+    {
+      "name": "4. Disponibilidad (agotado de Cocina y aviso del menu)",
+      "item": [
+        {
+          "name": "4.1 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 El gerente comienza la jornada (Cena)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{turno_cena}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 El mozo abre la mesa 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('id_sesion', s.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Version del menu antes de agotar (publico)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/catalogo/version",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('version_antes', pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 El mozo NO puede agotar platos",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/productos/{{producto_id}}/agotar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rechaza con 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Cocina marca el plato como sin insumos",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/productos/{{producto_id}}/agotar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Queda agotado a mano', () => pm.expect(p.agotado_manual).to.eql(true));",
+                  "pm.test('Ya no es visible para el cliente', () => pm.expect(p.visible).to.eql(false));",
+                  "pm.test('Registra quien lo agoto', () => pm.expect(p.agotado_por).to.be.a('string'));",
+                  "pm.test('El Admin no lo habia sacado de la carta (activo sigue true)', () => pm.expect(p.activo).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.7 La version del menu subio (el aviso en tiempo real y el respaldo la leen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/catalogo/version",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('La version es mayor', () => pm.expect(pm.response.json().version).to.be.above(parseInt(pm.collectionVariables.get('version_antes'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.8 El menu del cliente ya no lo muestra",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const id = parseInt(pm.collectionVariables.get('producto_id'));",
+                  "pm.test('No aparece en el menu', () => pm.expect(pm.response.json().some(x => x.id === id)).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.9 La vista de gestion lo sigue mostrando, marcado como no visible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?incluir_inactivos=true",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const id = parseInt(pm.collectionVariables.get('producto_id'));",
+                  "const p = pm.response.json().find(x => x.id === id);",
+                  "pm.test('Aparece con agotado_manual true y visible false', () => { pm.expect(p.agotado_manual).to.eql(true); pm.expect(p.visible).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.10 Un cliente con el menu viejo no puede pedirlo (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin}}\", \"items\": [{\"id\": {{producto_id}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rechaza con 409', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('Informa cual producto y por que', () => { pm.expect(d.productos_no_disponibles[0].id).to.eql(parseInt(pm.collectionVariables.get('producto_id'))); pm.expect(d.productos_no_disponibles[0].motivo).to.eql('sin_insumos'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.11 Cocina lo reactiva",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/productos/{{producto_id}}/reactivar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Vuelve a ser visible', () => { pm.expect(p.agotado_manual).to.eql(false); pm.expect(p.visible).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.12 Vuelve a aparecer en el menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const id = parseInt(pm.collectionVariables.get('producto_id'));",
+                  "pm.test('Aparece de nuevo', () => pm.expect(pm.response.json().some(x => x.id === id)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.13 El cliente ve el menu: se guarda el precio y la version que vio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const version = pm.response.headers.get('X-Catalogo-Version');",
+                  "pm.test('El menu informa su version (X-Catalogo-Version)', () => pm.expect(version).to.match(/^[0-9]+$/));",
+                  "const id = parseInt(pm.collectionVariables.get('producto_id'));",
+                  "const p = pm.response.json().find(x => x.id === id);",
+                  "const visto = p.es_especial_hoy ? p.precio_especial : p.precio;",
+                  "pm.collectionVariables.set('version_vista', version);",
+                  "pm.collectionVariables.set('precio_visto', visto);",
+                  "pm.collectionVariables.set('precio_nuevo', (parseFloat(visto) + 1000).toFixed(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.14 El gerente sube el precio mientras el cliente arma su pedido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"precio\": \"{{precio_nuevo}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.15 El cliente confirma con la version que vio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin}}\", \"version_menu\": {{version_vista}}, \"items\": [{\"id\": {{producto_id}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.16 Paga el precio que vio, no el nuevo (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"pin\": \"{{pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3000)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const uuid = pm.collectionVariables.get('uuid_comanda').toLowerCase();",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid.toLowerCase() === uuid);",
+                  "pm.test('La comanda ya fue procesada por el worker (si falla: worker.py apagado)', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Se cobro el precio que el cliente vio', () => pm.expect(parseFloat(c.items[0].precio)).to.eql(parseFloat(pm.collectionVariables.get('precio_visto'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.17 Sin version_menu se cobra el precio vigente (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin}}\", \"items\": [{\"id\": {{producto_id}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.18 Esa comanda se cobro al precio nuevo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"pin\": \"{{pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3000));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const uuid = pm.collectionVariables.get('uuid_comanda').toLowerCase();",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid.toLowerCase() === uuid);",
+                  "pm.test('La comanda fue procesada', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Se cobro el precio vigente (el nuevo)', () => pm.expect(parseFloat(c.items[0].precio)).to.eql(parseFloat(pm.collectionVariables.get('precio_nuevo'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.19 Limpieza: se restaura el precio original",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"precio\": \"{{precio_visto}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.20 Limpieza: cerrar la jornada",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.21 Limpieza: cerrar la sesion de la mesa 3",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{id_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

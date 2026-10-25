@@ -47,6 +47,9 @@ from .auth import (
 from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
 from .especiales import precios_especiales_vigentes
+from .catalogo import (
+    invalidar_cache_catalogo, version_catalogo, clave_cache_catalogo, guardar_precios_vistos, precios_vistos,
+)
 
 CACHE_TTL_SEGUNDOS = 60
 
@@ -83,6 +86,19 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     roles_escritura = ADMIN_GERENTE
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
+
+    # el nombre de la categoria se muestra en el menu: cualquier cambio se avisa en tiempo real
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        invalidar_cache_catalogo()
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        invalidar_cache_catalogo()
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        invalidar_cache_catalogo()
 
 
 # ==================== FILTROS DEL CATALOGO ====================
@@ -125,14 +141,16 @@ class ProductoViewSet(viewsets.ModelViewSet):
     roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
-        queryset = Producto.objects.select_related('categoria').all()
+        queryset = Producto.objects.select_related('categoria', 'empleado_agotado').all()
         if self.action != 'list':
             return queryset
 
         p = self.request.query_params
 
+        # el menu del cliente solo muestra lo que se puede pedir: en carta, con insumos y no agotado por Cocina
+        # (incluir_inactivos=true es la vista de gestion: trae todo, con sus indicadores)
         if not _es_verdadero(p.get('incluir_inactivos')):
-            queryset = queryset.filter(activo=True)
+            queryset = queryset.filter(activo=True, disponible=True, agotado_manual=False)
 
         # Todos los filtros se combinan entre si (AND)
         if p.get('categoria'):
@@ -168,24 +186,35 @@ class ProductoViewSet(viewsets.ModelViewSet):
         # el cache solo vale para el listado completo: cualquier filtro u orden lo saltea
         usar_cache = set(request.query_params.keys()) <= PARAMS_SIN_CACHE_PERMITIDOS
 
-        cache_key = 'catalogo:productos:admin' if incluir_inactivos else 'catalogo:productos:publico'
+        # version del menu ANTES de leer: la copia, la clave del cache y los precios que se informan son de esa version.
+        # La clave incluye la version: tras cualquier cambio la copia vieja deja de leerse (sin carreras).
+        version = version_catalogo()
+        cache_key = clave_cache_catalogo('admin' if incluir_inactivos else 'publico', version)
 
+        respuesta = None
         if usar_cache:
             datos_cacheados = redis_client.get(cache_key)
             if datos_cacheados:
                 print(f'[CACHE HIT] {cache_key}')
-                return Response(json.loads(datos_cacheados))
-            print(f'[CACHE MISS] {cache_key}')
+                respuesta = Response(json.loads(datos_cacheados))
+            else:
+                print(f'[CACHE MISS] {cache_key}')
 
-        respuesta = super().list(request, *args, **kwargs)
+        if respuesta is None:
+            respuesta = super().list(request, *args, **kwargs)
+            if usar_cache:
+                redis_client.setex(cache_key, CACHE_TTL_SEGUNDOS, json.dumps(respuesta.data))
+            if not incluir_inactivos:
+                # "el cliente paga el precio que vio": se recuerda que precio mostraba esta version del menu
+                guardar_precios_vistos(version, {
+                    p['id']: p['precio_especial'] if p.get('es_especial_hoy') else p['precio'] for p in respuesta.data
+                })
 
-        if usar_cache:
-            redis_client.setex(cache_key, CACHE_TTL_SEGUNDOS, json.dumps(respuesta.data))
-
+        respuesta['X-Catalogo-Version'] = str(version)  # el front la guarda y la envia como version_menu al pedir
         return respuesta
 
     def _invalidar_cache_catalogo(self):
-        redis_client.delete('catalogo:productos:publico', 'catalogo:productos:admin')
+        invalidar_cache_catalogo()  # borra el cache y avisa a los clientes conectados (sube la version)
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -582,10 +611,41 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        # el menu del cliente puede estar desactualizado: el servidor decide si el plato se puede pedir
+        ids_pedidos = {item['id'] for item in datos['items']}
+        existentes = {p.id: p for p in Producto.objects.filter(id__in=ids_pedidos)}
+        no_disponibles = []
+        for id_producto in sorted(ids_pedidos):
+            producto = existentes.get(id_producto)
+            if producto is None:
+                motivo = 'no_existe'
+            elif not producto.activo:
+                motivo = 'fuera_de_carta'
+            elif producto.agotado_manual or not producto.disponible:
+                motivo = 'sin_insumos'
+            else:
+                continue
+            no_disponibles.append({
+                'id': id_producto, 'nombre': producto.nombre if producto else None, 'motivo': motivo,
+            })
+        if no_disponibles:
+            return Response(
+                {'error': 'Hay productos que ya no estan disponibles. Quitalos del carrito y volve a enviar el pedido.',
+                 'productos_no_disponibles': no_disponibles},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # el cliente paga el precio que vio: si informa la version del menu que tenia, el servidor busca los precios
+        # que mostraba esa version (nunca confia en un precio mandado por el cliente)
+        vistos = precios_vistos(datos['version_menu']) if datos.get('version_menu') is not None else {}
+
         payload = {
             'id_comanda_uuid': str(datos['id_comanda_uuid']),
             'id_pedido_cabecera': pedido_cabecera.id,
-            'items': [{'id': item['id']} for item in datos['items']],
+            'items': [
+                {'id': item['id'], 'precio': str(vistos[item['id']]) if item['id'] in vistos else None}
+                for item in datos['items']
+            ],
         }
 
         try:
