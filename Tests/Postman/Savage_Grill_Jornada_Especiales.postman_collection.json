@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Savage Grill - Jornada y Especiales (automatica)",
-    "description": "Prueba de punta a punta de Jornada, Turnos y Especiales. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 8 y 9 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad y Stock)",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad y Stock. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 11 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -2137,6 +2137,1680 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Stock (hito 1: proveedores, insumos, compras, lotes, ajustes)",
+      "item": [
+        {
+          "name": "5.0 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.1 Cocina NO puede crear proveedores (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"No deberia crearse\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 El Mozo NO ve el stock (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Sin token no se ve el stock (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Crear proveedor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Prueba Proveedor {{sufijo}}\", \"contacto\": \"Contacto de prueba\", \"telefono\": \"3764000000\", \"email\": \"prueba@example.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('prov_id', p.id);",
+                  "pm.test('Nace activo', () => pm.expect(p.activo).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Proveedor con nombre repetido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Prueba Proveedor {{sufijo}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 Proveedor con email invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Otro {{sufijo}}\", \"email\": \"esto-no-es-un-email\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 Crear insumo (Carne, en gramos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Prueba Carne {{sufijo}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 150000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const i = pm.response.json();",
+                  "pm.collectionVariables.set('insumo_id', i.id);",
+                  "pm.test('La unidad base es g', () => pm.expect(i.unidad_base).to.eql('g'));",
+                  "pm.test('Sin stock: agotado y en rojo', () => { pm.expect(i.estado).to.eql('Agotado'); pm.expect(i.semaforo).to.eql('rojo'); });",
+                  "pm.test('Umbrales por defecto 50 y 20', () => { pm.expect(i.umbral_bajo_pct).to.eql(50); pm.expect(i.umbral_critico_pct).to.eql(20); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.8 Umbrales incoherentes: critico >= bajo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Umbrales {{sufijo}}\", \"tipo_medida\": \"Masa\", \"umbral_bajo_pct\": 30, \"umbral_critico_pct\": 40}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.9 Tipo de medida invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Medida {{sufijo}}\", \"tipo_medida\": \"Litros\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.10 Crear insumo (Huevos, en unidades)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Prueba Huevos {{sufijo}}\", \"tipo_medida\": \"Unidad\", \"stock_objetivo\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('insumo_id2', pm.response.json().id);",
+                  "pm.test('La unidad base es u', () => pm.expect(pm.response.json().unidad_base).to.eql('u'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.11 Asignar el proveedor principal al insumo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{insumo_id}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedores\": [{\"proveedor\": {{prov_id}}, \"es_principal\": true}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const prov = pm.response.json().proveedores;",
+                  "pm.test('Queda un proveedor, el principal', () => { pm.expect(prov.length).to.eql(1); pm.expect(prov[0].es_principal).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.12 Dos proveedores principales (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{insumo_id}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedores\": [{\"proveedor\": {{prov_id}}, \"es_principal\": true}, {\"proveedor\": {{prov_id}}, \"es_principal\": true}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.13 Compra con la cantidad indicada de las dos formas (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id}}, \"lineas\": [{\"insumo\": {{insumo_id}}, \"cantidad\": 1000, \"cantidad_presentaciones\": 2, \"tamano_presentacion\": 500, \"costo_total\": 100}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.14 Compra con vencimiento pasado (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id}}, \"lineas\": [{\"insumo\": {{insumo_id}}, \"cantidad\": 1000, \"costo_total\": 100, \"fecha_vencimiento\": \"{{venc_pasado}}\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = d => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('venc_10', f(10));",
+                  "pm.collectionVariables.set('venc_30', f(30));",
+                  "pm.collectionVariables.set('venc_pasado', f(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.15 Huevos en cantidad fraccionada (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id}}, \"lineas\": [{\"insumo\": {{insumo_id2}}, \"cantidad\": 2.5, \"costo_total\": 100}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.16 Registrar la compra (3 lineas = 3 lotes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id}}, \"numero_comprobante\": \"PRUEBA-{{sufijo}}\", \"lineas\": [{\"insumo\": {{insumo_id}}, \"cantidad_presentaciones\": 4, \"tamano_presentacion\": 20000, \"costo_total\": 160000, \"fecha_vencimiento\": \"{{venc_10}}\"},{\"insumo\": {{insumo_id}}, \"cantidad\": 40000, \"costo_total\": 100000, \"fecha_vencimiento\": \"{{venc_30}}\"},{\"insumo\": {{insumo_id2}}, \"cantidad\": 60, \"costo_total\": 600}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = d => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('venc_10', f(10));",
+                  "pm.collectionVariables.set('venc_30', f(30));",
+                  "pm.collectionVariables.set('venc_pasado', f(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.collectionVariables.set('compra_id', c.id);",
+                  "pm.test('Tres lotes', () => pm.expect(c.lineas.length).to.eql(3));",
+                  "pm.collectionVariables.set('lote_a', c.lineas[0].id);",
+                  "pm.collectionVariables.set('lote_b', c.lineas[1].id);",
+                  "pm.test('4 bolsas de 20 kg = 80000 g', () => pm.expect(c.lineas[0].cantidad_inicial).to.eql('80000.000'));",
+                  "pm.test('Costo por gramo = 160000 / 80000 = 2', () => pm.expect(parseFloat(c.lineas[0].costo_unitario)).to.eql(2));",
+                  "pm.test('Total de la compra = 260600.00', () => pm.expect(parseFloat(c.total)).to.eql(260600));",
+                  "pm.test('Quedo ligada al empleado', () => pm.expect(c.registrada_por).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.17 La compra figura en el historial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/compras?proveedor={{prov_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Esta la compra recien hecha', () => pm.expect(pm.response.json().some(c => c.id === pm.collectionVariables.get('compra_id'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.18 Stock resumido: cada insumo con su % y semaforo, el mas grave primero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?buscar={{sufijo}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const carne = r.insumos.find(i => i.id === pm.collectionVariables.get('insumo_id'));",
+                  "pm.test('Vista resumida por defecto', () => pm.expect(r.vista).to.eql('resumida'));",
+                  "pm.test('Carne: 120000 de 150000 = 80 %, verde', () => { pm.expect(carne.porcentaje).to.eql(80); pm.expect(carne.estado).to.eql('Ok'); pm.expect(carne.semaforo).to.eql('verde'); });",
+                  "pm.test('La vista resumida NO trae cantidades ni costos', () => { pm.expect(carne).to.not.have.property('stock_actual'); pm.expect(carne).to.not.have.property('costo_reposicion'); });",
+                  "pm.test('No hay un porcentaje general (nunca se promedia)', () => { pm.expect(r.resumen).to.not.have.property('porcentaje'); pm.expect(r.resumen).to.not.have.property('promedio'); });",
+                  "pm.test('El resumen cuenta insumos por estado', () => { pm.expect(r.resumen.total).to.eql(r.insumos.length); pm.expect(r.resumen.por_estado).to.have.property('Critico'); });",
+                  "const orden = ['Agotado', 'Critico', 'Bajo', 'SinObjetivo', 'Ok'];",
+                  "pm.test('Ordenado de lo mas grave a lo mas sano', () => { const idx = r.insumos.map(i => orden.indexOf(i.estado)); pm.expect(idx).to.eql([...idx].sort((a, b) => a - b)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.19 Cocina ve el stock resumido (puede)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cocina ve cada insumo con su estado', () => pm.expect(pm.response.json().insumos.every(i => i.estado && i.semaforo && 'porcentaje' in i)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.20 Cocina cambia a la vista detallada: cuanto hay de cada uno, sin costos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const carne = pm.response.json().insumos.find(i => i.id === pm.collectionVariables.get('insumo_id'));",
+                  "pm.test('Cuanto hay: 120 kg de 150 kg', () => { pm.expect(carne.stock_actual_texto).to.eql('120 kg'); pm.expect(carne.stock_objetivo_texto).to.eql('150 kg'); });",
+                  "pm.test('Dos lotes activos y el proximo vencimiento', () => { pm.expect(carne.lotes_activos).to.eql(2); pm.expect(carne.proximo_vencimiento).to.eql(pm.collectionVariables.get('venc_10')); });",
+                  "pm.test('Cocina NO ve costos, valor ni proveedores', () => { ['costo_reposicion', 'valor_stock', 'proveedor_principal'].forEach(k => pm.expect(carne).to.not.have.property(k)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.21 El Gerente ve la vista detallada con costos y proveedor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const carne = pm.response.json().insumos.find(i => i.id === pm.collectionVariables.get('insumo_id'));",
+                  "pm.test('Costo de reposicion = ultimo lote comprado = 2.5 por g', () => pm.expect(parseFloat(carne.costo_reposicion)).to.eql(2.5));",
+                  "pm.test('Valor del stock = 80000 x 2 + 40000 x 2.5 = 260000', () => pm.expect(parseFloat(carne.valor_stock)).to.eql(260000));",
+                  "pm.test('Proveedor principal', () => pm.expect(carne.proveedor_principal.id).to.eql(pm.collectionVariables.get('prov_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.22 Cocina NO puede entrar a /insumos (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.23 Vista de stock invalida (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=otra",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.24 Ajuste hacia abajo: descuenta por FEFO (primero el lote que vence antes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": 50000, \"motivo\": \"Prueba de inventario\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Habia 120000, se conto 50000: diferencia -70000', () => { pm.expect(parseFloat(r.stock_anterior)).to.eql(120000); pm.expect(parseFloat(r.diferencia)).to.eql(-70000); });",
+                  "pm.test('Un solo movimiento Ajuste, del lote que vence antes', () => { pm.expect(r.movimientos.length).to.eql(1); pm.expect(r.movimientos[0].tipo).to.eql('Ajuste'); pm.expect(r.movimientos[0].lote).to.eql(pm.collectionVariables.get('lote_a')); pm.expect(parseFloat(r.movimientos[0].cantidad)).to.eql(-70000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.25 Ajuste hacia arriba: crea un lote de origen Ajuste",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": 60000, \"motivo\": \"Prueba: se encontro mercaderia\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Diferencia +10000 en un movimiento Ajuste', () => { pm.expect(parseFloat(r.diferencia)).to.eql(10000); pm.expect(r.movimientos.length).to.eql(1); pm.expect(parseFloat(r.movimientos[0].cantidad)).to.eql(10000); });",
+                  "pm.collectionVariables.set('lote_ajuste', r.movimientos[0].lote);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.26 Ajuste sin cambios: no registra nada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": 60000, \"motivo\": \"Prueba sin diferencia\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sin movimientos', () => pm.expect(pm.response.json().movimientos.length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.27 Ajuste con cantidad negativa (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": -5, \"motivo\": \"Prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.28 Ajuste sin motivo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.29 Lotes activos del insumo (3, uno de origen Ajuste con el ultimo costo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/lotes?insumo={{insumo_id}}&estado=activo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lotes = pm.response.json();",
+                  "pm.test('Tres lotes activos', () => pm.expect(lotes.length).to.eql(3));",
+                  "const aj = lotes.find(l => l.id === pm.collectionVariables.get('lote_ajuste'));",
+                  "pm.test('El lote de ajuste conserva el ultimo costo (2.5)', () => { pm.expect(aj.origen).to.eql('Ajuste'); pm.expect(parseFloat(aj.costo_unitario)).to.eql(2.5); });",
+                  "const a = lotes.find(l => l.id === pm.collectionVariables.get('lote_a'));",
+                  "pm.test('El lote que vence antes quedo con 10000', () => pm.expect(parseFloat(a.cantidad_actual)).to.eql(10000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.30 Dar de baja un lote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/lotes/{{lote_a}}/baja",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Prueba de baja\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test('Quedo en Baja y sin cantidad', () => { pm.expect(l.estado).to.eql('Baja'); pm.expect(parseFloat(l.cantidad_actual)).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.31 Dar de baja el mismo lote otra vez (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/lotes/{{lote_a}}/baja",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Prueba de baja\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.32 Libro de movimientos del insumo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{insumo_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "const tipos = m.map(x => x.tipo).sort();",
+                  "pm.test('2 Compra + 2 Ajuste + 1 Perdida (la baja)', () => pm.expect(tipos).to.eql(['Ajuste', 'Ajuste', 'Compra', 'Compra', 'Perdida']));",
+                  "pm.test('Los que salen son negativos y los que entran positivos', () => m.forEach(x => { const q = parseFloat(x.cantidad); if (['Compra'].includes(x.tipo)) pm.expect(q).to.be.above(0); if (x.tipo === 'Perdida') pm.expect(q).to.be.below(0); }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.33 El libro es consistente: suma de movimientos = cantidad de cada lote",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente (si falla, mirar lotes_inconsistentes)', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.34 Estado final de la carne: 50000 de 150000 = 33.3 %, amarillo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?estado=bajo&buscar={{sufijo}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Aparece en amarillo (bajo)', () => { pm.expect(r.insumos.length).to.eql(1); pm.expect(r.insumos[0].estado).to.eql('Bajo'); pm.expect(r.insumos[0].semaforo).to.eql('amarillo'); pm.expect(r.insumos[0].porcentaje).to.eql(33.3); });",
+                  "pm.test('El resumen sigue contando todos los insumos del texto buscado', () => pm.expect(r.resumen.total).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.35 Dar de baja un insumo con stock (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{insumo_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.36 Limpieza: dejar la carne en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.37 Limpieza: baja de la carne",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{insumo_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.38 Limpieza: dejar los huevos en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{insumo_id2}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.39 Limpieza: baja de los huevos",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{insumo_id2}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.40 Limpieza: baja del proveedor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/proveedores/{{prov_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.41 Los dados de baja quedan marcados como inactivos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{insumo_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Inactivo, sin stock', () => { const i = pm.response.json(); pm.expect(i.activo).to.eql(false); pm.expect(parseFloat(i.stock_actual)).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.42 El libro termina consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
                 ]
               }
             }

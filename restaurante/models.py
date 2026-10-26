@@ -339,4 +339,117 @@ class MovimientoCaja(models.Model):
 
     class Meta:
         db_table = 'MovimientoCaja'
-        managed = False
+        managed = False
+
+# ==================== STOCK (hito 1) ====================
+# Las cantidades estan siempre en UNIDAD BASE: gramos, mililitros o unidades segun el TipoMedida del insumo.
+
+class Proveedor(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    nombre = models.CharField(max_length=100, db_column='Nombre')
+    contacto = models.CharField(max_length=100, null=True, blank=True, db_column='Contacto')
+    telefono = models.CharField(max_length=30, null=True, blank=True, db_column='Telefono')
+    email = models.CharField(max_length=120, null=True, blank=True, db_column='Email')
+    direccion = models.CharField(max_length=200, null=True, blank=True, db_column='Direccion')
+    notas = models.CharField(max_length=300, null=True, blank=True, db_column='Notas')
+    activo = models.BooleanField(default=True, db_column='Activo')  # baja logica: conserva el historial de compras
+
+    class Meta:
+        db_table = 'Proveedor'
+        managed = False
+
+    def __str__(self):
+        return self.nombre
+
+
+class Insumo(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    nombre = models.CharField(max_length=100, db_column='Nombre')
+    tipo_medida = models.CharField(max_length=10, db_column='TipoMedida')  # Masa / Volumen / Unidad
+    stock_objetivo = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_column='StockObjetivo')  # el 100%
+    umbral_bajo_pct = models.PositiveSmallIntegerField(default=50, db_column='UmbralBajoPct')  # amarillo
+    umbral_critico_pct = models.PositiveSmallIntegerField(default=20, db_column='UmbralCriticoPct')  # rojo
+    activo = models.BooleanField(default=True, db_column='Activo')
+
+    class Meta:
+        db_table = 'Insumo'
+        managed = False
+
+    def __str__(self):
+        return self.nombre
+
+
+# La tabla InsumoProveedor (insumo <-> proveedor, sin columna Id) se maneja con SQL directo en stock.py.
+
+
+class Compra(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT, db_column='IdProveedor', related_name='compras')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleado', related_name='+')
+    jornada = models.ForeignKey(Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='+')
+    numero_comprobante = models.CharField(max_length=50, null=True, blank=True, db_column='NumeroComprobante')
+    nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')
+
+    class Meta:
+        db_table = 'Compra'
+        managed = False
+
+
+class LoteInsumo(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='lotes')
+    compra = models.ForeignKey(Compra, on_delete=models.PROTECT, null=True, blank=True, db_column='IdCompra', related_name='lotes')
+    origen = models.CharField(max_length=12, default='Compra', db_column='Origen')  # Compra / Ajuste / Elaboracion
+    fecha_ingreso = models.DateTimeField(db_column='FechaIngreso')
+    fecha_vencimiento = models.DateField(null=True, blank=True, db_column='FechaVencimiento')
+    tamano_presentacion = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, db_column='TamanoPresentacion')
+    cantidad_presentaciones = models.IntegerField(null=True, blank=True, db_column='CantidadPresentaciones')
+    cantidad_inicial = models.DecimalField(max_digits=12, decimal_places=3, db_column='CantidadInicial')
+    cantidad_actual = models.DecimalField(max_digits=12, decimal_places=3, db_column='CantidadActual')
+    costo_unitario = models.DecimalField(max_digits=14, decimal_places=6, db_column='CostoUnitario')  # por unidad base
+    estado = models.CharField(max_length=10, default='Activo', db_column='Estado')  # Activo / Agotado / Vencido / Baja
+
+    class Meta:
+        db_table = 'LoteInsumo'
+        managed = False
+
+
+class MovimientoStock(models.Model):
+    """Libro de movimientos: nunca se edita ni se borra. Cantidad con signo (+ entra, - sale)."""
+    id = models.BigAutoField(primary_key=True, db_column='Id')
+    lote = models.ForeignKey(LoteInsumo, on_delete=models.PROTECT, db_column='IdLote', related_name='movimientos')
+    tipo = models.CharField(max_length=12, db_column='Tipo')
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='+')
+    jornada = models.ForeignKey(Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='+')
+    comanda = models.ForeignKey(
+        ComandaRecibida, on_delete=models.PROTECT, null=True, blank=True, db_column='IdComandaRecibida', related_name='+'
+    )
+    motivo = models.CharField(max_length=100, null=True, blank=True, db_column='Motivo')
+    nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')
+
+    class Meta:
+        db_table = 'MovimientoStock'
+        managed = False
+
+
+class StockInsumo(models.Model):
+    """Vista vw_StockInsumo (solo lectura): stock actual de cada insumo, porcentaje del objetivo y semaforo."""
+    insumo = models.OneToOneField(
+        Insumo, primary_key=True, on_delete=models.DO_NOTHING, db_column='IdInsumo', related_name='stock'
+    )
+    nombre = models.CharField(max_length=100, db_column='Nombre')
+    tipo_medida = models.CharField(max_length=10, db_column='TipoMedida')
+    stock_objetivo = models.DecimalField(max_digits=12, decimal_places=3, db_column='StockObjetivo')
+    umbral_bajo_pct = models.PositiveSmallIntegerField(db_column='UmbralBajoPct')
+    umbral_critico_pct = models.PositiveSmallIntegerField(db_column='UmbralCriticoPct')
+    activo = models.BooleanField(db_column='Activo')
+    stock_actual = models.DecimalField(max_digits=14, decimal_places=3, db_column='StockActual')
+    porcentaje = models.DecimalField(max_digits=7, decimal_places=1, null=True, db_column='Porcentaje')
+    estado = models.CharField(max_length=12, db_column='Estado')  # Agotado / SinObjetivo / Critico / Bajo / Ok
+
+    class Meta:
+        db_table = 'vw_StockInsumo'
+        managed = False

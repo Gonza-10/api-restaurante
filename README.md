@@ -191,6 +191,15 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | **Reactivar un plato** | `POST /api/v1/productos/{id}/reactivar` | Cocina, Admin o Gerente. `409` si el stock todavía no alcanza para prepararlo. El stock nunca reactiva solo un plato agotado a mano |
 | **Aviso en tiempo real del menú** | `GET /api/v1/catalogo/eventos` | Público. Flujo SSE (`text/event-stream`): evento `catalogo` con `{"version": N}` al conectar y cada vez que cambia el menú. Ver «Disponibilidad y aviso en tiempo real» |
 | Versión del menú | `GET /api/v1/catalogo/version` | Público. `{"version": N}`. Respaldo del flujo en tiempo real: si el número cambió, volver a pedir `/productos` |
+| **Proveedores** | `/api/v1/proveedores` | Admin, Gerente. ABM; `DELETE` es baja lógica. `?incluir_inactivos=true`, `?buscar=texto` |
+| **Insumos** | `/api/v1/insumos` | Admin, Gerente. ABM de la materia prima: `{"nombre": "Harina", "tipo_medida": "Masa", "stock_objetivo": 150000}` (todo en unidad base: g, ml o unidades). Cada insumo trae `stock_actual`, `porcentaje`, `estado` y `semaforo`. `DELETE` es baja lógica y `409` si todavía tiene stock |
+| Proveedores de un insumo | `PUT /api/v1/insumos/{id}/proveedores` | `{"proveedores": [{"proveedor": 1, "es_principal": true}, {"proveedor": 2}]}`: reemplaza la lista; un solo principal |
+| **Compras** | `POST /api/v1/compras` · `GET /api/v1/compras` | Admin, Gerente. Una compra a un proveedor con una línea por insumo; cada línea crea un lote. La cantidad va de UNA forma: `"cantidad": 150000` o `"cantidad_presentaciones": 10` + `"tamano_presentacion": 15000`; más `costo_total` y `fecha_vencimiento` (opcional). No se editan ni se borran |
+| Lotes | `GET /api/v1/lotes` · `POST /api/v1/lotes/{id}/baja` | Admin, Gerente. Filtros `?insumo=`, `?estado=activo\|agotado\|vencido\|baja`, `?vence_en_dias=N`. La baja saca del stock lo que quedaba (`{"motivo": "..."}`) |
+| Libro de movimientos | `GET /api/v1/movimientos-stock` | Admin, Gerente. Todo cambio de stock, más nuevos primero. Filtros `?insumo=`, `?lote=`, `?tipo=`, `?desde=`, `?hasta=`, `?limite=` |
+| **Estado del stock** | `GET /api/v1/stock` | Cocina, Admin, Gerente. Insumo por insumo con su `porcentaje` y `semaforo`, lo más grave primero. `?vista=detallada` agrega cuánto hay de cada uno, el objetivo, lotes y próximo vencimiento (Admin y Gerente además costos, valor del stock y proveedor principal). Filtros `?estado=critico,bajo` y `?buscar=` |
+| Ajuste por inventario | `POST /api/v1/stock/ajustes` | Admin, Gerente. `{"insumo": 1, "cantidad_real": 50000, "motivo": "..."}`: deja el stock en lo que se contó (descuenta por FEFO, o crea un lote de origen `Ajuste`) |
+| Verificación del libro | `GET /api/v1/stock/verificacion` | Admin, Gerente. Comprueba que la suma de los movimientos de cada lote sea igual a su cantidad actual |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |
 | **Comandas (cliente)** | `POST /api/v1/pedidos` | Crea una comanda, la encola en RabbitMQ (`202 Accepted`). Exige el `pin` de la mesa en el cuerpo: `{"id_comanda_uuid": "...", "mesa_id": 2, "pin": "4821", "items": [{"id": 1}], "version_menu": 25}` (`version_menu` es opcional: la versión del menú que el cliente tenía; ver «El cliente paga el precio que vio»). `409` si la mesa no tiene sesión abierta, `403` si el PIN no coincide |
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
@@ -212,6 +221,8 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Estado de la jornada (`GET /jornada/actual`), especiales (calendario, vigentes) | Público | — |
 | Abrir / cerrar jornada, historial de jornadas | Admin, Gerente | Admin, Gerente |
 | Especiales (crear, editar, borrar, fechas puntuales) | Público | Admin, Gerente |
+| Proveedores, insumos, compras, lotes, movimientos y ajustes de stock | Admin, Gerente | Admin, Gerente |
+| Estado del stock (`GET /stock`) | Cocina, Admin, Gerente (Cocina no ve costos ni proveedores) | — |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |
 | Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
@@ -257,6 +268,19 @@ Si el plato es especial en la jornada abierta, trae además `precio_especial` y 
   - *Despliegue:* con `runserver` cada conexión ocupa un hilo (alcanza para la demo). En producción conviene un servidor ASGI.
 - **El cliente paga el precio que vio.** `GET /productos` devuelve en el encabezado `X-Catalogo-Version` la versión del menú que está mostrando (el especial vigente cuenta como precio). El front la guarda y la manda como `version_menu` en `POST /pedidos`. El servidor recuerda qué precio mostraba cada versión (2 h después de un cambio, 24 h la vigente) y cobra ese precio aunque haya subido mientras el cliente armaba el pedido; si bajó, cobra el nuevo. **El cliente nunca manda un precio**, solo la versión: no hay forma de elegir un precio inventado. Sin `version_menu`, o con una versión desconocida o vencida, se cobra el precio vigente. Los platos agotados o fuera de carta se rechazan igual (`409`), sin importar el precio.
 - **Probarlo:** `python Tests\Scripts\probar_sse.py` (con el servidor corriendo) mide cuánto tarda el aviso, comprueba la reconexión y deja el plato reactivado. La colección de Postman tiene la carpeta «4. Disponibilidad».
+
+## Stock (hito 1)
+
+Cómo se conecta todo, en el orden en que se usa:
+
+1. **Proveedores** (contacto, teléfono, email) y **insumos** (la materia prima). Cada insumo se mide en una *unidad base* según su tipo: `Masa` = gramos, `Volumen` = mililitros, `Unidad` = unidades. Kilos y litros son solo una forma de mostrarlos. A cada insumo se le asocian uno o varios proveedores, uno de ellos principal.
+2. **Compra → lotes.** Cada línea de una compra crea un *lote*: lo que entró de ese insumo, con su costo por unidad base y su vencimiento. El tamaño de la bolsa se define en cada compra (10 bolsas de 15 kg un mes, de 10 kg otro). El stock de un insumo es la **suma de sus lotes activos**; no hay una columna con el total. El costo de reposición es el del último lote comprado.
+3. **Todo movimiento queda en el libro** (`MovimientoStock`): cantidad con signo, lote, tipo (`Compra`, `Consumo`, `Perdida`, `Ajuste`, `Devolucion`, `Vencido`, `Elaboracion`), quién, en qué jornada y por qué comanda. Nunca se edita ni se borra; un error se corrige con otro movimiento. La suma de los movimientos de un lote siempre es igual a su cantidad actual (`GET /stock/verificacion`).
+4. **Descuento FEFO:** siempre se saca del lote que vence antes (los que no vencen, al final). No existe stock negativo: la base lo impide con un `CHECK`, y cada operación bloquea los lotes que toca para que dos operaciones simultáneas se ordenen.
+5. **Semáforo por insumo.** El porcentaje es el stock actual sobre el *stock objetivo* del insumo; amarillo (`Bajo`) a partir del umbral bajo (50 % por defecto) y rojo (`Critico`) a partir del umbral crítico (20 %); `Agotado` si no queda nada y `SinObjetivo` si no se definió el 100 %. **No hay un porcentaje general**: se muestra cada insumo y se ordena por gravedad, porque un promedio taparía un insumo esencial en rojo. `resumen` cuenta cuántos insumos hay en cada estado.
+6. **Próximos hitos:** recetas y descuento por comanda, disponibilidad de los platos, pérdidas con motivo, modificadores, y elaboración (sub-recetas), vencimientos y alertas.
+
+- **Probarlo:** la carpeta «5. Stock» de la colección de Postman (requiere los scripts SQL 08 a 11). Deja sus datos de prueba dados de baja; los lotes y movimientos quedan en el libro porque no se borran.
 
 ## Estructura del repositorio
 

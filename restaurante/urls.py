@@ -19,6 +19,16 @@ from .views import (
     SolicitarCuentaView,
     HistorialMesaView,
 )
+from .views_stock import (
+    ProveedorViewSet,
+    InsumoViewSet,
+    CompraViewSet,
+    LoteViewSet,
+    MovimientoStockViewSet,
+    StockView,
+    AjusteStockView,
+    VerificacionLibroView,
+)
 from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
     TurnoViewSet,
@@ -40,6 +50,11 @@ router.register(r'detalles-pedido', PedidoDetalleViewSet)
 router.register(r'turnos', TurnoViewSet, basename='turno')
 router.register(r'jornadas', JornadaViewSet, basename='jornada')
 router.register(r'especiales', EspecialViewSet, basename='especial')
+router.register(r'proveedores', ProveedorViewSet, basename='proveedor')
+router.register(r'insumos', InsumoViewSet, basename='insumo')
+router.register(r'compras', CompraViewSet, basename='compra')
+router.register(r'lotes', LoteViewSet, basename='lote')
+router.register(r'movimientos-stock', MovimientoStockViewSet, basename='movimiento-stock')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -53,6 +68,9 @@ urlpatterns = [
     path('catalogo/version', CatalogoVersionView.as_view(), name='catalogo-version'),
     path('productos/<int:pk>/agotar', ProductoDisponibilidadView.as_view(accion='agotar'), name='producto-agotar'),
     path('productos/<int:pk>/reactivar', ProductoDisponibilidadView.as_view(accion='reactivar'), name='producto-reactivar'),
+    path('stock', StockView.as_view(), name='stock'),
+    path('stock/ajustes', AjusteStockView.as_view(), name='stock-ajustes'),
+    path('stock/verificacion', VerificacionLibroView.as_view(), name='stock-verificacion'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
