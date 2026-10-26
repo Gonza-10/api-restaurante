@@ -4,6 +4,7 @@ import json
 import uuid
 import secrets
 import pika
+from collections import Counter
 from decouple import config
 
 from decimal import Decimal, InvalidOperation
@@ -47,6 +48,7 @@ from .auth import (
 from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
 from .especiales import precios_especiales_vigentes
+from .recetas import evaluar_conteo, faltantes_para_respuesta, mensaje_para_cliente
 from .catalogo import (
     invalidar_cache_catalogo, version_catalogo, clave_cache_catalogo, guardar_precios_vistos, precios_vistos,
 )
@@ -635,6 +637,16 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        # hay insumos para todo lo que pide? Es un aviso previo: la palabra final la tiene el worker, que descuenta el
+        # stock. Si no alcanza se rechaza el pedido entero y se informa cuanto se puede preparar de cada plato.
+        faltantes, _, _ = evaluar_conteo(Counter(item['id'] for item in datos['items']))
+        if faltantes:
+            detalle, _nombres = faltantes_para_respuesta(faltantes)
+            return Response(
+                {'error': mensaje_para_cliente(faltantes), 'productos_sin_stock': detalle},
+                status=status.HTTP_409_CONFLICT
+            )
+
         # el cliente paga el precio que vio: si informa la version del menu que tenia, el servidor busca los precios
         # que mostraba esa version (nunca confia en un precio mandado por el cliente)
         vistos = precios_vistos(datos['version_menu']) if datos.get('version_menu') is not None else {}
@@ -866,9 +878,12 @@ def _comandas_de_sesion(sesion):
             }
             for d in comanda.detalles.all()
         ]
+        rechazada = comanda.estado == 'Rechazada'
         resultado.append({
             'id_comanda_uuid': str(comanda.id_comanda_uuid),
-            'estado': redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') or 'entregado',
+            'estado': 'rechazada' if rechazada
+            else (redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') or 'entregado'),
+            'mensaje': comanda.mensaje_cliente if rechazada else None,
             'timestamp': comanda.fecha_hora_recepcion,
             'items': items,
             'total': sum((i['sub_total'] for i in items), Decimal('0.00')),

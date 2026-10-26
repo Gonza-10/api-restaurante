@@ -29,6 +29,7 @@ from .views_stock import (
     AjusteStockView,
     VerificacionLibroView,
 )
+from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinRecetaView, ComandasRechazadasView
 from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
     TurnoViewSet,
@@ -55,6 +56,7 @@ router.register(r'insumos', InsumoViewSet, basename='insumo')
 router.register(r'compras', CompraViewSet, basename='compra')
 router.register(r'lotes', LoteViewSet, basename='lote')
 router.register(r'movimientos-stock', MovimientoStockViewSet, basename='movimiento-stock')
+router.register(r'recetas', RecetaViewSet, basename='receta')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -71,6 +73,9 @@ urlpatterns = [
     path('stock', StockView.as_view(), name='stock'),
     path('stock/ajustes', AjusteStockView.as_view(), name='stock-ajustes'),
     path('stock/verificacion', VerificacionLibroView.as_view(), name='stock-verificacion'),
+    path('productos/<int:pk>/receta', ProductoRecetaView.as_view(), name='producto-receta'),
+    path('productos-sin-receta', ProductosSinRecetaView.as_view(), name='productos-sin-receta'),
+    path('comandas-rechazadas', ComandasRechazadasView.as_view(), name='comandas-rechazadas'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),

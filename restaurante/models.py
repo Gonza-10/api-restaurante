@@ -99,6 +99,10 @@ class Producto(models.Model):
     empleado_agotado = models.ForeignKey(
         'Empleado', null=True, blank=True, on_delete=models.SET_NULL, db_column='IdEmpleadoAgotado', related_name='+'
     )
+    # receta que gasta una unidad de este producto; NULL = sin control de stock (por ejemplo una bebida cerrada)
+    receta = models.ForeignKey(
+        'Receta', null=True, blank=True, on_delete=models.PROTECT, db_column='IdReceta', related_name='productos'
+    )
 
     class Meta:
         db_table = 'Producto'
@@ -250,6 +254,10 @@ class ComandaRecibida(models.Model):
         db_column='IdPedidoCabecera', related_name='comandas'
     )
     fecha_hora_recepcion = models.DateTimeField(db_column='FechaHoraRecepcion')
+    # Aceptada, o Rechazada si al llegar no alcanzaba el stock (entonces no tiene items ni descuenta nada)
+    estado = models.CharField(max_length=10, default='Aceptada', db_column='Estado')
+    motivo = models.CharField(max_length=500, null=True, blank=True, db_column='Motivo')  # interno: solo personal
+    mensaje_cliente = models.CharField(max_length=300, null=True, blank=True, db_column='MensajeCliente')
 
     class Meta:
         db_table = 'ComandaRecibida'
@@ -452,4 +460,31 @@ class StockInsumo(models.Model):
 
     class Meta:
         db_table = 'vw_StockInsumo'
+        managed = False
+
+
+# ==================== RECETAS (hito 2) ====================
+
+class Receta(models.Model):
+    """Que insumos gasta UNA unidad vendida. Los productos del menu la referencian (Producto.receta)."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    nombre = models.CharField(max_length=100, db_column='Nombre')
+    descripcion = models.CharField(max_length=300, null=True, blank=True, db_column='Descripcion')
+
+    class Meta:
+        db_table = 'Receta'
+        managed = False
+
+    def __str__(self):
+        return self.nombre
+
+
+class RecetaIngrediente(models.Model):
+    id = models.AutoField(primary_key=True, db_column='Id')
+    receta = models.ForeignKey(Receta, on_delete=models.CASCADE, db_column='IdReceta', related_name='ingredientes')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='usos_en_recetas')
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')  # unidad base, por unidad vendida
+
+    class Meta:
+        db_table = 'RecetaIngrediente'
         managed = False

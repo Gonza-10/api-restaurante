@@ -381,6 +381,8 @@ class ComandaHistorialSerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField()
     items = ItemHistorialSerializer(many=True)
     total = serializers.DecimalField(max_digits=12, decimal_places=2)
+    # solo en las comandas rechazadas por falta de insumos: texto para mostrar al cliente (null en el resto)
+    mensaje = serializers.CharField(allow_null=True, required=False)
 
 
 class HistorialMesaSerializer(serializers.Serializer):

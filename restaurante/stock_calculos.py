@@ -96,3 +96,92 @@ def resumen_estados(estados):
         'peor_estado': peor,
         'semaforo_general': SEMAFORO[peor] if peor else None,
     }
+
+
+# ==================== RECETAS Y DESCUENTO POR COMANDA (hito 2) ====================
+# Una receta dice cuanto gasta UNA unidad vendida: [(id_insumo, cantidad_en_unidad_base), ...].
+
+def porciones_posibles(ingredientes, disponible):
+    """Cuantas unidades se pueden preparar con lo que hay. ingredientes: [(id_insumo, cantidad)];
+    disponible: {id_insumo: cantidad}. Devuelve (porciones, id_insumo_limitante): el limitante es el insumo que
+    primero se acaba (a igual cantidad, el de menor id). Una receta sin ingredientes devuelve (None, None)."""
+    mejor = None
+    limitante = None
+    for id_insumo, cantidad in sorted(ingredientes):
+        alcanza = int((a_decimal(disponible.get(id_insumo, CERO)) // a_decimal(cantidad)))
+        if mejor is None or alcanza < mejor:
+            mejor, limitante = alcanza, id_insumo
+    return mejor, limitante
+
+
+def requerimiento_por_insumo(conteo, recetas):
+    """Cuanto de cada insumo necesita un pedido. conteo: {id_producto: cantidad pedida};
+    recetas: {id_producto: [(id_insumo, cantidad)]} (los productos sin receta no consumen).
+    Devuelve {id_insumo: cantidad_total} con los insumos de todas las recetas sumados."""
+    total = {}
+    for id_producto, pedido in conteo.items():
+        for id_insumo, cantidad in recetas.get(id_producto, ()):
+            total[id_insumo] = total.get(id_insumo, CERO) + a_decimal(cantidad) * pedido
+    return total
+
+
+def evaluar_pedido(conteo, recetas, disponible):
+    """Decide si alcanza el stock para todo el pedido. Los productos se evaluan en orden de id y cada uno reserva
+    lo suyo, asi dos platos que comparten un insumo no cuentan dos veces la misma cantidad.
+    Devuelve la lista de faltantes (vacia si alcanza todo):
+    [{'id_producto', 'pedido', 'posibles', 'id_insumo_limitante'}], donde `posibles` es cuantas unidades de ese
+    producto se pueden preparar (0 si ninguna)."""
+    restante = {k: a_decimal(v) for k, v in disponible.items()}
+    faltantes = []
+    for id_producto in sorted(conteo):
+        ingredientes = recetas.get(id_producto)
+        if not ingredientes:
+            continue
+        pedido = conteo[id_producto]
+        posibles, limitante = porciones_posibles(ingredientes, restante)
+        if posibles is None:
+            continue
+        reservar = min(posibles, pedido)
+        for id_insumo, cantidad in ingredientes:
+            restante[id_insumo] = restante.get(id_insumo, CERO) - a_decimal(cantidad) * reservar
+        if posibles < pedido:
+            faltantes.append({
+                'id_producto': id_producto, 'pedido': pedido, 'posibles': posibles, 'id_insumo_limitante': limitante,
+            })
+    return faltantes
+
+
+def mensaje_cliente_faltantes(faltantes, nombres_producto):
+    """Mensaje generico para el cliente: nunca dice que insumo falta, solo cuanto se puede preparar de cada plato."""
+    partes = []
+    for f in faltantes:
+        nombre = nombres_producto.get(f['id_producto'], 'el plato')
+        if f['posibles'] > 0:
+            partes.append(f"Podemos preparar solamente {f['posibles']} de {f['pedido']} {nombre}")
+        else:
+            partes.append(f'Por ahora no podemos preparar {nombre}')
+    return 'Insumos insuficientes. ' + '. '.join(partes) + '. Disculpe las molestias.'
+
+
+def motivo_interno_faltantes(faltantes, nombres_producto, nombres_insumo):
+    """Detalle para el personal: que plato, cuantos alcanzan y que insumo limita."""
+    partes = []
+    for f in faltantes:
+        partes.append(
+            f"{nombres_producto.get(f['id_producto'], f['id_producto'])}: pedidos {f['pedido']}, "
+            f"alcanzan {f['posibles']}; limita {nombres_insumo.get(f['id_insumo_limitante'], f['id_insumo_limitante'])}"
+        )
+    return '; '.join(partes)
+
+
+def costo_de_receta(lineas):
+    """Costo de una unidad de la receta. lineas: [(cantidad, costo_unitario)] con el costo de reposicion por unidad
+    base. Devuelve (total, completo): completo es False si algun insumo no tiene costo (nunca se compro)."""
+    total = CERO
+    completo = True
+    for cantidad, costo in lineas:
+        if costo is None or a_decimal(costo) <= 0:
+            completo = False
+            continue
+        total += a_decimal(cantidad) * a_decimal(costo)
+    return redondear_dinero(total), completo
