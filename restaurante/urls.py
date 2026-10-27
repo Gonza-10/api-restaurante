@@ -29,6 +29,7 @@ from .views_stock import (
     AjusteStockView,
     VerificacionLibroView,
 )
+from .views_notificaciones import NotificacionesCocinaView
 from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinRecetaView, ComandasRechazadasView
 from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
@@ -74,6 +75,7 @@ urlpatterns = [
     path('stock/ajustes', AjusteStockView.as_view(), name='stock-ajustes'),
     path('stock/verificacion', VerificacionLibroView.as_view(), name='stock-verificacion'),
     path('productos/<int:pk>/receta', ProductoRecetaView.as_view(), name='producto-receta'),
+    path('cocina/notificaciones', NotificacionesCocinaView.as_view(), name='cocina-notificaciones'),
     path('productos-sin-receta', ProductosSinRecetaView.as_view(), name='productos-sin-receta'),
     path('comandas-rechazadas', ComandasRechazadasView.as_view(), name='comandas-rechazadas'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),

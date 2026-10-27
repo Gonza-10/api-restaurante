@@ -205,6 +205,7 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | Receta de un producto | `GET` · `PUT /api/v1/productos/{id}/receta` | `{"receta": 3}` asigna la receta; `{"receta": null}` deja el producto sin control de stock (por ejemplo, una bebida cerrada). Varios productos pueden compartir la misma receta. No está en `PUT /productos/{id}` porque el menú es público |
 | Productos sin receta | `GET /api/v1/productos-sin-receta` | Admin, Gerente. Productos en carta que no descuentan stock: para no olvidarse ninguno |
 | Comandas rechazadas | `GET /api/v1/comandas-rechazadas` | Admin, Gerente. Comandas que no se pudieron preparar por falta de stock, con el `motivo` interno (plato, cuántos alcanzaban e insumo que limitó). Filtros `?desde=`, `?hasta=`, `?limite=` |
+| **Notificaciones de Cocina** | `GET /api/v1/cocina/notificaciones` | Cocina, Admin, Gerente. Se calculan en el momento (no se guardan): el panel las consulta cada ~10 s. Tipos: `plato_sin_insumos` (plato en carta que no se puede preparar, con los insumos que faltan), `insumo_critico` (insumo agotado o en nivel crítico) y `se_puede_reactivar` (plato agotado a mano por Cocina que ya tiene insumos). Cada una trae `severidad` (`urgente` / `aviso` / `info`), `mensaje` y los datos del plato o insumo; `resumen` cuenta por tipo y severidad. Ver «Stock (hito 3)» |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |
 | **Comandas (cliente)** | `POST /api/v1/pedidos` | Crea una comanda, la encola en RabbitMQ (`202 Accepted`). Exige el `pin` de la mesa en el cuerpo: `{"id_comanda_uuid": "...", "mesa_id": 2, "pin": "4821", "items": [{"id": 1}], "version_menu": 25}` (`version_menu` es opcional: la versión del menú que el cliente tenía; ver «El cliente paga el precio que vio»). `409` si la mesa no tiene sesión abierta, `403` si el PIN no coincide. `409` con `productos_sin_stock` (`id`, `nombre`, `pedido`, `posibles`) y un `error` listo para mostrar si los insumos no alcanzan para todo el pedido: se rechaza el pedido entero (ver «Stock (hito 2)») |
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
@@ -230,6 +231,7 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Estado del stock (`GET /stock`) | Cocina, Admin, Gerente (Cocina no ve costos ni proveedores) | — |
 | Recetas | Cocina, Admin, Gerente (Cocina no ve costos ni márgenes) | Admin, Gerente |
 | Productos sin receta, comandas rechazadas | Admin, Gerente | — |
+| Notificaciones de Cocina (`GET /cocina/notificaciones`) | Cocina, Admin, Gerente | — |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |
 | Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
@@ -298,9 +300,20 @@ La rueda sigue donde terminaba el hito 1: **receta → pedido → descuento**.
 3. **Aviso previo en el carrito.** `POST /pedidos` calcula, con el stock de ese momento, cuántas unidades alcanzan de cada plato (dos platos que comparten un insumo no cuentan dos veces la misma cantidad). Si no alcanza, responde `409` y **rechaza el pedido entero** (no se manda nada a medias) con un mensaje genérico que no dice qué insumo falta: `Insumos insuficientes. Podemos preparar solamente 3 de 4 Tallarines. Disculpe las molestias.` (o `Por ahora no podemos preparar …` si no queda ni una). Los datos viajan también en `productos_sin_stock`.
 4. **Descuento al llegar la comanda.** El worker, dentro de la misma transacción que crea los ítems, descuenta cada insumo por FEFO (movimientos de tipo `Consumo`, ligados a la comanda y a la jornada). Es todo o nada.
 5. **Carrera por la última porción.** El aviso del carrito es solo eso, un aviso: dos clientes pueden ver la última porción a la vez. La palabra final la tiene el worker, que bloquea los lotes: **gana la comanda que llega primero y se rechaza la que llega después**. La rechazada queda registrada en `ComandaRecibida` (`Estado = 'Rechazada'`) con el motivo interno y el mensaje para el cliente, sin ítems y sin descontar nada; si RabbitMQ reentrega el mensaje, se reconoce por su UUID y no se procesa de nuevo. El cliente la ve en su historial como `rechazada`; no aparece en el tablero de Cocina.
-6. **Pendiente para el hito 3:** que el stock marque solo los platos como no disponibles cuando falta un insumo (hoy solo avisa el carrito y rechaza el worker).
+6. **Disponibilidad automática:** es el hito 3 (abajo).
 
 - **Probarlo:** la carpeta «6. Recetas y descuento por comanda» de la colección de Postman (requiere los scripts SQL 08 a 12 y el worker corriendo); `python Tests\Scripts\probar_recetas_calculos.py` (cálculos, no necesita nada corriendo) y `python Tests\Scripts\probar_rechazo_comanda.py` (la carrera por la última porción, de punta a punta; necesita servidor, worker, RabbitMQ y Redis).
+
+## Stock (hito 3): disponibilidad de los platos y notificaciones de Cocina
+
+1. **Regla:** *mientras haya stock para ofrecer 1 plato, el plato se ofrece.* Tiene que alcanzar para **una unidad completa de su receta**, nunca una fracción (una picada para 4 personas se ofrece solo si alcanza para la picada entera; el campo `Porciones` del producto son las personas que come y no interviene). Un producto sin receta no lleva control de stock y siempre se ofrece.
+2. **Cuándo se recalcula:** en cada movimiento de stock (compra, ajuste, baja de lote y consumo del worker) para los platos cuya receta usa esos insumos, y cuando se edita una receta o se asigna/quita a un producto. Se hace con el stock ya confirmado en la base (después de la transacción) y escribe `Producto.Disponible`.
+3. **Efecto en el menú:** si algún plato cambia, se avisa al menú del cliente por el aviso en tiempo real (el mismo de la disponibilidad): un plato desaparece apenas se acaba un insumo y vuelve apenas se repone. Con `incluir_inactivos=true` (vista de gestión) se ve con `disponible: false`. Un pedido que lo incluya recibe `409` con `motivo: "sin_insumos"`.
+4. **Quién decide qué:** `Activo` es la carta (Admin/Gerente), `Disponible` lo calcula el stock y `AgotadoManual` es Cocina. Se ve en el menú solo si `Activo` y `Disponible` y no `AgotadoManual`. El stock **nunca** reactiva solo un plato que Cocina agotó a mano: solo avisa que se puede reactivar.
+5. **Notificaciones de Cocina** (`GET /cocina/notificaciones`): no se guardan, se calculan del estado de ahora, porque son situaciones y no eventos; cuando se resuelven desaparecen solas y no hay nada que marcar como leído. Orden: lo urgente primero (platos antes que insumos), después avisos e info. Para el panel: consultar cada ~10 s y usar `resumen.total` (o `por_severidad.urgente`) para el numerito de la pestaña. Más adelante se suman vencimientos y pérdidas sin cambiar el formato.
+6. **Limitación conocida:** si dos recálculos se cruzan en el mismo instante, el último en leer gana; el siguiente movimiento de stock lo corrige.
+
+- **Probarlo:** la carpeta «6» de la colección de Postman (hitos 2 y 3) y `python Tests\Scripts\probar_recetas_calculos.py` (incluye los cálculos de disponibilidad y notificaciones).
 
 ## Estructura del repositorio
 

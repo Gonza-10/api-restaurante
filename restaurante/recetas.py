@@ -6,12 +6,14 @@ La logica pura (cuantas porciones alcanzan, que mensaje dar) esta en stock_calcu
 """
 from collections import defaultdict
 
+from django.db import transaction
 from django.db.models import Sum
 
+from .catalogo import invalidar_cache_catalogo
 from .models import Insumo, LoteInsumo, Producto, RecetaIngrediente
 from .stock import descontar_fefo, lotes_fefo, ultimo_costo
 from .stock_calculos import (
-    CERO, costo_de_receta, evaluar_pedido, mensaje_cliente_faltantes, motivo_interno_faltantes, porciones_posibles,
+    CERO, costo_de_receta, evaluar_pedido, hay_para_una, mensaje_cliente_faltantes, motivo_interno_faltantes, porciones_posibles,
     redondear_dinero, requerimiento_por_insumo, texto_cantidad,
 )
 
@@ -83,6 +85,8 @@ def consumir_pedido(conteo, id_comanda, id_jornada):
     insumos = Insumo.objects.in_bulk(necesario.keys())
     for id_insumo in sorted(necesario):  # siempre en el mismo orden: evita bloqueos cruzados entre comandas
         descontar_fefo(insumos[id_insumo], necesario[id_insumo], 'Consumo', id_jornada=id_jornada, id_comanda=id_comanda)
+    if necesario:
+        recalcular_al_confirmar(ids_insumo=list(necesario))  # un plato puede haberse quedado sin insumos
     return []
 
 
@@ -145,3 +149,54 @@ def contexto_lectura(recetas, ve_costos):
     disponible = stock_disponible(ids)
     costos = {i: ultimo_costo(i) for i in ids} if ve_costos else {}
     return disponible, costos
+
+
+# ==================== DISPONIBILIDAD DE LOS PLATOS SEGUN EL STOCK (hito 3) ====================
+
+def calcular_disponibilidad(ids_producto=None, ids_insumo=None):
+    """Que platos se pueden ofrecer segun el stock de ahora: [(id_producto, disponible_actual, disponible_nuevo)].
+    Un plato se ofrece mientras haya stock para UNA unidad completa de su receta; sin receta, siempre.
+    - ids_producto: solo esos productos.
+    - ids_insumo: solo los productos cuya receta usa alguno de esos insumos.
+    - sin filtros: todos."""
+    consulta = Producto.objects.all()
+    if ids_producto is not None:
+        consulta = consulta.filter(id__in=list(ids_producto))
+    elif ids_insumo is not None:
+        consulta = consulta.filter(receta__ingredientes__insumo_id__in=list(ids_insumo)).distinct()
+    productos = list(consulta.values_list('id', 'disponible'))
+    recetas = recetas_de_productos([id_producto for id_producto, _ in productos])
+    disponible = stock_disponible({i for ingredientes in recetas.values() for i, _ in ingredientes})
+    return [
+        (id_producto, actual, hay_para_una(recetas.get(id_producto), disponible))
+        for id_producto, actual in productos
+    ]
+
+
+def recalcular_disponibilidad(ids_producto=None, ids_insumo=None):
+    """Actualiza Producto.disponible y, si algun plato cambio, avisa al menu de los clientes (aviso en tiempo real).
+    Devuelve los ids de los platos que cambiaron. Hay que llamarla con el stock ya confirmado en la base."""
+    cambios = [(i, nuevo) for i, actual, nuevo in calcular_disponibilidad(ids_producto, ids_insumo) if actual != nuevo]
+    if not cambios:
+        return []
+    ahora_si = [i for i, nuevo in cambios if nuevo]
+    ahora_no = [i for i, nuevo in cambios if not nuevo]
+    if ahora_si:
+        Producto.objects.filter(id__in=ahora_si).update(disponible=True)
+    if ahora_no:
+        Producto.objects.filter(id__in=ahora_no).update(disponible=False)
+    invalidar_cache_catalogo()
+    print(f'[DISPONIBILIDAD] ahora se ofrecen {ahora_si}; dejan de ofrecerse {ahora_no}')
+    return [i for i, _ in cambios]
+
+
+def recalcular_al_confirmar(ids_producto=None, ids_insumo=None):
+    """Programa el recalculo para cuando termine la transaccion en curso (si no hay una, corre enseguida): asi lee
+    el stock ya definitivo y los lotes ya no estan bloqueados. Si falla no tumba la operacion de stock, que ya se
+    guardo: queda registrado y el proximo movimiento lo corrige."""
+    def ejecutar():
+        try:
+            recalcular_disponibilidad(ids_producto=ids_producto, ids_insumo=ids_insumo)
+        except Exception as error:
+            print(f'[ERROR] No se pudo recalcular la disponibilidad de los platos: {error}')
+    transaction.on_commit(ejecutar)

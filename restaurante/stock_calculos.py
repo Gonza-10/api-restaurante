@@ -185,3 +185,43 @@ def costo_de_receta(lineas):
             continue
         total += a_decimal(cantidad) * a_decimal(costo)
     return redondear_dinero(total), completo
+
+
+# ==================== DISPONIBILIDAD Y NOTIFICACIONES (hito 3) ====================
+
+def insumos_faltantes(ingredientes, disponible):
+    """Ids de los insumos de la receta que no alcanzan para UNA unidad completa (de menor a mayor id)."""
+    return sorted(
+        id_insumo for id_insumo, cantidad in ingredientes
+        if a_decimal(disponible.get(id_insumo, CERO)) < a_decimal(cantidad)
+    )
+
+
+def hay_para_una(ingredientes, disponible):
+    """Un plato se ofrece mientras haya stock para UNA unidad completa de su receta (nunca una fraccion).
+    Sin ingredientes (sin receta) no hay control de stock: siempre se ofrece."""
+    return not ingredientes or not insumos_faltantes(ingredientes, disponible)
+
+
+# De lo mas urgente a lo menos urgente; dentro de cada severidad, por tipo y despues por nombre.
+SEVERIDADES = ('urgente', 'aviso', 'info')
+TIPOS_NOTIFICACION = ('plato_sin_insumos', 'insumo_critico', 'se_puede_reactivar')
+
+
+def clave_notificacion(notificacion):
+    """Clave para ordenar las notificaciones del panel de Cocina."""
+    return (
+        SEVERIDADES.index(notificacion['severidad']),
+        TIPOS_NOTIFICACION.index(notificacion['tipo']),
+        notificacion['mensaje'].lower(),
+    )
+
+
+def resumen_notificaciones(notificaciones):
+    """Cantidades para el numerito de la pestana de notificaciones."""
+    por_tipo = {tipo: 0 for tipo in TIPOS_NOTIFICACION}
+    por_severidad = {severidad: 0 for severidad in SEVERIDADES}
+    for n in notificaciones:
+        por_tipo[n['tipo']] += 1
+        por_severidad[n['severidad']] += 1
+    return {'total': len(notificaciones), 'por_tipo': por_tipo, 'por_severidad': por_severidad}

@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from .auth import ADMIN_GERENTE, COCINA
 from .models import ComandaRecibida, Producto, Receta, RecetaIngrediente
-from .recetas import armar_receta, contexto_lectura
+from .recetas import armar_receta, contexto_lectura, recalcular_al_confirmar
 from .serializers_recetas import RecetaEntradaSerializer
 from .views_operacion import _parsear_fecha
 
@@ -71,6 +71,8 @@ class RecetaViewSet(viewsets.ModelViewSet):
             receta.descripcion = datos.get('descripcion') or None
             receta.save(update_fields=['nombre', 'descripcion'])
             _guardar_ingredientes(receta, datos['ingredientes'])
+            # cambiaron los ingredientes: los platos que la usan pueden haber pasado a (no) alcanzar
+            recalcular_al_confirmar(ids_producto=list(receta.productos.values_list('id', flat=True)))
         receta = self.get_queryset().get(pk=receta.pk)
         return Response(self._salida([receta], True)[0])
 
@@ -126,6 +128,7 @@ class ProductoRecetaView(APIView):
             except Receta.DoesNotExist:
                 raise ValidationError({'receta': 'No existe una receta con ese id.'})
         producto.save(update_fields=['receta'])
+        recalcular_al_confirmar(ids_producto=[producto.id])  # con receta se controla el stock; sin receta, siempre disponible
         return Response(self._salida(producto))
 
 

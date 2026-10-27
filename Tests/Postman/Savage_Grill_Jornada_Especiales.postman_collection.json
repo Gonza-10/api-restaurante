@@ -3819,7 +3819,7 @@
       ]
     },
     {
-      "name": "6. Recetas y descuento por comanda (hito 2)",
+      "name": "6. Recetas, descuento por comanda, disponibilidad y notificaciones (hitos 2 y 3)",
       "item": [
         {
           "name": "6.0 Login cocina (cruiz)",
@@ -5338,7 +5338,54 @@
           ]
         },
         {
-          "name": "6.38 Ahora no se puede pedir ni uno: mensaje generico (409)",
+          "name": "6.38 Hito 3: el plato desaparece del menu apenas se queda sin insumos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ya no esta en el menu del cliente', () => pm.expect(pm.response.json().some(x => x.id === pm.collectionVariables.get('producto_id2'))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.39 En la vista de gestion figura como no disponible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?incluir_inactivos=true&buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().find(x => x.id === pm.collectionVariables.get('producto_id2'));",
+                  "pm.test('disponible false y visible false (lo decidio el stock, no Cocina)', () => { pm.expect(p.disponible).to.eql(false); pm.expect(p.visible).to.eql(false); pm.expect(p.agotado_manual).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.40 Un cliente con el menu viejo no puede pedirlo (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -5378,14 +5425,480 @@
                 "exec": [
                   "pm.test('Responde 409', () => pm.response.to.have.status(409));",
                   "const d = pm.response.json();",
-                  "pm.test('Insumos insuficientes, sin decir cual', () => pm.expect(d.error).to.eql('Insumos insuficientes. Por ahora no podemos preparar ZZ Prueba Tallarines ' + pm.collectionVariables.get('sufijo2') + '. Disculpe las molestias.'));"
+                  "pm.test('Informa que el plato ya no esta disponible por falta de insumos', () => { pm.expect(d.productos_no_disponibles[0].id).to.eql(pm.collectionVariables.get('producto_id2')); pm.expect(d.productos_no_disponibles[0].motivo).to.eql('sin_insumos'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "6.39 Sin receta no hay control de stock: se quita la receta del producto",
+          "name": "6.41 Notificaciones de Cocina: plato sin insumos e insumo agotado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const n = r.notificaciones;",
+                  "const plato = n.find(x => x.tipo === 'plato_sin_insumos' && x.producto.id === pm.collectionVariables.get('producto_id2'));",
+                  "pm.test('Avisa que el plato no se puede preparar y que falta la harina (no los huevos)', () => { pm.expect(plato.severidad).to.eql('urgente'); const f = plato.insumos_faltantes.map(i => i.nombre); pm.expect(f.some(x => /Harina/.test(x))).to.eql(true); pm.expect(f.some(x => /Huevos/.test(x))).to.eql(false); });",
+                  "const ins = n.find(x => x.tipo === 'insumo_critico' && x.insumo.id === pm.collectionVariables.get('ins_harina'));",
+                  "pm.test('Avisa que la harina esta agotada', () => { pm.expect(ins.insumo.estado).to.eql('Agotado'); pm.expect(ins.severidad).to.eql('urgente'); });",
+                  "pm.test('El resumen cuenta por tipo y severidad', () => { pm.expect(r.resumen.total).to.eql(n.length); pm.expect(r.resumen.por_tipo).to.have.property('se_puede_reactivar'); pm.expect(r.resumen.por_severidad).to.have.property('urgente'); });",
+                  "const orden = ['urgente', 'aviso', 'info'];",
+                  "pm.test('Lo urgente primero', () => { const idx = n.map(x => orden.indexOf(x.severidad)); pm.expect(idx).to.eql([...idx].sort((a, b) => a - b)); });",
+                  "pm.test('Cada aviso trae un mensaje listo para mostrar', () => n.forEach(x => pm.expect(x.mensaje).to.be.a('string').and.not.empty));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.42 El Mozo NO ve las notificaciones de Cocina (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.43 Sin token no se ven las notificaciones (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.44 Quitar la receta: el plato vuelve a ofrecerse (sin receta no hay control)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id2}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.45 Vuelve a estar en el menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Aparece en el menu', () => pm.expect(pm.response.json().some(x => x.id === pm.collectionVariables.get('producto_id2'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.46 Volver a asignar la receta: sin harina se oculta de nuevo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id2}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": {{receta_id}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.47 Ya no esta en el menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No aparece', () => pm.expect(pm.response.json().some(x => x.id === pm.collectionVariables.get('producto_id2'))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.48 Se compra harina (500 g): el plato se vuelve a ofrecer solo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id2}}, \"lineas\": [{\"insumo\": {{ins_harina}}, \"cantidad\": 500, \"costo_total\": 1500}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.49 Vuelve a estar en el menu (recalculo en la compra)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Aparece en el menu', () => pm.expect(pm.response.json().some(x => x.id === pm.collectionVariables.get('producto_id2'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.50 Ya no hay aviso de plato sin insumos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().notificaciones;",
+                  "pm.test('Sin aviso de plato sin insumos para el de prueba', () => pm.expect(n.some(x => x.tipo === 'plato_sin_insumos' && x.producto.id === pm.collectionVariables.get('producto_id2'))).to.eql(false));",
+                  "pm.test('Sin aviso de la harina agotada', () => pm.expect(n.some(x => x.tipo === 'insumo_critico' && x.insumo.id === pm.collectionVariables.get('ins_harina') && x.insumo.estado === 'Agotado')).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.51 Cocina marca el plato como sin insumos a mano",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/productos/{{producto_id2}}/agotar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda agotado a mano', () => pm.expect(pm.response.json().agotado_manual).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.52 Aviso: hay insumos, se puede reactivar (alcanza para 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json().notificaciones.find(x => x.tipo === 'se_puede_reactivar' && x.producto.id === pm.collectionVariables.get('producto_id2'));",
+                  "pm.test('Esta el aviso de reactivacion', () => pm.expect(a).to.not.be.undefined);",
+                  "pm.test('Alcanza para 1 porcion (limitan los huevos: 2 de 2)', () => { pm.expect(a.porciones_posibles).to.eql(1); pm.expect(a.severidad).to.eql('info'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.53 El stock solo avisa: sigue agotado a mano, no se reactiva solo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?incluir_inactivos=true&buscar={{sufijo2}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().find(x => x.id === pm.collectionVariables.get('producto_id2'));",
+                  "pm.test('agotado_manual sigue true y no es visible', () => { pm.expect(p.agotado_manual).to.eql(true); pm.expect(p.visible).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.54 Cocina lo reactiva",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/productos/{{producto_id2}}/reactivar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Vuelve a ser visible', () => pm.expect(pm.response.json().visible).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.55 El aviso de reactivacion desaparece solo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ya no hay aviso', () => pm.expect(pm.response.json().notificaciones.some(x => x.tipo === 'se_puede_reactivar' && x.producto.id === pm.collectionVariables.get('producto_id2'))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.56 Sin receta no hay control de stock: se quita la receta del producto",
           "request": {
             "method": "PUT",
             "header": [
@@ -5429,7 +5942,7 @@
           ]
         },
         {
-          "name": "6.40 Ahora se puede pedir aunque no haya insumos (queda sin control)",
+          "name": "6.57 Ahora se puede pedir aunque no haya insumos (queda sin control)",
           "request": {
             "method": "POST",
             "header": [
@@ -5474,7 +5987,7 @@
           ]
         },
         {
-          "name": "6.41 Se acepta y no descuenta nada (espera al worker)",
+          "name": "6.58 Se acepta y no descuenta nada (espera al worker)",
           "request": {
             "method": "POST",
             "header": [
@@ -5522,7 +6035,7 @@
           ]
         },
         {
-          "name": "6.42 El libro: 3 consumos de harina (los 2 de 6.29 y el de 6.36); el pedido sin receta no sumo ninguno",
+          "name": "6.59 El libro: 3 consumos de harina (los 2 de la primera comanda y el de la ultima porcion); el pedido sin receta no sumo ninguno",
           "request": {
             "method": "GET",
             "header": [],
@@ -5552,7 +6065,7 @@
           ]
         },
         {
-          "name": "6.43 El gerente ve la lista de comandas rechazadas",
+          "name": "6.60 El gerente ve la lista de comandas rechazadas",
           "request": {
             "method": "GET",
             "header": [],
@@ -5582,7 +6095,7 @@
           ]
         },
         {
-          "name": "6.44 Cocina NO ve las rechazadas (403)",
+          "name": "6.61 Cocina NO ve las rechazadas (403)",
           "request": {
             "method": "GET",
             "header": [],
@@ -5611,7 +6124,7 @@
           ]
         },
         {
-          "name": "6.45 Limpieza: cerrar la jornada",
+          "name": "6.62 Limpieza: cerrar la jornada",
           "request": {
             "method": "POST",
             "header": [],
@@ -5640,7 +6153,7 @@
           ]
         },
         {
-          "name": "6.46 Limpieza: cerrar la sesion de la mesa 3",
+          "name": "6.63 Limpieza: cerrar la sesion de la mesa 3",
           "request": {
             "method": "POST",
             "header": [],
@@ -5669,7 +6182,7 @@
           ]
         },
         {
-          "name": "6.47 Limpieza: sacar de la carta el producto de prueba",
+          "name": "6.64 Limpieza: sacar de la carta el producto de prueba",
           "request": {
             "method": "PATCH",
             "header": [
@@ -5712,7 +6225,7 @@
           ]
         },
         {
-          "name": "6.48 Limpieza: borrar la receta (ya sin productos)",
+          "name": "6.65 Limpieza: borrar la receta (ya sin productos)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -5741,7 +6254,7 @@
           ]
         },
         {
-          "name": "6.49 Limpieza: dejar los huevos en cero",
+          "name": "6.66 Limpieza: dejar los huevos en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -5784,7 +6297,50 @@
           ]
         },
         {
-          "name": "6.50 Limpieza: baja de la harina",
+          "name": "6.67 Limpieza: dejar la harina en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_harina}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.68 Limpieza: baja de la harina",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -5813,7 +6369,7 @@
           ]
         },
         {
-          "name": "6.51 Limpieza: baja de los huevos",
+          "name": "6.69 Limpieza: baja de los huevos",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -5842,7 +6398,7 @@
           ]
         },
         {
-          "name": "6.52 Limpieza: baja del proveedor",
+          "name": "6.70 Limpieza: baja del proveedor",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -5871,7 +6427,7 @@
           ]
         },
         {
-          "name": "6.53 El libro termina consistente",
+          "name": "6.71 El libro termina consistente",
           "request": {
             "method": "GET",
             "header": [],

@@ -85,6 +85,37 @@ chequear('un insumo sin costo: total parcial y marcado incompleto',
          sc.costo_de_receta([(D('100'), D('0.002')), (D('1'), None)]), (D('0.20'), False))
 chequear('costo cero tambien cuenta como incompleto', sc.costo_de_receta([(D('5'), D('0'))])[1], False)
 
+print('Disponibilidad: el plato se ofrece mientras alcance para UNA unidad completa')
+chequear('alcanza justo para una', sc.hay_para_una(TALLARINES, {1: D('100'), 2: D('1')}), True)
+chequear('falta 1 gramo de harina: no se ofrece (nunca una fraccion)', sc.hay_para_una(TALLARINES, {1: D('99.999'), 2: D('5')}), False)
+chequear('sobra harina pero no hay huevos: no se ofrece', sc.hay_para_una(TALLARINES, {1: D('900'), 2: D('0')}), False)
+chequear('sin receta siempre se ofrece', sc.hay_para_una(None, {}), True)
+chequear('receta vacia siempre se ofrece', sc.hay_para_una([], {}), True)
+chequear('que insumos faltan (todos los que no alcanzan, por id)', sc.insumos_faltantes(PIZZA, {1: D('10'), 3: D('5')}), [1, 3])
+chequear('si alcanza, no falta ninguno', sc.insumos_faltantes(PIZZA, {1: D('250'), 3: D('80')}), [])
+chequear('insumo sin stock registrado cuenta como faltante', sc.insumos_faltantes(TALLARINES, {1: D('500')}), [2])
+picada = [(1, D('600')), (2, D('4'))]   # la receta de una picada ENTERA (para 4 personas)
+chequear('una picada con stock para la mitad no se ofrece', sc.hay_para_una(picada, {1: D('300'), 2: D('2')}), False)
+
+print('Notificaciones del panel de Cocina: orden y resumen')
+N = lambda tipo, sev, msg: {'tipo': tipo, 'severidad': sev, 'mensaje': msg}
+lista = [
+    N('se_puede_reactivar', 'info', 'Pizza estaba agotada'),
+    N('insumo_critico', 'aviso', 'Harina critica'),
+    N('plato_sin_insumos', 'urgente', 'Tallarines no se puede preparar'),
+    N('insumo_critico', 'urgente', 'Carne esta agotada'),
+    N('plato_sin_insumos', 'urgente', 'Milanesa no se puede preparar'),
+]
+orden = [n['mensaje'] for n in sorted(lista, key=sc.clave_notificacion)]
+chequear('primero lo urgente (platos antes que insumos), despues avisos e info', orden,
+         ['Milanesa no se puede preparar', 'Tallarines no se puede preparar', 'Carne esta agotada', 'Harina critica', 'Pizza estaba agotada'])
+resumen = sc.resumen_notificaciones(lista)
+chequear('total', resumen['total'], 5)
+chequear('por tipo', resumen['por_tipo'], {'plato_sin_insumos': 2, 'insumo_critico': 2, 'se_puede_reactivar': 1})
+chequear('por severidad', resumen['por_severidad'], {'urgente': 3, 'aviso': 1, 'info': 1})
+chequear('sin notificaciones: todo en cero', sc.resumen_notificaciones([])['por_tipo'],
+         {'plato_sin_insumos': 0, 'insumo_critico': 0, 'se_puede_reactivar': 0})
+
 ok = sum(RESULTADOS)
 print(f'\nResultado: {ok}/{len(RESULTADOS)} correctas')
 sys.exit(0 if ok == len(RESULTADOS) else 1)

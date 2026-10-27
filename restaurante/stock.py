@@ -27,6 +27,13 @@ class StockInsuficiente(Exception):
         self.disponible = disponible
 
 
+def _recalcular_platos(ids_insumo):
+    """Despues de cualquier cambio de stock se recalcula que platos se pueden ofrecer. Import tardio: recetas
+    importa este modulo."""
+    from .recetas import recalcular_al_confirmar
+    recalcular_al_confirmar(ids_insumo=list(ids_insumo))
+
+
 class LoteNoActivo(Exception):
     """El lote ya estaba agotado, vencido o dado de baja."""
 
@@ -117,6 +124,7 @@ def registrar_compra(proveedor, empleado, lineas, numero_comprobante=None, nota=
                 lote=lote, tipo='Compra', cantidad=cantidad, fecha_hora=ahora, empleado=empleado,
                 jornada_id=compra.jornada_id,
             )
+        _recalcular_platos({linea['insumo'].id for linea in lineas})
         return compra
 
 
@@ -136,6 +144,7 @@ def dar_baja_lote(id_lote, empleado, motivo):
             lote.cantidad_actual = CERO
         lote.estado = 'Vencido' if vencido else 'Baja'
         lote.save(update_fields=['cantidad_actual', 'estado'])
+        _recalcular_platos([lote.insumo_id])
         return lote
 
 
@@ -151,6 +160,7 @@ def ajustar_stock(insumo, cantidad_real, empleado, motivo):
         if diferencia == 0:
             return anterior, diferencia, []
         id_jornada = _id_jornada_actual()
+        _recalcular_platos([insumo.id])
         if diferencia < 0:
             movimientos = descontar_fefo(
                 insumo, -diferencia, 'Ajuste', empleado=empleado, id_jornada=id_jornada, motivo=motivo
