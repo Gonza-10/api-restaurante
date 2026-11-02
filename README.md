@@ -92,6 +92,7 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
    | 10 | `10_AE4_Disponibilidad_Migraciones.sql` | `Producto.Disponible` (lo calcula el stock), `Producto.AgotadoManual` (override de Cocina) y quién/cuándo lo agotó |
    | 11 | `11_AE4_Stock_Insumos_Migraciones.sql` | Stock, hito 1: `Proveedor`, `Insumo`, `InsumoProveedor`, `Compra`, `LoteInsumo`, `MovimientoStock` y la vista `vw_StockInsumo`. Requiere el 08 |
    | 12 | `12_AE4_Recetas_Migraciones.sql` | Stock, hito 2: `Receta`, `RecetaIngrediente`, `Producto.IdReceta` y `ComandaRecibida.Estado/Motivo/MensajeCliente` (comandas rechazadas por falta de stock). Requiere el 11 |
+   | 13 | `13_AE4_Perdidas_Migraciones.sql` | Stock, hito 4: tabla `Perdida` (insumos o platos perdidos, con motivo de lista cerrada) y `MovimientoStock.IdPerdida`. Requiere el 12 |
    | 99 | `99_Seed_AE4.sql` | Datos de prueba reproducibles: 4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo |
 
 4. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
@@ -196,7 +197,7 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | **Insumos** | `/api/v1/insumos` | Admin, Gerente. ABM de la materia prima: `{"nombre": "Harina", "tipo_medida": "Masa", "stock_objetivo": 150000}` (todo en unidad base: g, ml o unidades). Cada insumo trae `stock_actual`, `porcentaje`, `estado` y `semaforo`. `DELETE` es baja lógica y `409` si todavía tiene stock |
 | Proveedores de un insumo | `PUT /api/v1/insumos/{id}/proveedores` | `{"proveedores": [{"proveedor": 1, "es_principal": true}, {"proveedor": 2}]}`: reemplaza la lista; un solo principal |
 | **Compras** | `POST /api/v1/compras` · `GET /api/v1/compras` | Admin, Gerente. Una compra a un proveedor con una línea por insumo; cada línea crea un lote. La cantidad va de UNA forma: `"cantidad": 150000` o `"cantidad_presentaciones": 10` + `"tamano_presentacion": 15000`; más `costo_total` y `fecha_vencimiento` (opcional). No se editan ni se borran |
-| Lotes | `GET /api/v1/lotes` · `POST /api/v1/lotes/{id}/baja` | Admin, Gerente. Filtros `?insumo=`, `?estado=activo\|agotado\|vencido\|baja`, `?vence_en_dias=N`. La baja saca del stock lo que quedaba (`{"motivo": "..."}`) |
+| Lotes | `GET /api/v1/lotes` · `POST /api/v1/lotes/{id}/baja` | Admin, Gerente. Filtros `?insumo=`, `?estado=activo\|agotado\|vencido\|baja`, `?vence_en_dias=N`. La baja saca del stock lo que quedaba (`{"motivo": "texto", "motivo_codigo": "rotura_derrame"}`; el código es opcional: sin él es `vencimiento` si el lote ya venció y `otro` en los demás casos) y queda registrada como pérdida de insumo |
 | Libro de movimientos | `GET /api/v1/movimientos-stock` | Admin, Gerente. Todo cambio de stock, más nuevos primero. Filtros `?insumo=`, `?lote=`, `?tipo=`, `?desde=`, `?hasta=`, `?limite=` |
 | **Estado del stock** | `GET /api/v1/stock` | Cocina, Admin, Gerente. Insumo por insumo con su `porcentaje` y `semaforo`, lo más grave primero. `?vista=detallada` agrega cuánto hay de cada uno, el objetivo, lotes y próximo vencimiento (Admin y Gerente además costos, valor del stock y proveedor principal). Filtros `?estado=critico,bajo` y `?buscar=` |
 | Ajuste por inventario | `POST /api/v1/stock/ajustes` | Admin, Gerente. `{"insumo": 1, "cantidad_real": 50000, "motivo": "..."}`: deja el stock en lo que se contó (descuenta por FEFO, o crea un lote de origen `Ajuste`) |
@@ -206,6 +207,9 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | Productos sin receta | `GET /api/v1/productos-sin-receta` | Admin, Gerente. Productos en carta que no descuentan stock: para no olvidarse ninguno |
 | Comandas rechazadas | `GET /api/v1/comandas-rechazadas` | Admin, Gerente. Comandas que no se pudieron preparar por falta de stock, con el `motivo` interno (plato, cuántos alcanzaban e insumo que limitó). Filtros `?desde=`, `?hasta=`, `?limite=` |
 | **Notificaciones de Cocina** | `GET /api/v1/cocina/notificaciones` | Cocina, Admin, Gerente. Se calculan en el momento (no se guardan): el panel las consulta cada ~10 s. Tipos: `plato_sin_insumos` (plato en carta que no se puede preparar, con los insumos que faltan), `insumo_critico` (insumo agotado o en nivel crítico) y `se_puede_reactivar` (plato agotado a mano por Cocina que ya tiene insumos). Cada una trae `severidad` (`urgente` / `aviso` / `info`), `mensaje` y los datos del plato o insumo; `resumen` cuenta por tipo y severidad. Ver «Stock (hito 3)» |
+| **Pérdidas** | `POST` · `GET /api/v1/perdidas` · `GET /api/v1/perdidas/{id}` | Cocina, Admin, Gerente. Registra la pérdida de un **insumo** (`{"tipo": "insumo", "insumo": 1, "cantidad": 250, "motivo": "rotura_derrame", "nota": "..."}`, cantidad en unidad base) o de un **plato ya cocinado** (`{"tipo": "plato", "producto": 5, "cantidad": 2, "motivo": "error_cocina"}`: salen del stock los insumos de su receta). Descuenta por FEFO, todo o nada (`409` si el stock registrado no alcanza). El valor (`valor`, `valor_completo`) y los costos de cada lote solo los ven Admin y Gerente. Filtros del listado: `?tipo=insumo\|plato`, `?motivo=`, `?insumo=`, `?producto=`, `?desde=`, `?hasta=`, `?limite=`. El detalle trae de qué insumos y lotes salió. Ver «Stock (hito 4)» |
+| Motivos de pérdida | `GET /api/v1/perdidas/motivos` | Cocina, Admin, Gerente. La lista cerrada (`codigo`, `etiqueta`, `requiere_nota`) para armar el desplegable |
+| Resumen de pérdidas | `GET /api/v1/perdidas/resumen` | Admin, Gerente. Total valorizado, reparto por motivo (con el % del valor que explica cada uno), reparto insumo/plato e items que más pierden. Filtros `?desde=`, `?hasta=`, `?limite_items=` |
 | Detalle de pedidos | `/api/v1/detalles-pedido` | GET, POST, PATCH, DELETE |
 | **Comandas (cliente)** | `POST /api/v1/pedidos` | Crea una comanda, la encola en RabbitMQ (`202 Accepted`). Exige el `pin` de la mesa en el cuerpo: `{"id_comanda_uuid": "...", "mesa_id": 2, "pin": "4821", "items": [{"id": 1}], "version_menu": 25}` (`version_menu` es opcional: la versión del menú que el cliente tenía; ver «El cliente paga el precio que vio»). `409` si la mesa no tiene sesión abierta, `403` si el PIN no coincide. `409` con `productos_sin_stock` (`id`, `nombre`, `pedido`, `posibles`) y un `error` listo para mostrar si los insumos no alcanzan para todo el pedido: se rechaza el pedido entero (ver «Stock (hito 2)») |
 | **Tablero de cocina** | `GET /api/v1/pedidos` | Lista las comandas activas con su estado (lee de SQL Server + Redis) |
@@ -232,6 +236,8 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Recetas | Cocina, Admin, Gerente (Cocina no ve costos ni márgenes) | Admin, Gerente |
 | Productos sin receta, comandas rechazadas | Admin, Gerente | — |
 | Notificaciones de Cocina (`GET /cocina/notificaciones`) | Cocina, Admin, Gerente | — |
+| Pérdidas y sus motivos (`/perdidas`) | Cocina, Admin, Gerente (Cocina no ve valores ni costos) | Cocina, Admin, Gerente |
+| Resumen de pérdidas (`/perdidas/resumen`) | Admin, Gerente | — |
 | Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
 | Cambio de estado de comanda | — | Cocina, Admin, Gerente |
 | Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
@@ -314,6 +320,19 @@ La rueda sigue donde terminaba el hito 1: **receta → pedido → descuento**.
 6. **Limitación conocida:** si dos recálculos se cruzan en el mismo instante, el último en leer gana; el siguiente movimiento de stock lo corrige.
 
 - **Probarlo:** la carpeta «6» de la colección de Postman (hitos 2 y 3) y `python Tests\Scripts\probar_recetas_calculos.py` (incluye los cálculos de disponibilidad y notificaciones).
+
+## Stock (hito 4): pérdidas con motivo
+
+1. **Qué se puede perder:** un **insumo** (se venció, se derramó, se rompió: sale la cantidad indicada) o un **plato ya cocinado** (se quemó, se cayó, volvió de la mesa: salen del stock los insumos de su receta, por cada unidad perdida). Un plato sin receta no se puede registrar (no hay insumos que descontar). Las bajas de lote del hito 1 también quedan registradas como pérdidas de insumo.
+2. **Motivo de lista cerrada** (`GET /perdidas/motivos`): `vencimiento`, `rotura_derrame`, `error_cocina`, `devolucion_cliente`, `consumo_personal` y `otro`. Es cerrada a propósito: con texto libre después no se podría agrupar para saber dónde y por qué se pierde más. `otro` exige una `nota` que explique qué pasó; en los demás es opcional. Un motivo nuevo se agrega en `stock_calculos.MOTIVOS_PERDIDA` y en el `CHECK` de la tabla `Perdida` (script 13).
+3. **Quién:** Cocina las carga (es quien presencia la pérdida) y puede consultarlas, pero **no ve valores ni costos**. Admin y Gerente ven el valor de cada pérdida y el resumen.
+4. **Cómo se valoriza:** el descuento es FEFO, así que cada pérdida sale de lotes concretos y se valoriza al **costo real de esos lotes**. El valor no se guarda: se calcula desde el libro de movimientos (cada movimiento apunta a su pérdida por `MovimientoStock.IdPerdida`), así nunca hay un promedio general ni un precio desactualizado. `valor_completo: false` avisa que algún lote no tiene costo (insumo que nunca se compró) y el valor queda por debajo del real.
+5. **Todo o nada:** si el stock registrado no alcanza, `409` y no se modifica nada (ni la pérdida ni el stock). Un error de carga no se borra: se corrige con un ajuste de stock. Las pérdidas, como el libro, no se editan ni se borran.
+6. **Efecto en el menú:** una pérdida es un movimiento de stock más, así que recalcula la disponibilidad de los platos (hito 3): si deja a un plato sin insumos, desaparece del menú.
+7. **Resumen** (`GET /perdidas/resumen`, Admin y Gerente): total, reparto por motivo con el porcentaje del **valor perdido** que explica cada uno (no es un promedio), reparto insumo/plato y los items que más pierden.
+8. **Diferencia con el ajuste:** el ajuste (Admin y Gerente) corrige el stock cuando el conteo físico no coincide con el sistema, sin una causa conocida; la pérdida registra un hecho concreto con su motivo.
+
+- **Probarlo:** la carpeta «7. Pérdidas con motivo» de la colección de Postman (requiere los scripts SQL 08 a 13 y el worker corriendo) y `python Tests\Scripts\probar_perdidas_calculos.py` (cálculos, no necesita nada corriendo).
 
 ## Estructura del repositorio
 

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock y Recetas)",
-    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock y Recetas. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 12 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas y Perdidas)",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas y Perdidas. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 13 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -6428,6 +6428,2818 @@
         },
         {
           "name": "6.71 El libro termina consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Perdidas con motivo (hito 4)",
+      "item": [
+        {
+          "name": "7.0 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_gerente', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.2 Cocina ve la lista cerrada de motivos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/motivos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo3', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('Son 6 y en este orden', () => pm.expect(m.map(x => x.codigo)).to.eql(['vencimiento', 'rotura_derrame', 'error_cocina', 'devolucion_cliente', 'consumo_personal', 'otro']));",
+                  "pm.test('Cada motivo trae su etiqueta', () => m.forEach(x => pm.expect(x.etiqueta).to.be.a('string').and.not.empty));",
+                  "pm.test('Solo \"otro\" exige nota', () => pm.expect(m.filter(x => x.requiere_nota).map(x => x.codigo)).to.eql(['otro']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.3 El Mozo NO ve los motivos (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/motivos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.4 Sin token no se ven los motivos (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/motivos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.5 El Mozo NO registra perdidas (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": 1, \"cantidad\": 1, \"motivo\": \"otro\", \"nota\": \"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.6 Sin token no se registran perdidas (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": 1, \"cantidad\": 1, \"motivo\": \"otro\", \"nota\": \"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.7 Crear proveedor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Proveedor {{sufijo3}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('prov_id3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.8 Crear insumo (Harina, en gramos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Harina {{sufijo3}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 10000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_h3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.9 Crear insumo (Huevos, en unidades)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Huevos {{sufijo3}}\", \"tipo_medida\": \"Unidad\", \"stock_objetivo\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_hu3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.10 Compra: harina en 2 lotes (400 g a $2 que vence antes y 600 g a $3) y 10 huevos a $100",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id3}}, \"numero_comprobante\": \"PRUEBA-P-{{sufijo3}}\", \"lineas\": [{\"insumo\": {{ins_h3}}, \"cantidad\": 400, \"costo_total\": 800, \"fecha_vencimiento\": \"{{venc_10}}\"},{\"insumo\": {{ins_h3}}, \"cantidad\": 600, \"costo_total\": 1800, \"fecha_vencimiento\": \"{{venc_30}}\"},{\"insumo\": {{ins_hu3}}, \"cantidad\": 10, \"costo_total\": 1000}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = d => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('venc_10', f(10));",
+                  "pm.collectionVariables.set('venc_30', f(30));",
+                  "pm.collectionVariables.set('venc_pasado', f(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.test('Tres lotes', () => pm.expect(c.lineas.length).to.eql(3));",
+                  "pm.collectionVariables.set('lote_h3a', c.lineas[0].id);",
+                  "pm.collectionVariables.set('lote_h3b', c.lineas[1].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.11 Receta del plato (250 g de harina + 2 huevos por porcion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Tallarines {{sufijo3}}\", \"ingredientes\": [{\"insumo\": {{ins_h3}}, \"cantidad\": 250}, {\"insumo\": {{ins_hu3}}, \"cantidad\": 2}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('receta_id3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.12 Categoria para los productos de prueba",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/categorias",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('categoria_id3', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.13 Crear el plato de prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Tallarines {{sufijo3}}\", \"precio\": \"5000.00\", \"categoria\": {{categoria_id3}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('producto_id3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.14 Asignarle la receta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id3}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": {{receta_id3}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.15 Crear una bebida sin receta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Perdida Bebida {{sufijo3}}\", \"precio\": \"1500.00\", \"categoria\": {{categoria_id3}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('producto_sr3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.16 Stock inicial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 1000 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(1000));",
+                  "pm.test('Quedan 10 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.17 Tipo desconocido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"ropa\", \"cantidad\": 1, \"motivo\": \"otro\", \"nota\": \"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo tipo', () => pm.expect(pm.response.json()).to.have.property('tipo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.18 Motivo fuera de la lista (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 10, \"motivo\": \"porque_si\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo motivo', () => pm.expect(pm.response.json()).to.have.property('motivo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.19 Perdida de insumo sin indicar el insumo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"cantidad\": 10, \"motivo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo insumo', () => pm.expect(pm.response.json()).to.have.property('insumo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.20 Motivo \"otro\" sin nota (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 10, \"motivo\": \"otro\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo nota', () => pm.expect(pm.response.json()).to.have.property('nota'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.21 Motivo \"otro\" con la nota en blanco (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 10, \"motivo\": \"otro\", \"nota\": \"   \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo nota', () => pm.expect(pm.response.json()).to.have.property('nota'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.22 Cantidad cero (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 0, \"motivo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo cantidad', () => pm.expect(pm.response.json()).to.have.property('cantidad'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.23 Medio huevo (400: las unidades no se parten)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_hu3}}, \"cantidad\": 0.5, \"motivo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo cantidad', () => pm.expect(pm.response.json()).to.have.property('cantidad'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.24 Insumo inexistente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": 999999999, \"cantidad\": 10, \"motivo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo insumo', () => pm.expect(pm.response.json()).to.have.property('insumo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.25 Una perdida de insumo no lleva producto (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"producto\": {{producto_id3}}, \"cantidad\": 10, \"motivo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo producto', () => pm.expect(pm.response.json()).to.have.property('producto'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.26 Un plato sin receta no tiene que descontar (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"plato\", \"producto\": {{producto_sr3}}, \"cantidad\": 1, \"motivo\": \"error_cocina\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo producto', () => pm.expect(pm.response.json()).to.have.property('producto'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.27 Media porcion de plato (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"plato\", \"producto\": {{producto_id3}}, \"cantidad\": 1.5, \"motivo\": \"error_cocina\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo cantidad', () => pm.expect(pm.response.json()).to.have.property('cantidad'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.28 Nada de lo anterior toco el stock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 1000 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(1000));",
+                  "pm.test('Quedan 10 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.29 Cocina registra la rotura de 100 g de harina",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 100, \"motivo\": \"rotura_derrame\", \"nota\": \"Se cayo el bolson\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('perdida_ins3', p.id);",
+                  "pm.test('Es una perdida de insumo de 100 g', () => { pm.expect(p.tipo).to.eql('insumo'); pm.expect(p.cantidad_texto).to.eql('100 g'); });",
+                  "pm.test('Trae el motivo, su etiqueta y la nota', () => { pm.expect(p.motivo).to.eql('rotura_derrame'); pm.expect(p.motivo_etiqueta).to.eql('Rotura o derrame'); pm.expect(p.nota).to.eql('Se cayo el bolson'); });",
+                  "pm.test('Dice quien la cargo', () => pm.expect(p.registrado_por).to.be.a('string').and.not.empty);",
+                  "pm.test('Salio del lote que vence antes (FEFO)', () => { pm.expect(p.consumos.length).to.eql(1); pm.expect(p.consumos[0].lote).to.eql(pm.collectionVariables.get('lote_h3a')); });",
+                  "pm.test('Cocina NO ve valores ni costos', () => { pm.expect(p).to.not.have.property('valor'); pm.expect(p.consumos[0]).to.not.have.property('costo_unitario'); pm.expect(p.consumos[0]).to.not.have.property('valor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.30 Quedan 900 g de harina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 900 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(900));",
+                  "pm.test('Quedan 10 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.31 El Gerente ve el valor: 100 g x $2 = $200 (costo de ese lote)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/{{perdida_ins3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Valor 200 y completo', () => { pm.expect(parseFloat(p.valor)).to.eql(200); pm.expect(p.valor_completo).to.eql(true); });",
+                  "pm.test('Ve el costo de cada lote', () => { pm.expect(parseFloat(p.consumos[0].costo_unitario)).to.eql(2); pm.expect(parseFloat(p.consumos[0].valor)).to.eql(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.32 Vencimiento de 400 g: sale de DOS lotes, cada uno a su costo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 400, \"motivo\": \"vencimiento\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('perdida_venc3', p.id);",
+                  "pm.test('Sin nota es valido (solo \"otro\" la exige)', () => pm.expect(p.nota).to.eql(null));",
+                  "pm.test('300 g del primer lote (le quedaban) y 100 g del segundo', () => { pm.expect(p.consumos.map(c => parseFloat(c.cantidad))).to.eql([300, 100]); pm.expect(p.consumos[0].lote).to.eql(pm.collectionVariables.get('lote_h3a')); pm.expect(p.consumos[1].lote).to.eql(pm.collectionVariables.get('lote_h3b')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.33 Su valor: 300 x $2 + 100 x $3 = $900 (con un promedio de $2,50 daria $1000)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/{{perdida_venc3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Valor 900', () => pm.expect(parseFloat(pm.response.json().valor)).to.eql(900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.34 En el libro, cada movimiento apunta a su perdida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_h3}}&tipo=vencido",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('Dos movimientos de vencimiento, ambos de la perdida', () => { pm.expect(m.length).to.eql(2); m.forEach(x => pm.expect(x.perdida).to.eql(pm.collectionVariables.get('perdida_venc3'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.35 Quedan 500 g de harina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 500 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(500));",
+                  "pm.test('Quedan 10 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.36 Cocina registra 1 plato quemado: salen 250 g de harina y 2 huevos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"plato\", \"producto\": {{producto_id3}}, \"cantidad\": 1, \"motivo\": \"error_cocina\", \"nota\": \"Se quemo en el horno\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set('perdida_plato3', p.id);",
+                  "pm.test('Es una perdida de plato de 1 u', () => { pm.expect(p.tipo).to.eql('plato'); pm.expect(p.cantidad_texto).to.eql('1 u'); pm.expect(p.nombre).to.match(/Tallarines/); });",
+                  "pm.test('Descuenta los dos ingredientes de la receta', () => { const h = p.consumos.find(c => c.insumo === pm.collectionVariables.get('ins_h3')); const u = p.consumos.find(c => c.insumo === pm.collectionVariables.get('ins_hu3')); pm.expect(parseFloat(h.cantidad)).to.eql(250); pm.expect(parseFloat(u.cantidad)).to.eql(2); });",
+                  "pm.test('Cocina NO ve el valor', () => pm.expect(p).to.not.have.property('valor'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.37 Quedan 250 g de harina y 8 huevos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 250 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(250));",
+                  "pm.test('Quedan 8 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(8));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.38 Valor del plato perdido: 250 g x $3 + 2 huevos x $100 = $950",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/{{perdida_plato3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Valor 950 (igual al costo de la receta)', () => pm.expect(parseFloat(pm.response.json().valor)).to.eql(950));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.39 Dos platos no alcanzan (harina para uno solo): 409 y no se registra nada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"plato\", \"producto\": {{producto_id3}}, \"cantidad\": 2, \"motivo\": \"error_cocina\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica que falta y que hacer', () => { const e = pm.response.json().error; pm.expect(e).to.match(/No alcanza el stock registrado/); pm.expect(e).to.match(/ajuste/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.40 Mas insumo del que hay: 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_h3}}, \"cantidad\": 5000, \"motivo\": \"vencimiento\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.41 Los rechazos no tocaron el stock (todo o nada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 250 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(250));",
+                  "pm.test('Quedan 8 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(8));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.42 Del plato hay una sola perdida registrada (la rechazada no quedo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?producto={{producto_id3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test('Una sola', () => pm.expect(l.length).to.eql(1));",
+                  "pm.test('Cocina ve el historial pero sin valores', () => pm.expect(l[0]).to.not.have.property('valor'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.43 Otra perdida de plato (consumo del personal): la harina llega a cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"plato\", \"producto\": {{producto_id3}}, \"cantidad\": 1, \"motivo\": \"consumo_personal\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.44 Harina en cero y 6 huevos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const h = filas.find(i => i.id === pm.collectionVariables.get('ins_h3'));",
+                  "const u = filas.find(i => i.id === pm.collectionVariables.get('ins_hu3'));",
+                  "pm.test('Quedan 0 g de harina', () => pm.expect(parseFloat(h.stock_actual)).to.eql(0));",
+                  "pm.test('Quedan 6 huevos', () => pm.expect(parseFloat(u.stock_actual)).to.eql(6));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.45 Sin harina el plato desaparece del menu solo (se recalcula la disponibilidad)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos?buscar={{sufijo3}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No esta el plato; la bebida sin receta si', () => { const ids = pm.response.json().map(x => x.id); pm.expect(ids).to.not.include(pm.collectionVariables.get('producto_id3')); pm.expect(ids).to.include(pm.collectionVariables.get('producto_sr3')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.46 Cocina recibe el aviso de plato sin insumos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Aviso para el plato de prueba', () => pm.expect(pm.response.json().notificaciones.some(x => x.tipo === 'plato_sin_insumos' && x.producto.id === pm.collectionVariables.get('producto_id3'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.47 Compra de 2 lotes de harina (200 g a $3 cada uno)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id3}}, \"lineas\": [{\"insumo\": {{ins_h3}}, \"cantidad\": 200, \"costo_total\": 600, \"fecha_vencimiento\": \"{{venc_30}}\"},{\"insumo\": {{ins_h3}}, \"cantidad\": 200, \"costo_total\": 600, \"fecha_vencimiento\": \"{{venc_30}}\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = d => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('venc_10', f(10));",
+                  "pm.collectionVariables.set('venc_30', f(30));",
+                  "pm.collectionVariables.set('venc_pasado', f(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.collectionVariables.set('lote_h3c', c.lineas[0].id);",
+                  "pm.collectionVariables.set('lote_h3d', c.lineas[1].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.48 Baja con un codigo de motivo inexistente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/lotes/{{lote_h3c}}/baja",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Prueba\", \"motivo_codigo\": \"foo\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.49 Baja del primer lote con motivo de la lista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/lotes/{{lote_h3c}}/baja",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Se mojo el bolson\", \"motivo_codigo\": \"rotura_derrame\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda dado de baja', () => pm.expect(pm.response.json().estado).to.eql('Baja'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.50 Baja del segundo lote sin codigo (sigue funcionando como antes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/lotes/{{lote_h3d}}/baja",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Baja sin codigo\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.51 Las bajas quedan como perdidas de insumo, mas nuevas primero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?tipo=insumo&insumo={{ins_h3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test('Son 4 perdidas de harina', () => pm.expect(l.length).to.eql(4));",
+                  "pm.test('La ultima: sin codigo queda como \"otro\" con el texto en la nota', () => { pm.expect(l[0].motivo).to.eql('otro'); pm.expect(l[0].nota).to.eql('Baja sin codigo'); pm.expect(l[0].cantidad_texto).to.eql('200 g'); });",
+                  "pm.test('La anterior: rotura o derrame, 200 g x $3 = $600', () => { pm.expect(l[1].motivo).to.eql('rotura_derrame'); pm.expect(l[1].nota).to.eql('Se mojo el bolson'); pm.expect(parseFloat(l[1].valor)).to.eql(600); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.52 En el libro todo movimiento de perdida esta enlazado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_h3}}&tipo=perdida",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('5 movimientos de perdida, todos con su perdida', () => { pm.expect(m.length).to.eql(5); m.forEach(x => pm.expect(x.perdida).to.not.eql(null)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.53 Filtro por plato: dos perdidas, con valor para el Gerente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?producto={{producto_id3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test('Dos, de plato', () => { pm.expect(l.length).to.eql(2); l.forEach(x => pm.expect(x.tipo).to.eql('plato')); });",
+                  "pm.test('Cada una vale 950', () => l.forEach(x => pm.expect(parseFloat(x.valor)).to.eql(950)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.54 Filtro por motivo e insumo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?motivo=vencimiento&insumo={{ins_h3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Una sola: la de 400 g', () => { const l = pm.response.json(); pm.expect(l.length).to.eql(1); pm.expect(l[0].cantidad_texto).to.eql('400 g'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.55 Filtro por fechas: nada en el 2000",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?insumo={{ins_h3}}&desde=2000-01-01&hasta=2000-01-02",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Vacio', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.56 Tipo desconocido en el filtro (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?tipo=raro",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.57 Motivo desconocido en el filtro (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas?motivo=raro",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.58 Perdida inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/999999999",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.59 El Mozo NO ve el historial (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.60 El resumen del Gerente: donde y por que se pierde mas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/resumen?limite_items=1000",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const plato = r.items_que_mas_pierden.find(i => i.tipo === 'plato' && i.id === pm.collectionVariables.get('producto_id3'));",
+                  "const harina = r.items_que_mas_pierden.find(i => i.tipo === 'insumo' && i.id === pm.collectionVariables.get('ins_h3'));",
+                  "pm.test('El plato: 2 perdidas por 1900', () => { pm.expect(plato.registros).to.eql(2); pm.expect(parseFloat(plato.valor)).to.eql(1900); });",
+                  "pm.test('La harina: 4 perdidas por 2300 (200 + 900 + 600 + 600)', () => { pm.expect(harina.registros).to.eql(4); pm.expect(parseFloat(harina.valor)).to.eql(2300); });",
+                  "pm.test('Estan los motivos usados', () => { const codigos = r.por_motivo.map(m => m.motivo); ['error_cocina', 'consumo_personal', 'vencimiento', 'rotura_derrame', 'otro'].forEach(c => pm.expect(codigos).to.include(c)); });",
+                  "pm.test('Motivos de mayor a menor valor', () => { const v = r.por_motivo.map(m => parseFloat(m.valor)); pm.expect(v).to.eql([...v].sort((a, b) => b - a)); });",
+                  "pm.test('Los porcentajes del valor perdido suman 100', () => { const s = r.por_motivo.reduce((t, m) => t + m.porcentaje, 0); pm.expect(Math.abs(s - 100)).to.be.below(0.6); });",
+                  "pm.test('Reparto insumo / plato', () => { pm.expect(r.por_tipo.insumo.registros).to.be.at.least(4); pm.expect(r.por_tipo.plato.registros).to.be.at.least(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.61 Resumen de un periodo sin perdidas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/resumen?desde=2000-01-01&hasta=2000-01-02",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Todo en cero', () => { pm.expect(r.registros).to.eql(0); pm.expect(parseFloat(r.valor_total)).to.eql(0); pm.expect(r.por_motivo).to.eql([]); });",
+                  "pm.test('Devuelve el periodo pedido', () => { pm.expect(r.desde).to.eql('2000-01-01'); pm.expect(r.hasta).to.eql('2000-01-02'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.62 limite_items en cero (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/resumen?limite_items=0",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.63 Cocina NO ve el resumen con valores (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/resumen",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.64 El Mozo NO ve el resumen (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/perdidas/resumen",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.65 El libro sigue consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.66 Limpieza: quitar la receta del plato",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id3}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.67 Limpieza: sacar el plato de la carta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"activo\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.68 Limpieza: sacar la bebida de la carta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_sr3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"activo\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.69 Limpieza: borrar la receta",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/recetas/{{receta_id3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.70 Limpieza: dejar los huevos en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_hu3}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.71 Limpieza: baja de la harina",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_h3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.72 Limpieza: baja de los huevos",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_hu3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.73 Limpieza: baja del proveedor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/proveedores/{{prov_id3}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.74 El libro termina consistente",
           "request": {
             "method": "GET",
             "header": [],

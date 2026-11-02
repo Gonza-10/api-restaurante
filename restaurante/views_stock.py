@@ -13,8 +13,9 @@ from .auth import ADMIN_GERENTE, COCINA
 from .models import Compra, Insumo, LoteInsumo, MovimientoStock, Proveedor, StockInsumo
 from .serializers_stock import (
     AjusteStockSerializer, AsignarProveedoresSerializer, CompraCrearSerializer, CompraSerializer, InsumoSerializer,
-    LoteSerializer, MotivoSerializer, MovimientoSerializer, ProveedorSerializer,
+    LoteSerializer, MovimientoSerializer, ProveedorSerializer,
 )
+from .serializers_perdidas import MotivoBajaSerializer
 from .stock import (
     LoteNoActivo, ajustar_stock, dar_baja_lote, fijar_proveedores_de_insumo, inconsistencias_del_libro,
     proveedores_por_insumo, registrar_compra, stock_actual,
@@ -204,13 +205,17 @@ class LoteViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='baja')
     def baja(self, request, pk=None):
-        """POST /lotes/<id>/baja {"motivo": "..."}. Saca del stock lo que quedaba del lote y lo marca Baja
-        (o Vencido, si ya vencio). Queda en el libro de movimientos."""
+        """POST /lotes/<id>/baja {"motivo": "...", "motivo_codigo": "..."}. Saca del stock lo que quedaba del lote y lo
+        marca Baja (o Vencido, si ya vencio). Queda en el libro de movimientos y como perdida de insumo. `motivo` es el
+        texto que explica la baja; `motivo_codigo` (opcional) es el de la lista cerrada (GET /perdidas/motivos): sin el,
+        es 'vencimiento' si el lote ya vencio y 'otro' en los demas casos."""
         lote = self.get_object()
-        entrada = MotivoSerializer(data=request.data)
+        entrada = MotivoBajaSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
         try:
-            dar_baja_lote(lote.id, request.user.empleado, entrada.validated_data['motivo'])
+            dar_baja_lote(
+                lote.id, request.user.empleado, entrada.validated_data['motivo'], entrada.validated_data.get('motivo_codigo')
+            )
         except LoteNoActivo as error:
             return Response({'error': str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(LoteSerializer(self.get_queryset().get(pk=lote.pk)).data)

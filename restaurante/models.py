@@ -423,6 +423,25 @@ class LoteInsumo(models.Model):
         managed = False
 
 
+class Perdida(models.Model):
+    """Perdida registrada por el personal (hito 4): un insumo suelto o un plato ya cocinado, con motivo de lista cerrada.
+    El valor no se guarda: sale de los movimientos del libro (cada uno con el costo real de su lote)."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleado', related_name='+')
+    jornada = models.ForeignKey(Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='+')
+    alcance = models.CharField(max_length=10, db_column='Alcance')  # Insumo / Plato
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, null=True, blank=True, db_column='IdInsumo', related_name='perdidas')
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True, db_column='IdProducto', related_name='perdidas')
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')  # insumo: unidad base; plato: platos enteros
+    motivo = models.CharField(max_length=20, db_column='Motivo')  # codigo de la lista cerrada (ver stock_calculos.MOTIVOS_PERDIDA)
+    nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')
+
+    class Meta:
+        db_table = 'Perdida'
+        managed = False
+
+
 class MovimientoStock(models.Model):
     """Libro de movimientos: nunca se edita ni se borra. Cantidad con signo (+ entra, - sale)."""
     id = models.BigAutoField(primary_key=True, db_column='Id')
@@ -434,6 +453,9 @@ class MovimientoStock(models.Model):
     jornada = models.ForeignKey(Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='+')
     comanda = models.ForeignKey(
         ComandaRecibida, on_delete=models.PROTECT, null=True, blank=True, db_column='IdComandaRecibida', related_name='+'
+    )
+    perdida = models.ForeignKey(
+        Perdida, on_delete=models.PROTECT, null=True, blank=True, db_column='IdPerdida', related_name='movimientos'
     )
     motivo = models.CharField(max_length=100, null=True, blank=True, db_column='Motivo')
     nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')

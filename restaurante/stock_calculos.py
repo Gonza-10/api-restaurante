@@ -225,3 +225,90 @@ def resumen_notificaciones(notificaciones):
         por_tipo[n['tipo']] += 1
         por_severidad[n['severidad']] += 1
     return {'total': len(notificaciones), 'por_tipo': por_tipo, 'por_severidad': por_severidad}
+
+
+# ==================== PERDIDAS (hito 4) ====================
+
+# Lista CERRADA de motivos (codigo, etiqueta que se muestra). Cerrada a proposito: con texto libre despues no se
+# podria agrupar para saber donde y por que se pierde mas. Si hace falta un motivo nuevo se agrega aca y en el
+# CHECK de la tabla Perdida (script 13). 'otro' obliga a escribir una nota.
+MOTIVOS_PERDIDA = (
+    ('vencimiento', 'Vencimiento'),
+    ('rotura_derrame', 'Rotura o derrame'),
+    ('error_cocina', 'Error de cocina'),
+    ('devolucion_cliente', 'Devolución de cliente'),
+    ('consumo_personal', 'Consumo del personal'),
+    ('otro', 'Otro'),
+)
+CODIGOS_MOTIVO = tuple(codigo for codigo, _ in MOTIVOS_PERDIDA)
+ETIQUETA_MOTIVO = dict(MOTIVOS_PERDIDA)
+MOTIVO_OTRO = 'otro'
+MOTIVO_VENCIMIENTO = 'vencimiento'
+
+
+def valorizar_tomas(tomas):
+    """Valor de lo perdido a COSTO REAL de los lotes de donde salio (nunca un promedio).
+    tomas: [(cantidad, costo_unitario_del_lote)]; la cantidad puede venir con signo (del libro sale negativa).
+    Devuelve (valor, completo): completo es False si algun lote tiene costo cero (insumo que nunca se compro), porque
+    entonces el valor queda por debajo del real."""
+    total = CERO
+    completo = True
+    for cantidad, costo in tomas:
+        costo = a_decimal(costo) if costo is not None else CERO
+        if costo <= 0:
+            completo = False
+        total += abs(a_decimal(cantidad)) * costo
+    return redondear_dinero(total), completo
+
+
+def resumen_perdidas(filas, limite_items=10):
+    """Resumen para Admin y Gerente. filas: [{'tipo': 'insumo'|'plato', 'id': int, 'nombre': str, 'motivo': codigo,
+    'valor': Decimal, 'completo': bool}], una por perdida registrada.
+    Devuelve el total, el reparto por motivo (con el porcentaje del VALOR perdido que explica cada uno), el reparto
+    insumo/plato y los items que mas pierden. Ordenado de mayor a menor valor, y a igual valor por nombre."""
+    valor_total = CERO
+    por_motivo = {}
+    por_tipo = {'insumo': [0, CERO], 'plato': [0, CERO]}
+    por_item = {}
+    completo = True
+    for fila in filas:
+        valor = a_decimal(fila['valor'])
+        valor_total += valor
+        completo = completo and bool(fila.get('completo', True))
+        acumulado = por_motivo.setdefault(fila['motivo'], [0, CERO])
+        acumulado[0] += 1
+        acumulado[1] += valor
+        por_tipo[fila['tipo']][0] += 1
+        por_tipo[fila['tipo']][1] += valor
+        item = por_item.setdefault((fila['tipo'], fila['id']), [fila['nombre'], 0, CERO])
+        item[1] += 1
+        item[2] += valor
+
+    motivos = []
+    for codigo, (registros, valor) in por_motivo.items():
+        motivos.append({
+            'motivo': codigo,
+            'etiqueta': ETIQUETA_MOTIVO.get(codigo, codigo),
+            'registros': registros,
+            'valor': redondear_dinero(valor),
+            'porcentaje': float((valor * 100 / valor_total).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP))
+            if valor_total > 0 else None,
+        })
+    motivos.sort(key=lambda m: (-m['valor'], m['etiqueta'].lower()))
+
+    items = [
+        {'tipo': clave[0], 'id': clave[1], 'nombre': datos[0], 'registros': datos[1], 'valor': redondear_dinero(datos[2])}
+        for clave, datos in por_item.items()
+    ]
+    items.sort(key=lambda i: (-i['valor'], i['nombre'].lower()))
+
+    return {
+        'registros': len(filas),
+        'valor_total': redondear_dinero(valor_total),
+        'valor_completo': completo,
+        'por_motivo': motivos,
+        'por_tipo': {
+            tipo: {'registros': datos[0], 'valor': redondear_dinero(datos[1])} for tipo, datos in por_tipo.items()
+        },
+        'items_que_mas_pierden': items[:limite_items],
+    }

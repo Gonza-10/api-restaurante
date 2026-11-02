@@ -13,8 +13,8 @@ from django.db.models import Case, IntegerField, Sum, Value, When
 from django.utils import timezone
 
 from .jornadas import jornada_abierta
-from .models import Compra, LoteInsumo, MovimientoStock
-from .stock_calculos import CERO, costo_unitario, repartir_fefo
+from .models import Compra, LoteInsumo, MovimientoStock, Perdida
+from .stock_calculos import CERO, MOTIVO_OTRO, MOTIVO_VENCIMIENTO, costo_unitario, repartir_fefo
 
 
 class StockInsuficiente(Exception):
@@ -72,10 +72,12 @@ def ultimo_costo(id_insumo):
     return costo if costo is not None else CERO
 
 
-def descontar_fefo(insumo, cantidad, tipo, empleado=None, id_jornada=None, id_comanda=None, motivo=None, nota=None):
+def descontar_fefo(
+    insumo, cantidad, tipo, empleado=None, id_jornada=None, id_comanda=None, motivo=None, nota=None, id_perdida=None
+):
     """Descuenta `cantidad` (positiva) del insumo, por FEFO, y deja un movimiento por cada lote tocado.
     Lanza StockInsuficiente (sin modificar nada) si no alcanza. Es la base del consumo por comandas, las perdidas
-    y los ajustes negativos."""
+    y los ajustes negativos. id_perdida enlaza los movimientos con la perdida registrada (hito 4)."""
     cantidad = Decimal(cantidad)
     if cantidad <= 0:
         raise ValueError('La cantidad a descontar debe ser mayor que cero.')
@@ -95,7 +97,7 @@ def descontar_fefo(insumo, cantidad, tipo, empleado=None, id_jornada=None, id_co
             lote.save(update_fields=['cantidad_actual', 'estado'])
             movimientos.append(MovimientoStock.objects.create(
                 lote=lote, tipo=tipo, cantidad=-tomar, fecha_hora=ahora, empleado=empleado,
-                jornada_id=id_jornada, comanda_id=id_comanda, motivo=motivo, nota=nota,
+                jornada_id=id_jornada, comanda_id=id_comanda, motivo=motivo, nota=nota, perdida_id=id_perdida,
             ))
         return movimientos
 
@@ -128,18 +130,29 @@ def registrar_compra(proveedor, empleado, lineas, numero_comprobante=None, nota=
         return compra
 
 
-def dar_baja_lote(id_lote, empleado, motivo):
-    """Da de baja un lote activo: lo que quedaba sale del stock con un movimiento. Si el lote ya vencio queda
-    'Vencido' (movimiento 'Vencido'); si no, 'Baja' (movimiento 'Perdida'). Lanza LoteNoActivo si ya no estaba activo."""
+def dar_baja_lote(id_lote, empleado, motivo, motivo_codigo=None):
+    """Da de baja un lote activo: lo que quedaba sale del stock con un movimiento y queda registrado como una
+    Perdida de insumo (hito 4). `motivo` es el texto que explica la baja (queda en la nota); `motivo_codigo` es el de
+    la lista cerrada y, si no se indica, es 'vencimiento' cuando el lote ya vencio y 'otro' en los demas casos.
+    El lote queda 'Vencido' si ya vencio o 'Baja' si no. Lanza LoteNoActivo si ya no estaba activo."""
     with transaction.atomic():
         lote = LoteInsumo.objects.select_for_update().get(pk=id_lote)
         if lote.estado != 'Activo':
             raise LoteNoActivo(f'El lote ya esta en estado {lote.estado}.')
         vencido = lote.fecha_vencimiento is not None and lote.fecha_vencimiento < timezone.localdate()
+        if motivo_codigo is None:
+            motivo_codigo = MOTIVO_VENCIMIENTO if vencido else MOTIVO_OTRO
         if lote.cantidad_actual > 0:
+            ahora = timezone.now()
+            id_jornada = _id_jornada_actual()
+            perdida = Perdida.objects.create(
+                fecha_hora=ahora, empleado=empleado, jornada_id=id_jornada, alcance='Insumo', insumo_id=lote.insumo_id,
+                cantidad=lote.cantidad_actual, motivo=motivo_codigo, nota=motivo,
+            )
             MovimientoStock.objects.create(
-                lote=lote, tipo='Vencido' if vencido else 'Perdida', cantidad=-lote.cantidad_actual,
-                fecha_hora=timezone.now(), empleado=empleado, jornada_id=_id_jornada_actual(), motivo=motivo,
+                lote=lote, tipo='Vencido' if motivo_codigo == MOTIVO_VENCIMIENTO else 'Perdida',
+                cantidad=-lote.cantidad_actual, fecha_hora=ahora, empleado=empleado, jornada_id=id_jornada,
+                motivo=motivo, perdida=perdida,
             )
             lote.cantidad_actual = CERO
         lote.estado = 'Vencido' if vencido else 'Baja'
