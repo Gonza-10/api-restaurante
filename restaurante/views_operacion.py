@@ -17,6 +17,7 @@ from .models import Turno, Jornada, Especial, DiaEspecial, PedidoCabecera
 from .serializers_operacion import (
     TurnoSerializer, JornadaSerializer, JornadaAbrirSerializer, EspecialSerializer, DIAS_SEMANA,
 )
+from .vencimientos import vencimientos_al_abrir
 from .views import _es_verdadero
 
 
@@ -138,6 +139,13 @@ class JornadaAbrirView(APIView):
         aviso = advertencia_apertura(turno)
         datos = dict(JornadaSerializer(jornada).data)
         datos['advertencias'] = [aviso] if aviso else []
+        # vencimientos (hito 6): se dan de baja los lotes vencidos y se recuerdan los que estan por vencer. Si algo
+        # falla no se cae la apertura: el boton manual (POST /vencimientos/procesar) lo puede repetir.
+        try:
+            datos['vencimientos'] = vencimientos_al_abrir(request.user.empleado)
+        except Exception as error:
+            print(f'[ERROR] No se pudieron procesar los vencimientos al abrir la jornada: {error}')
+            datos['vencimientos'] = None
         return Response(datos, status=status.HTTP_201_CREATED)
 
 

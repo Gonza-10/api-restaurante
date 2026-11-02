@@ -111,10 +111,12 @@ chequear('primero lo urgente (platos antes que insumos), despues avisos e info',
          ['Milanesa no se puede preparar', 'Tallarines no se puede preparar', 'Carne esta agotada', 'Harina critica', 'Pizza estaba agotada'])
 resumen = sc.resumen_notificaciones(lista)
 chequear('total', resumen['total'], 5)
-chequear('por tipo', resumen['por_tipo'], {'plato_sin_insumos': 2, 'insumo_critico': 2, 'se_puede_reactivar': 1})
+chequear('por tipo (los tipos del hito 6 aparecen en cero)', resumen['por_tipo'], {
+    'lote_vencido': 0, 'plato_sin_insumos': 2, 'insumo_critico': 2, 'lote_por_vencer': 0, 'elaboracion_a_producir': 0,
+    'se_puede_reactivar': 1})
 chequear('por severidad', resumen['por_severidad'], {'urgente': 3, 'aviso': 1, 'info': 1})
 chequear('sin notificaciones: todo en cero', sc.resumen_notificaciones([])['por_tipo'],
-         {'plato_sin_insumos': 0, 'insumo_critico': 0, 'se_puede_reactivar': 0})
+         {tipo: 0 for tipo in sc.TIPOS_NOTIFICACION})
 
 ok = sum(RESULTADOS)
 print(f'\nResultado: {ok}/{len(RESULTADOS)} correctas')

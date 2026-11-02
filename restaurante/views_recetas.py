@@ -33,7 +33,8 @@ class RecetaViewSet(viewsets.ModelViewSet):
     roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
-        consulta = Receta.objects.prefetch_related('ingredientes__insumo', 'productos').order_by('nombre')
+        # las elaboraciones (recetas de insumos propios) tienen su propio endpoint: /elaboraciones
+        consulta = Receta.objects.filter(insumo_producido__isnull=True).prefetch_related('ingredientes__insumo', 'productos').order_by('nombre')
         if self.action == 'list':
             texto = (self.request.query_params.get('buscar') or '').strip()
             if texto:
@@ -129,11 +130,11 @@ class ProductoRecetaView(APIView):
             producto.receta = None
         else:
             try:
-                producto.receta = Receta.objects.get(pk=int(valor))
+                producto.receta = Receta.objects.get(pk=int(valor), insumo_producido__isnull=True)
             except (TypeError, ValueError):
                 raise ValidationError({'receta': 'Debe ser el id de la receta o null.'})
             except Receta.DoesNotExist:
-                raise ValidationError({'receta': 'No existe una receta con ese id.'})
+                raise ValidationError({'receta': 'No existe una receta de plato con ese id (las elaboraciones no se asignan a productos).'})
         quitables_antes = quitables_de_receta(receta_anterior) if receta_anterior else frozenset()
         producto.save(update_fields=['receta'])
         recalcular_al_confirmar(ids_producto=[producto.id])  # con receta se controla el stock; sin receta, siempre disponible

@@ -31,7 +31,9 @@ FROM (VALUES
     (N'Receta',           N'12_AE4_Recetas_Migraciones.sql'),
     (N'RecetaIngrediente',N'12_AE4_Recetas_Migraciones.sql'),
     (N'Perdida',          N'13_AE4_Perdidas_Migraciones.sql'),
-    (N'PedidoDetalleModificador', N'14_AE4_Modificadores_Migraciones.sql')
+    (N'PedidoDetalleModificador', N'14_AE4_Modificadores_Migraciones.sql'),
+    (N'Produccion',       N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
+    (N'Configuracion',    N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql')
 ) AS t (Nombre, Script);
 
 INSERT @r (Chequeo, Estado, Detalle)
@@ -51,7 +53,11 @@ FROM (VALUES
     (N'Producto',       N'IdReceta',               N'12_AE4_Recetas_Migraciones.sql'),
     (N'ComandaRecibida',N'Estado',                 N'12_AE4_Recetas_Migraciones.sql'),
     (N'MovimientoStock',N'IdPerdida',              N'13_AE4_Perdidas_Migraciones.sql'),
-    (N'RecetaIngrediente',N'EsQuitable',           N'14_AE4_Modificadores_Migraciones.sql')
+    (N'RecetaIngrediente',N'EsQuitable',           N'14_AE4_Modificadores_Migraciones.sql'),
+    (N'Receta',         N'IdInsumoProducido',      N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
+    (N'Receta',         N'Rinde',                  N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
+    (N'Receta',         N'DiasVencimiento',        N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
+    (N'MovimientoStock',N'IdProduccion',           N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql')
 ) AS c (Tabla, Columna, Script)
 WHERE OBJECT_ID('dbo.' + c.Tabla, 'U') IS NOT NULL;
 
@@ -86,6 +92,12 @@ IF OBJECT_ID('dbo.Producto', 'U') IS NOT NULL
 BEGIN
     EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.Producto', N'@n INT OUTPUT', @n OUTPUT;
     INSERT @r VALUES (N'Datos: productos', IIF(@n >= 1, 'OK', 'FALTA'), CONCAT(@n, N' (los carga 99_Seed_AE4.sql)'));
+END;
+
+IF OBJECT_ID('dbo.Configuracion', 'U') IS NOT NULL
+BEGIN
+    EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.Configuracion WHERE Clave = N''dias_aviso_vencimiento''', N'@n INT OUTPUT', @n OUTPUT;
+    INSERT @r VALUES (N'Datos: configuracion de dias de aviso de vencimiento', IIF(@n = 1, 'OK', 'FALTA'), CONCAT(@n, N' (la carga 15_AE4_Elaboraciones_Vencimientos_Migraciones.sql)'));
 END;
 
 SELECT Chequeo, Estado, Detalle FROM @r ORDER BY Orden;

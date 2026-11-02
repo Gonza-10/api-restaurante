@@ -457,6 +457,9 @@ class MovimientoStock(models.Model):
     perdida = models.ForeignKey(
         Perdida, on_delete=models.PROTECT, null=True, blank=True, db_column='IdPerdida', related_name='movimientos'
     )
+    produccion = models.ForeignKey(
+        'Produccion', on_delete=models.PROTECT, null=True, blank=True, db_column='IdProduccion', related_name='movimientos'
+    )
     motivo = models.CharField(max_length=100, null=True, blank=True, db_column='Motivo')
     nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')
 
@@ -492,6 +495,13 @@ class Receta(models.Model):
     id = models.AutoField(primary_key=True, db_column='Id')
     nombre = models.CharField(max_length=100, db_column='Nombre')
     descripcion = models.CharField(max_length=300, null=True, blank=True, db_column='Descripcion')
+    # Elaboracion (hito 6): si esta receta cocina un insumo propio (salsa, masa), cual y cuanto sale de UNA tanda.
+    # Sin insumo_producido es una receta de plato, como siempre.
+    insumo_producido = models.OneToOneField(
+        'Insumo', on_delete=models.PROTECT, null=True, blank=True, db_column='IdInsumoProducido', related_name='elaboracion'
+    )
+    rinde = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, db_column='Rinde')  # unidad base del insumo producido
+    dias_vencimiento = models.IntegerField(null=True, blank=True, db_column='DiasVencimiento')  # vida util del lote producido
 
     class Meta:
         db_table = 'Receta'
@@ -524,4 +534,36 @@ class PedidoDetalleModificador(models.Model):
 
     class Meta:
         db_table = 'PedidoDetalleModificador'
+        managed = False
+
+
+# ==================== ELABORACIONES, VENCIMIENTOS Y CONFIGURACION (hito 6) ====================
+
+class Produccion(models.Model):
+    """Una elaboracion registrada por Cocina: cuantas tandas de una receta de elaboracion se cocinaron. Los consumos de
+    los ingredientes y el ingreso del lote producido estan en el libro, enlazados por MovimientoStock.produccion."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleado', related_name='+')
+    jornada = models.ForeignKey(Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='+')
+    receta = models.ForeignKey(Receta, on_delete=models.PROTECT, db_column='IdReceta', related_name='producciones')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='producciones')
+    tandas = models.DecimalField(max_digits=12, decimal_places=3, db_column='Tandas')
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')  # lo que salio (rinde x tandas)
+    nota = models.CharField(max_length=300, null=True, blank=True, db_column='Nota')
+
+    class Meta:
+        db_table = 'Produccion'
+        managed = False
+
+
+class Configuracion(models.Model):
+    """Parametros del stock que Admin y Gerente pueden cambiar (clave/valor)."""
+    clave = models.CharField(max_length=50, primary_key=True, db_column='Clave')
+    valor = models.CharField(max_length=200, db_column='Valor')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='+')
+    actualizado_en = models.DateTimeField(db_column='ActualizadoEn')
+
+    class Meta:
+        db_table = 'Configuracion'
         managed = False

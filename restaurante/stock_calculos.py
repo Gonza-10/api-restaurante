@@ -3,7 +3,7 @@
 Todas las cantidades viven en UNIDAD BASE: gramos (Masa), mililitros (Volumen) o unidades (Unidad).
 Kilos y litros son solo una forma de mostrarlas.
 """
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 CERO = Decimal('0')
 PASO_CANTIDAD = Decimal('0.001')    # DECIMAL(12,3)
@@ -233,7 +233,9 @@ def hay_para_una(ingredientes, disponible):
 
 # De lo mas urgente a lo menos urgente; dentro de cada severidad, por tipo y despues por nombre.
 SEVERIDADES = ('urgente', 'aviso', 'info')
-TIPOS_NOTIFICACION = ('plato_sin_insumos', 'insumo_critico', 'se_puede_reactivar')
+TIPOS_NOTIFICACION = (
+    'lote_vencido', 'plato_sin_insumos', 'insumo_critico', 'lote_por_vencer', 'elaboracion_a_producir', 'se_puede_reactivar',
+)
 
 
 def clave_notificacion(notificacion):
@@ -340,3 +342,164 @@ def resumen_perdidas(filas, limite_items=10):
         },
         'items_que_mas_pierden': items[:limite_items],
     }
+
+
+# ==================== ELABORACIONES, VENCIMIENTOS Y REPOSICION (hito 6) ====================
+
+def hay_ciclo(dependencias, producido, ingredientes):
+    """True si hacer que `producido` se elabore con `ingredientes` crearia un ciclo (una elaboracion que, directa o
+    indirectamente, necesita de si misma). dependencias: {id_insumo_producido: [ids de sus ingredientes]} de las
+    elaboraciones que YA existen (sin la que se esta guardando)."""
+    pendientes = list(ingredientes)
+    vistos = set()
+    while pendientes:
+        actual = pendientes.pop()
+        if actual == producido:
+            return True
+        if actual in vistos:
+            continue
+        vistos.add(actual)
+        pendientes.extend(dependencias.get(actual, ()))
+    return False
+
+
+def calcular_produccion(ingredientes, rinde, tandas, tipo_producido):
+    """Que se necesita para elaborar `tandas` tandas. ingredientes: [(id_insumo, cantidad_por_tanda, tipo_medida,
+    nombre)]; rinde: cuanto sale de UNA tanda. Devuelve {'cantidad': lo que sale, 'necesario': [(id_insumo, cantidad)]
+    ordenado por id, 'errores': [{'campo', 'mensaje'}]}. Las unidades no se parten: si algo que se cuenta en unidades
+    (un huevo, o el propio producto) diera una fraccion, es un error y hay que elegir otra cantidad de tandas."""
+    tandas = a_decimal(tandas)
+    errores = []
+    cantidad_cruda = a_decimal(rinde) * tandas
+    if tipo_producido == 'Unidad' and not es_entera(cantidad_cruda):
+        errores.append({'campo': 'tandas', 'mensaje': (
+            f'Con {format(tandas.normalize(), "f")} tandas saldrian {format(cantidad_cruda.normalize(), "f")} unidades: '
+            'tiene que dar una cantidad entera.'
+        )})
+    necesario = []
+    for id_insumo, cantidad, tipo_medida, nombre in sorted(ingredientes, key=lambda x: x[0]):
+        cruda = a_decimal(cantidad) * tandas
+        if tipo_medida == 'Unidad' and not es_entera(cruda):
+            errores.append({'campo': 'tandas', 'mensaje': (
+                f'Con {format(tandas.normalize(), "f")} tandas se necesitarian {format(cruda.normalize(), "f")} unidades '
+                f'de {nombre}: tiene que dar una cantidad entera.'
+            )})
+        necesario.append((id_insumo, cuantizar_cantidad(cruda)))
+    return {'cantidad': cuantizar_cantidad(cantidad_cruda), 'necesario': necesario, 'errores': errores}
+
+
+def costo_unitario_producido(tomas, cantidad_producida):
+    """Costo real por unidad base de lo elaborado: lo que costaron los lotes que se consumieron (a su costo, nunca un
+    promedio) dividido lo que salio. tomas: [(cantidad, costo_unitario_del_lote)]. Devuelve (costo_unitario, completo);
+    completo es False si algun lote consumido no tenia costo, y entonces el costo queda por debajo del real."""
+    valor, completo = valorizar_tomas(tomas)
+    if valor <= 0:
+        return CERO, completo
+    return costo_unitario(valor, cantidad_producida), completo
+
+
+MIN_DIAS_AVISO = 0
+MAX_DIAS_AVISO = 365
+DIAS_AVISO_POR_DEFECTO = 5
+
+
+def dias_restantes(fecha_vencimiento, hoy):
+    """Dias que faltan para que venza (0 = vence hoy, negativo = ya vencio). Un lote se puede usar hasta el dia de
+    su vencimiento inclusive."""
+    return (fecha_vencimiento - hoy).days
+
+
+def estado_vencimiento(dias, dias_aviso):
+    """'vencido' (ya paso la fecha), 'por_vencer' (faltan `dias_aviso` dias o menos) o None (todavia falta)."""
+    if dias < 0:
+        return 'vencido'
+    if dias <= dias_aviso:
+        return 'por_vencer'
+    return None
+
+
+def texto_dias_vencimiento(dias):
+    if dias < 0:
+        atras = -dias
+        return 'vencio ayer' if atras == 1 else f'vencio hace {atras} dias'
+    if dias == 0:
+        return 'vence hoy'
+    if dias == 1:
+        return 'vence manana'
+    return f'vence en {dias} dias'
+
+
+def clave_vencimiento(fila):
+    """Orden de los lotes en los avisos: el que vence antes primero, y a igual fecha por nombre."""
+    return (fila['dias_restantes'], fila['insumo_nombre'].lower(), fila['lote'])
+
+
+def faltante_a_objetivo(stock, objetivo):
+    """Cuanto falta para llegar al stock objetivo (0 si ya se llego o lo supero)."""
+    return max(CERO, a_decimal(objetivo) - a_decimal(stock))
+
+
+def tandas_para(faltante, rinde):
+    """Tandas enteras necesarias para cubrir `faltante` con una elaboracion que rinde `rinde` por tanda."""
+    return int((a_decimal(faltante) / a_decimal(rinde)).to_integral_value(rounding=ROUND_CEILING))
+
+
+def entra_en_reposicion(estado, stock, objetivo, todos=False):
+    """Un insumo entra en la lista de reposicion si tiene objetivo y esta mal (agotado, critico o bajo). Con
+    todos=True entra cualquiera que este por debajo de su objetivo."""
+    if a_decimal(objetivo) <= 0:
+        return False
+    if todos:
+        return a_decimal(stock) < a_decimal(objetivo)
+    return estado in REQUIEREN_ATENCION
+
+
+def plan_reposicion(filas, todos=False):
+    """Lista de reposicion. filas: [{'id', 'nombre', 'tipo_medida', 'estado', 'porcentaje', 'stock', 'objetivo',
+    'costo' (por unidad base, o None), 'proveedor' ({'id','nombre'} o None), 'rinde' (None si se compra)}].
+    Cada insumo que entra se completa hasta su objetivo: lo que se compra se agrupa por proveedor principal (con el
+    costo estimado a la ultima compra), y lo que se elabora dice cuantas tandas hacen falta.
+    Devuelve {'comprar': [{'proveedor', 'items', 'total_estimado', 'completo'}], 'producir': [items]}.
+    Ordenado por gravedad (y por nombre); los proveedores por nombre, con 'sin proveedor' al final."""
+    comprar = {}
+    producir = []
+    for fila in filas:
+        if not entra_en_reposicion(fila['estado'], fila['stock'], fila['objetivo'], todos):
+            continue
+        faltante = faltante_a_objetivo(fila['stock'], fila['objetivo'])
+        item = {
+            'insumo': fila['id'], 'nombre': fila['nombre'], 'tipo_medida': fila['tipo_medida'], 'estado': fila['estado'],
+            'porcentaje': fila['porcentaje'], 'stock': a_decimal(fila['stock']), 'objetivo': a_decimal(fila['objetivo']),
+            'faltante': faltante,
+        }
+        if fila.get('rinde'):
+            item['rinde'] = a_decimal(fila['rinde'])
+            item['tandas'] = tandas_para(faltante, fila['rinde'])
+            producir.append(item)
+            continue
+        costo = fila.get('costo')
+        tiene_costo = costo is not None and a_decimal(costo) > 0
+        item['costo_estimado'] = redondear_dinero(faltante * a_decimal(costo)) if tiene_costo else None
+        clave = fila['proveedor']['id'] if fila.get('proveedor') else None
+        grupo = comprar.setdefault(clave, {'proveedor': fila.get('proveedor'), 'items': []})
+        grupo['items'].append(item)
+
+    def gravedad(item):
+        return clave_gravedad(item['estado'], item['porcentaje'], item['nombre'])
+
+    producir.sort(key=gravedad)
+    grupos = []
+    for grupo in comprar.values():
+        grupo['items'].sort(key=gravedad)
+        total = CERO
+        completo = True
+        for item in grupo['items']:
+            if item['costo_estimado'] is None:
+                completo = False
+            else:
+                total += item['costo_estimado']
+        grupo['total_estimado'] = redondear_dinero(total)
+        grupo['completo'] = completo
+        grupos.append(grupo)
+    grupos.sort(key=lambda g: (g['proveedor'] is None, (g['proveedor'] or {}).get('nombre', '').lower()))
+    return {'comprar': grupos, 'producir': producir}

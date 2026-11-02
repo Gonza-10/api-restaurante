@@ -29,6 +29,14 @@ from .views_stock import (
     AjusteStockView,
     VerificacionLibroView,
 )
+from .views_elaboraciones import (
+    ConfiguracionStockView,
+    ElaboracionViewSet,
+    ProcesarVencimientosView,
+    ProduccionViewSet,
+    ReposicionView,
+    VencimientosView,
+)
 from .views_notificaciones import NotificacionesCocinaView
 from .views_perdidas import MotivosPerdidaView, PerdidaViewSet, ResumenPerdidasView
 from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinRecetaView, ComandasRechazadasView
@@ -60,6 +68,8 @@ router.register(r'lotes', LoteViewSet, basename='lote')
 router.register(r'movimientos-stock', MovimientoStockViewSet, basename='movimiento-stock')
 router.register(r'recetas', RecetaViewSet, basename='receta')
 router.register(r'perdidas', PerdidaViewSet, basename='perdida')
+router.register(r'elaboraciones', ElaboracionViewSet, basename='elaboracion')
+router.register(r'producciones', ProduccionViewSet, basename='produccion')
 
 urlpatterns = [
     # van ANTES del router: si no, 'perdidas/<pk>' tomaria 'motivos' y 'resumen' como si fueran ids
@@ -79,6 +89,10 @@ urlpatterns = [
     path('stock', StockView.as_view(), name='stock'),
     path('stock/ajustes', AjusteStockView.as_view(), name='stock-ajustes'),
     path('stock/verificacion', VerificacionLibroView.as_view(), name='stock-verificacion'),
+    path('stock/reposicion', ReposicionView.as_view(), name='stock-reposicion'),
+    path('vencimientos', VencimientosView.as_view(), name='vencimientos'),
+    path('vencimientos/procesar', ProcesarVencimientosView.as_view(), name='vencimientos-procesar'),
+    path('configuracion/stock', ConfiguracionStockView.as_view(), name='configuracion-stock'),
     path('productos/<int:pk>/receta', ProductoRecetaView.as_view(), name='producto-receta'),
     path('cocina/notificaciones', NotificacionesCocinaView.as_view(), name='cocina-notificaciones'),
     path('productos-sin-receta', ProductosSinRecetaView.as_view(), name='productos-sin-receta'),

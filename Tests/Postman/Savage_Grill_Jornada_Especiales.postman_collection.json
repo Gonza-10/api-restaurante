@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas y Modificadores)",
-    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas y Modificadores. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 14 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores y Elaboraciones)",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores y Elaboraciones. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 15 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11414,6 +11414,3026 @@
         },
         {
           "name": "8.55 El libro termina consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Elaboraciones, vencimientos y reposicion (hito 6)",
+      "item": [
+        {
+          "name": "9.0 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_gerente', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.2 Crear proveedor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Proveedor {{sufijo5}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo5', String(Date.now()));",
+                  "const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));",
+                  "const dos = n => String(n).padStart(2, '0');",
+                  "const f = d => { const x = new Date(ahora.getTime() + d * 86400000); return x.getFullYear() + '-' + dos(x.getMonth() + 1) + '-' + dos(x.getDate()); };",
+                  "pm.collectionVariables.set('venc_2', f(2));",
+                  "pm.collectionVariables.set('venc_3', f(3));",
+                  "pm.collectionVariables.set('venc_4', f(4));",
+                  "pm.collectionVariables.set('venc_pasado5', f(-5));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('prov_id5', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.3 Insumo: Tomate (g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Tomate {{sufijo5}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 10000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_tomate', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.4 Insumo: Aceite (ml)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Aceite {{sufijo5}}\", \"tipo_medida\": \"Volumen\", \"stock_objetivo\": 2000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_aceite', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.5 Insumo: Aji (se cuenta en unidades)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Aji {{sufijo5}}\", \"tipo_medida\": \"Unidad\", \"stock_objetivo\": 20}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_aji', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.6 Insumo: Salsa base (g, se elabora)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Salsa base {{sufijo5}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 2000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_sbase', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.7 Insumo: Salsa picante (g, se elabora)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Elab Salsa picante {{sufijo5}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_spic', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.8 El proveedor es el principal del aji",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins_aji}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedores\": [{\"proveedor\": {{prov_id5}}, \"es_principal\": true}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.9 Compra: 12000 g de tomate (vence en 4 dias), 2000 ml de aceite y 10 ajies (vencen en 2 dias)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id5}}, \"lineas\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 12000, \"costo_total\": 60, \"fecha_vencimiento\": \"{{venc_4}}\"},{\"insumo\": {{ins_aceite}}, \"cantidad\": 2000, \"costo_total\": 40},{\"insumo\": {{ins_aji}}, \"cantidad\": 10, \"costo_total\": 50, \"fecha_vencimiento\": \"{{venc_2}}\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.10 Una elaboracion que se usa a si misma (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 1000, \"ingredientes\": [{\"insumo\": {{ins_sbase}}, \"cantidad\": 10}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala los ingredientes', () => pm.expect(pm.response.json()).to.have.property('ingredientes'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.11 Sin ingredientes (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 1000, \"ingredientes\": []}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.12 Rinde en cero (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 0, \"ingredientes\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 800}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el rinde', () => pm.expect(pm.response.json()).to.have.property('rinde'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.13 Cocina NO crea elaboraciones (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 1000, \"ingredientes\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 800}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.14 Crear la Salsa base: 800 g de tomate + 50 ml de aceite rinden 1000 g (dura 3 dias)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 1000, \"dias_vencimiento\": 3, \"ingredientes\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 800}, {\"insumo\": {{ins_aceite}}, \"cantidad\": 50}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('elab_base', r.id);",
+                  "pm.test('Rinde 1000 g y dura 3 dias', () => { pm.expect(parseFloat(r.rinde)).to.eql(1000); pm.expect(r.dias_vencimiento).to.eql(3); });",
+                  "pm.test('Produce el insumo Salsa base', () => pm.expect(r.insumo).to.eql(pm.collectionVariables.get('ins_sbase')));",
+                  "pm.test('Nombre por defecto', () => pm.expect(r.nombre).to.match(/^Elaboracion de ZZ Elab Salsa base/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.15 Un insumo tiene una sola elaboracion (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 500, \"ingredientes\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 400}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el insumo', () => pm.expect(pm.response.json()).to.have.property('insumo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.16 Crear la Salsa picante: 500 g de Salsa base (otra elaboracion) + 2 ajies rinden 500 g",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_spic}}, \"rinde\": 500, \"ingredientes\": [{\"insumo\": {{ins_sbase}}, \"cantidad\": 500}, {\"insumo\": {{ins_aji}}, \"cantidad\": 2}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('elab_pic', r.id);",
+                  "pm.test('Todavia no hay Salsa base: no se puede preparar ninguna tanda', () => { pm.expect(r.tandas_posibles).to.eql(0); pm.expect(r.insumo_limitante).to.match(/Salsa base/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.17 Un ciclo (la base usaria a la picante, que usa a la base): 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones/{{elab_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"rinde\": 1000, \"dias_vencimiento\": 3, \"ingredientes\": [{\"insumo\": {{ins_tomate}}, \"cantidad\": 800}, {\"insumo\": {{ins_spic}}, \"cantidad\": 10}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explica el ciclo', () => pm.expect(JSON.stringify(pm.response.json().ingredientes)).to.match(/ciclo/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.18 El insumo producido no se puede cambiar (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones/{{elab_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_tomate}}, \"rinde\": 1000, \"ingredientes\": [{\"insumo\": {{ins_aceite}}, \"cantidad\": 50}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el insumo', () => pm.expect(pm.response.json()).to.have.property('insumo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.19 Cocina ve la elaboracion y cuantas tandas puede hacer, sin costos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/elaboraciones/{{elab_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('12000 g de tomate dan para 15 tandas (limita el tomate)', () => { pm.expect(r.tandas_posibles).to.eql(15); pm.expect(r.insumo_limitante).to.match(/Tomate/); });",
+                  "pm.test('No ve costos', () => { pm.expect(r).to.not.have.property('costo_tanda'); r.ingredientes.forEach(i => pm.expect(i).to.not.have.property('costo')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.20 El Gerente ve el costo: 800 x 0,005 + 50 x 0,02 = 5 por tanda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/elaboraciones/{{elab_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Costo por tanda 5,00 y 0,005 por gramo', () => { pm.expect(parseFloat(r.costo_tanda)).to.eql(5); pm.expect(parseFloat(r.costo_por_unidad_base)).to.eql(0.005); pm.expect(r.costo_completo).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.21 /recetas es solo de platos: no lista las elaboraciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/recetas?buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Lista vacia', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.22 Una elaboracion no se puede asignar a un producto (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": {{elab_base}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.23 Cocina quiere la picante pero no hay Salsa base: 409 y nada se modifica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_pic}}, \"tandas\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Dice que insumo no alcanza', () => pm.expect(pm.response.json().error).to.match(/Salsa base/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.24 El stock quedo intacto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_tomate', 12000], ['ins_aceite', 2000], ['ins_aji', 10], ['ins_sbase', 0], ['ins_spic', 0]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.25 0,75 tandas de picante darian 1,5 ajies: 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_pic}}, \"tandas\": 0.75}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "const d = pm.response.json();",
+                  "pm.test('Explica que el aji no se parte', () => { pm.expect(d.error).to.match(/Aji/); pm.expect(d.errores[0].campo).to.eql('tandas'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.26 Fecha de vencimiento ya pasada (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_base}}, \"tandas\": 1, \"fecha_vencimiento\": \"{{venc_pasado5}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala la fecha', () => pm.expect(pm.response.json()).to.have.property('fecha_vencimiento'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.27 Elaboracion inexistente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": 999999999, \"tandas\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.28 El Mozo NO produce (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_base}}, \"tandas\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.29 Cocina elabora 2 tandas de Salsa base (1600 g de tomate + 100 ml de aceite -> 2000 g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_base}}, \"tandas\": 2, \"nota\": \"Prueba del hito 6\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('prod_base', r.id);",
+                  "pm.test('Salen 2000 g', () => pm.expect(parseFloat(r.cantidad)).to.eql(2000));",
+                  "pm.test('El lote vence a los 3 dias de la elaboracion', () => pm.expect(r.fecha_vencimiento).to.eql(pm.collectionVariables.get('venc_3')));",
+                  "pm.test('Se consumieron 1600 g de tomate y 100 ml de aceite', () => { pm.expect(r.consumos.length).to.eql(2); const c = r.consumos.map(x => parseFloat(x.cantidad)).sort((a, b) => a - b); pm.expect(c).to.eql([100, 1600]); });",
+                  "pm.test('Cocina no ve costos', () => { pm.expect(r).to.not.have.property('costo_total'); r.consumos.forEach(c => pm.expect(c).to.not.have.property('valor')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.30 Bajaron los ingredientes y subio la Salsa base",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_tomate', 10400], ['ins_aceite', 1900], ['ins_sbase', 2000]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.31 Costo REAL de la produccion: 1600 x 0,005 + 100 x 0,02 = 10, o sea 0,005 por gramo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/producciones/{{prod_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Costo total 10,00 y 0,005 por gramo', () => { pm.expect(parseFloat(r.costo_total)).to.eql(10); pm.expect(parseFloat(r.costo_por_unidad_base)).to.eql(0.005); pm.expect(r.costo_completo).to.eql(true); });",
+                  "pm.test('El detalle trae el valor de cada insumo', () => { const v = r.consumos.map(c => parseFloat(c.valor)).sort((a, b) => a - b); pm.expect(v).to.eql([2, 8]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.32 En el libro: un ingreso de Elaboracion (+2000) enlazado a la produccion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_sbase}}&tipo=elaboracion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('Un movimiento de +2000', () => { pm.expect(m.length).to.eql(1); pm.expect(parseFloat(m[0].cantidad)).to.eql(2000); });",
+                  "pm.test('Apunta a la produccion', () => pm.expect(m[0].produccion).to.eql(pm.collectionVariables.get('prod_base')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.33 Y el consumo de tomate (-1600) apunta a la misma produccion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_tomate}}&tipo=consumo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('Un movimiento de -1600 de la produccion', () => { pm.expect(m.length).to.eql(1); pm.expect(parseFloat(m[0].cantidad)).to.eql(-1600); pm.expect(m[0].produccion).to.eql(pm.collectionVariables.get('prod_base')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.34 El lote producido: origen Elaboracion, costo 0,005 y vence en 3 dias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/lotes?insumo={{ins_sbase}}&estado=activo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test('Un lote de 2000 g', () => { pm.expect(l.length).to.eql(1); pm.expect(l[0].origen).to.eql('Elaboracion'); pm.expect(parseFloat(l[0].cantidad_actual)).to.eql(2000); });",
+                  "pm.test('Costo 0,005 y vence en 3 dias', () => { pm.expect(parseFloat(l[0].costo_unitario)).to.eql(0.005); pm.expect(l[0].dias_para_vencer).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.35 Elaboracion anidada: Cocina hace 1 tanda de picante (500 g de Salsa base + 2 ajies)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_pic}}, \"tandas\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('prod_pic', r.id);",
+                  "pm.test('Salen 500 g', () => pm.expect(parseFloat(r.cantidad)).to.eql(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.36 La Salsa base se uso como ingrediente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_sbase', 1500], ['ins_aji', 8], ['ins_spic', 500]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.37 El costo viaja entre elaboraciones: (500 x 0,005 + 2 x 5) / 500 = 0,025 por gramo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/producciones/{{prod_pic}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Costo total 12,50 y 0,025 por gramo', () => { pm.expect(parseFloat(r.costo_total)).to.eql(12.5); pm.expect(parseFloat(r.costo_por_unidad_base)).to.eql(0.025); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.38 Media tanda de Salsa base: en gramos las fracciones estan bien (500 g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_base}}, \"tandas\": 0.5}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Salen 500 g', () => pm.expect(parseFloat(pm.response.json().cantidad)).to.eql(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.39 Tomate 10000, aceite 1875, Salsa base 2000",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_tomate', 10000], ['ins_aceite', 1875], ['ins_sbase', 2000]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.40 Historial de producciones de la Salsa base (Cocina, sin costos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/producciones?insumo={{ins_sbase}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Dos producciones, la mas nueva primero', () => { pm.expect(p.length).to.eql(2); pm.expect(parseFloat(p[0].cantidad)).to.eql(500); pm.expect(parseFloat(p[1].cantidad)).to.eql(2000); });",
+                  "pm.test('Sin costos', () => p.forEach(x => pm.expect(x).to.not.have.property('costo_total')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.41 Cocina ve los lotes por vencer con los dias que faltan (aviso de 5 dias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const mios = r.por_vencer.filter(x => x.insumo_nombre.includes(pm.collectionVariables.get('sufijo5')));",
+                  "const dias = n => mios.filter(x => x.insumo === pm.collectionVariables.get(n)).map(x => x.dias_restantes);",
+                  "pm.test('Dias de aviso: 5', () => pm.expect(r.dias_aviso).to.eql(5));",
+                  "pm.test('Aji: 2 dias. Tomate: 4. Salsa base: 3 (sus dos lotes). Salsa picante: sin vencimiento', () => { pm.expect(dias('ins_aji')).to.eql([2]); pm.expect(dias('ins_tomate')).to.eql([4]); pm.expect(dias('ins_sbase')).to.eql([3, 3]); pm.expect(dias('ins_spic')).to.eql([]); });",
+                  "pm.test('Ordenados: el que vence antes primero', () => { const d = r.por_vencer.map(x => x.dias_restantes); pm.expect(d).to.eql([...d].sort((a, b) => a - b)); });",
+                  "pm.test('Texto listo para mostrar', () => pm.expect(mios.find(x => x.insumo === pm.collectionVariables.get('ins_aji')).texto).to.eql('vence en 2 dias'));",
+                  "pm.test('Cocina no ve valores', () => mios.forEach(x => pm.expect(x).to.not.have.property('valor')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.42 El Gerente ve ademas el valor de lo que vence: 8 ajies x 5 = 40",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const aji = r.por_vencer.find(x => x.insumo === pm.collectionVariables.get('ins_aji'));",
+                  "pm.test('Valor 40,00', () => pm.expect(parseFloat(aji.valor)).to.eql(40));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.43 En las notificaciones de Cocina aparece el aviso del aji",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const nots = pm.response.json().notificaciones;",
+                  "const aviso = nots.find(n => n.tipo === 'lote_por_vencer' && n.lote.insumo === pm.collectionVariables.get('ins_aji'));",
+                  "pm.test('Aviso de lote por vencer con los dias que faltan', () => { pm.expect(aviso).to.not.be.undefined; pm.expect(aviso.lote.dias_restantes).to.eql(2); pm.expect(aviso.mensaje).to.match(/vence en 2 dias/); pm.expect(aviso.severidad).to.eql('aviso'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.44 Admin/Gerente ven los dias de aviso configurados (5)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('5 dias', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.45 Cocina NO ve la configuracion (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.46 Cocina NO la cambia (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.47 Dias negativos (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": -1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.48 Mas de un anio (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 400}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.49 No es un numero (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": \"muchos\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.50 El Gerente cambia el aviso a 3 dias",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 3}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Quedo en 3', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.51 Con 3 dias, el tomate (vence en 4) deja de avisarse; el aji (2) y la Salsa base (3) siguen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const hay = n => r.por_vencer.some(x => x.insumo === pm.collectionVariables.get(n));",
+                  "pm.test('Aviso de 3 dias', () => pm.expect(r.dias_aviso).to.eql(3));",
+                  "pm.test('Tomate no, aji y Salsa base si', () => { pm.expect(hay('ins_tomate')).to.eql(false); pm.expect(hay('ins_aji')).to.eql(true); pm.expect(hay('ins_sbase')).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.52 Se vuelve a 5 dias",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 5}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Quedo en 5', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.53 Boton manual: Cocina da de baja los lotes ya vencidos (puede no haber ninguno)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/vencimientos/procesar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Informa cuantos y cuales', () => { pm.expect(r.cantidad).to.be.a('number'); pm.expect(r.lotes.length).to.eql(r.cantidad); });",
+                  "pm.test('Cocina no ve el valor', () => pm.expect(r).to.not.have.property('valor_total'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.54 Despues del boton no queda ningun lote vencido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cero vencidos', () => { const r = pm.response.json(); pm.expect(r.resumen.vencidos).to.eql(0); pm.expect(r.vencidos).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.55 Al abrir la jornada se recuerdan los vencimientos con los dias que faltan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{turno_cena}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const v = pm.response.json().vencimientos;",
+                  "pm.test('Trae el resumen de vencimientos', () => { pm.expect(v).to.not.be.null; pm.expect(v.dias_aviso).to.eql(5); pm.expect(v.dados_de_baja.cantidad).to.be.a('number'); });",
+                  "const aji = v.por_vencer.find(x => x.insumo === pm.collectionVariables.get('ins_aji'));",
+                  "pm.test('El aji vuelve a recordarse: vence en 2 dias', () => { pm.expect(aji).to.not.be.undefined; pm.expect(aji.dias_restantes).to.eql(2); });",
+                  "pm.test('Avisos listos para mostrar', () => pm.expect(v.avisos.some(a => a.includes('ZZ Elab Aji') && a.includes('vence en 2 dias'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.56 Lista de reposicion: faltan 12 ajies (8 de 20), a 5 cada uno = 60, con el proveedor principal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const grupo = r.comprar.find(g => g.proveedor && g.proveedor.id === pm.collectionVariables.get('prov_id5'));",
+                  "pm.test('El aji esta agrupado bajo su proveedor', () => pm.expect(grupo).to.not.be.undefined);",
+                  "const item = grupo.items.find(i => i.insumo === pm.collectionVariables.get('ins_aji'));",
+                  "pm.test('Faltan 12 u y cuesta 60,00', () => { pm.expect(parseFloat(item.faltante)).to.eql(12); pm.expect(item.faltante_texto).to.eql('12 u'); pm.expect(parseFloat(item.costo_estimado)).to.eql(60); });",
+                  "pm.test('Total del proveedor 60,00', () => { pm.expect(parseFloat(grupo.total_estimado)).to.eql(60); pm.expect(grupo.completo).to.eql(true); });",
+                  "pm.test('Lo que esta bien no se pide (tomate, aceite, salsas)', () => { const ids = r.comprar.flatMap(g => g.items.map(i => i.insumo)).concat(r.producir.map(i => i.insumo)); ['ins_tomate', 'ins_aceite', 'ins_sbase', 'ins_spic'].forEach(n => pm.expect(ids).to.not.include(pm.collectionVariables.get(n))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.57 Cocina NO ve la reposicion (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.58 Se pierden 1800 g de Salsa base (se cayo la olla)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/perdidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tipo\": \"insumo\", \"insumo\": {{ins_sbase}}, \"cantidad\": 1800, \"motivo\": \"rotura_derrame\", \"nota\": \"Se cayo la olla\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.59 Quedan 200 g de Salsa base (10 % de su objetivo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_sbase', 200]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.60 Cocina recibe el aviso de producir (y no uno de insumo critico duplicado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const nots = pm.response.json().notificaciones;",
+                  "const id = pm.collectionVariables.get('ins_sbase');",
+                  "const aviso = nots.find(n => n.tipo === 'elaboracion_a_producir' && n.insumo.id === id);",
+                  "pm.test('Aviso de elaboracion a producir con las tandas sugeridas', () => { pm.expect(aviso).to.not.be.undefined; pm.expect(aviso.tandas_sugeridas).to.eql(2); pm.expect(aviso.mensaje).to.match(/Hay que producir/); });",
+                  "pm.test('No se duplica como insumo critico', () => pm.expect(nots.some(n => n.tipo === 'insumo_critico' && n.insumo.id === id)).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.61 La reposicion lo manda a elaborar: faltan 1800 g = 2 tandas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const item = r.producir.find(i => i.insumo === pm.collectionVariables.get('ins_sbase'));",
+                  "pm.test('Faltan 1800 g: 2 tandas de 1000 g', () => { pm.expect(item).to.not.be.undefined; pm.expect(parseFloat(item.faltante)).to.eql(1800); pm.expect(item.tandas).to.eql(2); pm.expect(parseFloat(item.rinde)).to.eql(1000); });",
+                  "pm.test('No se pide para comprar', () => pm.expect(r.comprar.flatMap(g => g.items.map(i => i.insumo))).to.not.include(pm.collectionVariables.get('ins_sbase')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.62 Cocina elabora 2 tandas de Salsa base",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab_base}}, \"tandas\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Salen 2000 g', () => pm.expect(parseFloat(pm.response.json().cantidad)).to.eql(2000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.63 Salsa base 2200, tomate 8400, aceite 1775",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "const esperado = [['ins_sbase', 2200], ['ins_tomate', 8400], ['ins_aceite', 1775]];",
+                  "pm.test('Stock: ' + esperado.map(e => e[0].replace('ins_', '') + ' ' + e[1]).join(', '), () => pm.expect(esperado.map(e => v(e[0]))).to.eql(esperado.map(e => e[1])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.64 El aviso de producir desaparece solo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const nots = pm.response.json().notificaciones;",
+                  "pm.test('Ya no hay aviso de producir Salsa base', () => pm.expect(nots.some(n => n.tipo === 'elaboracion_a_producir' && n.insumo.id === pm.collectionVariables.get('ins_sbase'))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.65 Limpieza: cerrar la jornada",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.66 Una elaboracion que ya produjo no se puede borrar (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/elaboraciones/{{elab_base}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica por que', () => pm.expect(pm.response.json().error).to.match(/producciones/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.67 Limpieza: tomate en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_tomate}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.68 Limpieza: aceite en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_aceite}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.69 Limpieza: aji en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_aji}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.70 Limpieza: Salsa base en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_sbase}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.71 Limpieza: Salsa picante en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_spic}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.72 Limpieza: baja del tomate",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_tomate}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.73 Limpieza: baja del aceite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_aceite}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.74 Limpieza: baja del aji",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_aji}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.75 Limpieza: baja de la Salsa base",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_sbase}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.76 Limpieza: baja de la Salsa picante",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_spic}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.77 Limpieza: baja del proveedor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/proveedores/{{prov_id5}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.78 El libro termina consistente",
           "request": {
             "method": "GET",
             "header": [],

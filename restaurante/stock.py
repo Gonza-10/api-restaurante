@@ -64,20 +64,23 @@ def stock_actual(id_insumo):
 
 
 def ultimo_costo(id_insumo):
-    """Costo de reposicion: el costo por unidad base del ultimo lote comprado (0 si nunca se compro)."""
+    """Costo de reposicion: el costo por unidad base del ultimo lote que entro por compra o por elaboracion propia
+    (0 si nunca entro uno)."""
     costo = (
-        LoteInsumo.objects.filter(insumo_id=id_insumo, origen='Compra')
+        LoteInsumo.objects.filter(insumo_id=id_insumo, origen__in=('Compra', 'Elaboracion'))
         .order_by('-fecha_ingreso', '-id').values_list('costo_unitario', flat=True).first()
     )
     return costo if costo is not None else CERO
 
 
 def descontar_fefo(
-    insumo, cantidad, tipo, empleado=None, id_jornada=None, id_comanda=None, motivo=None, nota=None, id_perdida=None
+    insumo, cantidad, tipo, empleado=None, id_jornada=None, id_comanda=None, motivo=None, nota=None, id_perdida=None,
+    id_produccion=None,
 ):
     """Descuenta `cantidad` (positiva) del insumo, por FEFO, y deja un movimiento por cada lote tocado.
     Lanza StockInsuficiente (sin modificar nada) si no alcanza. Es la base del consumo por comandas, las perdidas
-    y los ajustes negativos. id_perdida enlaza los movimientos con la perdida registrada (hito 4)."""
+    y los ajustes negativos. id_perdida enlaza los movimientos con la perdida registrada (hito 4) e id_produccion con la
+    elaboracion que los consumio (hito 6)."""
     cantidad = Decimal(cantidad)
     if cantidad <= 0:
         raise ValueError('La cantidad a descontar debe ser mayor que cero.')
@@ -98,6 +101,7 @@ def descontar_fefo(
             movimientos.append(MovimientoStock.objects.create(
                 lote=lote, tipo=tipo, cantidad=-tomar, fecha_hora=ahora, empleado=empleado,
                 jornada_id=id_jornada, comanda_id=id_comanda, motivo=motivo, nota=nota, perdida_id=id_perdida,
+                produccion_id=id_produccion,
             ))
         return movimientos
 
