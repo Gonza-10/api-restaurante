@@ -30,7 +30,8 @@ FROM (VALUES
     (N'MovimientoStock',  N'11_AE4_Stock_Insumos_Migraciones.sql'),
     (N'Receta',           N'12_AE4_Recetas_Migraciones.sql'),
     (N'RecetaIngrediente',N'12_AE4_Recetas_Migraciones.sql'),
-    (N'Perdida',          N'13_AE4_Perdidas_Migraciones.sql')
+    (N'Perdida',          N'13_AE4_Perdidas_Migraciones.sql'),
+    (N'PedidoDetalleModificador', N'14_AE4_Modificadores_Migraciones.sql')
 ) AS t (Nombre, Script);
 
 INSERT @r (Chequeo, Estado, Detalle)
@@ -49,7 +50,8 @@ FROM (VALUES
     (N'Producto',       N'AgotadoManual',          N'10_AE4_Disponibilidad_Migraciones.sql'),
     (N'Producto',       N'IdReceta',               N'12_AE4_Recetas_Migraciones.sql'),
     (N'ComandaRecibida',N'Estado',                 N'12_AE4_Recetas_Migraciones.sql'),
-    (N'MovimientoStock',N'IdPerdida',              N'13_AE4_Perdidas_Migraciones.sql')
+    (N'MovimientoStock',N'IdPerdida',              N'13_AE4_Perdidas_Migraciones.sql'),
+    (N'RecetaIngrediente',N'EsQuitable',           N'14_AE4_Modificadores_Migraciones.sql')
 ) AS c (Tabla, Columna, Script)
 WHERE OBJECT_ID('dbo.' + c.Tabla, 'U') IS NOT NULL;
 

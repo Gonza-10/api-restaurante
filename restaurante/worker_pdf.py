@@ -12,6 +12,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from restaurante.models import ComandaRecibida
+from restaurante.modificadores import nombres_quitados
 
 CARPETA_TICKETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tickets')
 os.makedirs(CARPETA_TICKETS, exist_ok=True)
@@ -39,7 +40,7 @@ def generar_pdf_ticket(uuid_comanda: str):
     id_comanda_recibida, fecha_hora_recepcion, numero_mesa = fila
 
     comanda = ComandaRecibida.objects.select_related('pedido_cabecera').get(id=id_comanda_recibida)
-    detalles = comanda.detalles.select_related('producto').all()  # solo los items de esta comanda
+    detalles = comanda.detalles.select_related('producto').prefetch_related('modificadores__insumo').all()  # solo los items de esta comanda
 
     pdf = FPDF()
     pdf.add_page()
@@ -54,6 +55,11 @@ def generar_pdf_ticket(uuid_comanda: str):
     total = 0
     for d in detalles:
         pdf.cell(0, 8, f'{d.cantidad}x {d.producto.nombre} - ${d.sub_total}', ln=True)
+        quitados = nombres_quitados(d)
+        if quitados:  # lo que el cliente pidio quitar del plato
+            pdf.set_font('Helvetica', 'I', 10)
+            pdf.cell(0, 6, '    Sin: ' + ', '.join(quitados), ln=True)
+            pdf.set_font('Helvetica', '', 11)
         total += float(d.sub_total)
 
     pdf.ln(5)

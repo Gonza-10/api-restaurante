@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 
 from .auth import ADMIN_GERENTE, COCINA
 from .models import ComandaRecibida, Producto, Receta, RecetaIngrediente
+from .catalogo import invalidar_cache_catalogo
+from .modificadores import quitables_de_receta
 from .recetas import armar_receta, contexto_lectura, recalcular_al_confirmar
 from .serializers_recetas import RecetaEntradaSerializer
 from .views_operacion import _parsear_fecha
@@ -16,7 +18,8 @@ from .views_operacion import _parsear_fecha
 def _guardar_ingredientes(receta, ingredientes):
     receta.ingredientes.all().delete()
     RecetaIngrediente.objects.bulk_create([
-        RecetaIngrediente(receta=receta, insumo=i['insumo'], cantidad=i['cantidad']) for i in ingredientes
+        RecetaIngrediente(receta=receta, insumo=i['insumo'], cantidad=i['cantidad'], es_quitable=i['quitable'])
+        for i in ingredientes
     ])
 
 
@@ -66,6 +69,7 @@ class RecetaViewSet(viewsets.ModelViewSet):
         entrada = RecetaEntradaSerializer(receta, data=request.data)
         entrada.is_valid(raise_exception=True)
         datos = entrada.validated_data
+        quitables_antes = quitables_de_receta(receta.id)
         with transaction.atomic():
             receta.nombre = datos['nombre']
             receta.descripcion = datos.get('descripcion') or None
@@ -73,6 +77,8 @@ class RecetaViewSet(viewsets.ModelViewSet):
             _guardar_ingredientes(receta, datos['ingredientes'])
             # cambiaron los ingredientes: los platos que la usan pueden haber pasado a (no) alcanzar
             recalcular_al_confirmar(ids_producto=list(receta.productos.values_list('id', flat=True)))
+        if quitables_de_receta(receta.id) != quitables_antes and receta.productos.exists():
+            invalidar_cache_catalogo()  # el menu publico lista lo que se puede quitar de cada plato
         receta = self.get_queryset().get(pk=receta.pk)
         return Response(self._salida([receta], True)[0])
 
@@ -118,6 +124,7 @@ class ProductoRecetaView(APIView):
         if 'receta' not in request.data:
             raise ValidationError({'receta': 'Campo obligatorio (el id de la receta, o null para quitarla).'})
         valor = request.data['receta']
+        receta_anterior = producto.receta_id
         if valor is None:
             producto.receta = None
         else:
@@ -127,8 +134,12 @@ class ProductoRecetaView(APIView):
                 raise ValidationError({'receta': 'Debe ser el id de la receta o null.'})
             except Receta.DoesNotExist:
                 raise ValidationError({'receta': 'No existe una receta con ese id.'})
+        quitables_antes = quitables_de_receta(receta_anterior) if receta_anterior else frozenset()
         producto.save(update_fields=['receta'])
         recalcular_al_confirmar(ids_producto=[producto.id])  # con receta se controla el stock; sin receta, siempre disponible
+        quitables_ahora = quitables_de_receta(producto.receta_id) if producto.receta_id else frozenset()
+        if quitables_ahora != quitables_antes:
+            invalidar_cache_catalogo()  # el menu publico lista lo que se puede quitar de cada plato
         return Response(self._salida(producto))
 
 

@@ -14,7 +14,7 @@ from .models import Insumo, LoteInsumo, Producto, RecetaIngrediente
 from .stock import descontar_fefo, lotes_fefo, ultimo_costo
 from .stock_calculos import (
     CERO, costo_de_receta, evaluar_pedido, hay_para_una, mensaje_cliente_faltantes, motivo_interno_faltantes, porciones_posibles,
-    redondear_dinero, requerimiento_por_insumo, texto_cantidad,
+    id_de_linea, receta_efectiva, redondear_dinero, requerimiento_por_insumo, sin_de_linea, texto_cantidad,
 )
 
 
@@ -46,9 +46,22 @@ def stock_disponible(ids_insumo, bloquear=False):
     return {i: sum((lote.cantidad_actual for lote in lotes_fefo(i, bloquear=True)), CERO) for i in ids}
 
 
+def recetas_de_lineas(lineas):
+    """{linea: [(id_insumo, cantidad)]}: la receta EFECTIVA de cada linea del pedido, o sea la del producto sin los
+    ingredientes que el cliente quito (hito 5). La linea es un id de producto o (id_producto, ids quitados); los
+    productos sin receta no aparecen."""
+    lineas = list(lineas)
+    base = recetas_de_productos({id_de_linea(linea) for linea in lineas})
+    return {
+        linea: receta_efectiva(base[id_de_linea(linea)], sin_de_linea(linea))
+        for linea in lineas if id_de_linea(linea) in base
+    }
+
+
 def evaluar_conteo(conteo, bloquear=False):
-    """conteo: {id_producto: cantidad pedida}. Devuelve (faltantes, recetas, disponible)."""
-    recetas = recetas_de_productos(conteo)
+    """conteo: {linea: cantidad pedida}, con la linea = id de producto o (id_producto, ids de insumos quitados).
+    Devuelve (faltantes, recetas, disponible); `recetas` esta keyed por linea y ya sin lo quitado."""
+    recetas = recetas_de_lineas(conteo)
     ids_insumo = {i for ingredientes in recetas.values() for i, _ in ingredientes}
     disponible = stock_disponible(ids_insumo, bloquear=bloquear)
     return evaluar_pedido(conteo, recetas, disponible), recetas, disponible
@@ -75,7 +88,8 @@ def motivo_para_personal(faltantes):
 
 
 def consumir_pedido(conteo, id_comanda, id_jornada):
-    """Descuenta del stock lo que gasta el pedido de una comanda, todo o nada. Debe llamarse dentro de una transaccion
+    """Descuenta del stock lo que gasta el pedido de una comanda, todo o nada (lo que el cliente quito no se descuenta;
+    conteo: {linea: cantidad}, ver evaluar_conteo). Debe llamarse dentro de una transaccion
     (la del worker): los lotes quedan bloqueados hasta que termine. Devuelve [] si se desconto, o los faltantes
     (sin descontar nada) si no alcanzaba."""
     faltantes, recetas, _ = evaluar_conteo(conteo, bloquear=True)
@@ -109,6 +123,7 @@ def armar_receta(receta, ve_costos, disponible, costos):
             'tipo_medida': ing.insumo.tipo_medida,
             'cantidad': ing.cantidad,
             'cantidad_texto': texto_cantidad(ing.cantidad, ing.insumo.tipo_medida),
+            'quitable': ing.es_quitable,
         }
         if ve_costos:
             costo = costos.get(ing.insumo_id)

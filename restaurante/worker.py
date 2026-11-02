@@ -14,10 +14,11 @@ django.setup()
 from django.utils import timezone
 from django.db import connection, IntegrityError, transaction
 from collections import Counter
-from restaurante.models import ComandaRecibida, PedidoCabecera, PedidoDetalle, Producto
+from restaurante.models import ComandaRecibida, PedidoCabecera, PedidoDetalle, PedidoDetalleModificador, Producto
 from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
 from restaurante.recetas import consumir_pedido, mensaje_para_cliente, motivo_para_personal
 from restaurante.stock import StockInsuficiente
+from restaurante.stock_calculos import clave_de_linea
 
 r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
 
@@ -71,8 +72,12 @@ def procesar_comanda(ch, method, properties, body):
                 precios_esp = precios_especiales(jornada.fecha, jornada.turno_id)
 
             # el cliente paga el precio que vio (si cambio despues) salvo que ahora sea menor; ver precio_segun_lo_que_vio
-            conteo = Counter((item['id'], item.get('precio')) for item in datos['items'])
-            unidades = Counter(item['id'] for item in datos['items'])
+            # (hito 5) cada item puede traer 'sin': los ids de los insumos que el cliente pidio quitar. Dos unidades del
+            # mismo plato van al mismo renglon solo si piden lo mismo; los mensajes anteriores a esto no traen 'sin'.
+            conteo = Counter(
+                (item['id'], item.get('precio'), tuple(sorted(set(item.get('sin') or [])))) for item in datos['items']
+            )
+            unidades = Counter(clave_de_linea(item['id'], item.get('sin')) for item in datos['items'])
 
             # Primero el stock, todo o nada: descuenta los insumos de las recetas por FEFO. Si el ultimo stock lo
             # tomo otra comanda antes, esta se rechaza y no queda nada a medias (el punto de guardado la deshace).
@@ -82,10 +87,10 @@ def procesar_comanda(ch, method, properties, body):
                     if faltantes:
                         rechazo = (motivo_para_personal(faltantes), mensaje_para_cliente(faltantes))
                     else:
-                        for (id_producto, precio_visto), cantidad in conteo.items():
+                        for (id_producto, precio_visto, sin), cantidad in conteo.items():
                             producto = Producto.objects.get(id=id_producto)
                             precio = precio_segun_lo_que_vio(precio_a_cobrar(producto, precios_esp), precio_visto)
-                            PedidoDetalle.objects.create(
+                            detalle = PedidoDetalle.objects.create(
                                 pedido_cabecera=pedido_cabecera,
                                 comanda_id=id_comanda,
                                 producto=producto,
@@ -94,6 +99,10 @@ def procesar_comanda(ch, method, properties, body):
                                 sub_total=precio * cantidad,
                                 estado_cocina=False
                             )
+                            if sin:  # lo quitado no se descuenta (ya lo resolvio consumir_pedido); aca solo se registra
+                                PedidoDetalleModificador.objects.bulk_create(
+                                    [PedidoDetalleModificador(detalle=detalle, insumo_id=id_insumo) for id_insumo in sin]
+                                )
             except StockInsuficiente as error:
                 # no deberia pasar (los lotes estaban bloqueados), pero si pasa se rechaza igual
                 rechazo = (f'Stock insuficiente de {error.insumo.nombre}.', MENSAJE_GENERICO)

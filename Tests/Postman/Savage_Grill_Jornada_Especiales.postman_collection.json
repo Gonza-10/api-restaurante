@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas y Perdidas)",
-    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas y Perdidas. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 13 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas y Modificadores)",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas y Modificadores. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 14 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -9240,6 +9240,2180 @@
         },
         {
           "name": "7.74 El libro termina consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Modificadores: \"sin cebolla\" (hito 5)",
+      "item": [
+        {
+          "name": "8.0 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_gerente', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.2 Crear proveedor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Proveedor {{sufijo4}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo4', String(Date.now()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('prov_id4', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.3 Crear insumo (Carne, en gramos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Carne {{sufijo4}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 5000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_carne', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.4 Crear insumo (Cebolla, en gramos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Cebolla {{sufijo4}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_cebolla', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.5 Crear insumo (Pan, en unidades)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Pan {{sufijo4}}\", \"tipo_medida\": \"Unidad\", \"stock_objetivo\": 50}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins_pan', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.6 Compra: 2000 g de carne, 100 g de cebolla y 20 panes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id4}}, \"lineas\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 2000, \"costo_total\": 20000},{\"insumo\": {{ins_cebolla}}, \"cantidad\": 100, \"costo_total\": 100},{\"insumo\": {{ins_pan}}, \"cantidad\": 20, \"costo_total\": 2000}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.7 Una receta donde TODO se puede quitar (400: el plato podria quedar vacio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Vacia {{sufijo4}}\", \"ingredientes\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 200, \"quitable\": true}, {\"insumo\": {{ins_cebolla}}, \"cantidad\": 30, \"quitable\": true}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala los ingredientes', () => pm.expect(pm.response.json()).to.have.property('ingredientes'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.8 \"quitable\" tiene que ser verdadero o falso (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Rara {{sufijo4}}\", \"ingredientes\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 200}, {\"insumo\": {{ins_cebolla}}, \"cantidad\": 30, \"quitable\": \"quizas\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.9 Receta de la milanesa: carne y pan fijos, cebolla quitable",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Milanesa {{sufijo4}}\", \"ingredientes\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 200}, {\"insumo\": {{ins_cebolla}}, \"cantidad\": 30, \"quitable\": true}, {\"insumo\": {{ins_pan}}, \"cantidad\": 1}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.collectionVariables.set('receta_id4', r.id);",
+                  "const q = id => r.ingredientes.find(i => i.insumo === pm.collectionVariables.get(id)).quitable;",
+                  "pm.test('Solo la cebolla es quitable', () => pm.expect([q('ins_carne'), q('ins_cebolla'), q('ins_pan')]).to.eql([false, true, false]));",
+                  "pm.test('Alcanza para 3 (limita la cebolla: 100 / 30)', () => { pm.expect(r.porciones_posibles).to.eql(3); pm.expect(r.insumo_limitante).to.match(/Cebolla/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.10 Cocina ve que ingredientes se pueden quitar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/recetas/{{receta_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Ve la marca quitable en cada ingrediente', () => r.ingredientes.forEach(i => pm.expect(i.quitable).to.be.a('boolean')));",
+                  "pm.test('Quitable es solo la cebolla', () => pm.expect(r.ingredientes.filter(i => i.quitable).map(i => i.insumo)).to.eql([pm.collectionVariables.get('ins_cebolla')]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.11 Categoria para los productos de prueba",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/categorias",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('categoria_id4', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.12 Crear la milanesa (6000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Milanesa {{sufijo4}}\", \"precio\": \"6000.00\", \"categoria\": {{categoria_id4}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('producto_id4', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.13 Asignarle la receta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id4}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": {{receta_id4}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.14 Crear una bebida sin receta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Bebida {{sufijo4}}\", \"precio\": \"1500.00\", \"categoria\": {{categoria_id4}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('producto_sr4', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.15 El menu publico ofrece quitar la cebolla, sin mostrar nada mas de la receta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const menu = pm.response.json();",
+                  "const m = menu.find(x => x.id === pm.collectionVariables.get('producto_id4'));",
+                  "pm.test('La milanesa esta en el menu', () => pm.expect(m).to.not.be.undefined);",
+                  "pm.test('La milanesa ofrece quitar la cebolla (solo id y nombre)', () => { pm.expect(m.quitables.length).to.eql(1); pm.expect(Object.keys(m.quitables[0]).sort()).to.eql(['id', 'nombre']); pm.expect(m.quitables[0].id).to.eql(pm.collectionVariables.get('ins_cebolla')); pm.expect(m.quitables[0].nombre).to.match(/Cebolla/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.16 La bebida sin receta no ofrece quitar nada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json().find(x => x.id === pm.collectionVariables.get('producto_sr4'));",
+                  "pm.test('Lista vacia', () => pm.expect(b.quitables).to.eql([]));",
+                  "pm.test('El menu sigue sin mostrar recetas', () => pm.expect(b).to.not.have.property('receta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.17 El gerente comienza la jornada (Cena)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{turno_cena}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.18 El mozo abre la mesa 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pin4', pm.response.json().codigo_pin);",
+                  "pm.collectionVariables.set('id_sesion4', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.19 Quitar un ingrediente fijo (la carne): 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": [{{ins_carne}}]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('Explica que no se puede quitar', () => pm.expect(d.error).to.match(/no se pueden quitar/));",
+                  "pm.test('Detalla producto, ingrediente y motivo', () => { const m = d.modificadores_invalidos[0]; pm.expect(m.id).to.eql(pm.collectionVariables.get('producto_id4')); pm.expect(m.insumo).to.eql(pm.collectionVariables.get('ins_carne')); pm.expect(m.motivo).to.eql('no_quitable'); pm.expect(m.nombre).to.match(/Milanesa/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.20 Quitar algo que la receta no tiene (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": [999999999]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.21 Quitar algo a un producto sin receta (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_sr4}}, \"sin\": [{{ins_cebolla}}]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.22 \"sin\" tiene que ser una lista (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": \"cebolla\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.23 Ids de insumo invalidos en \"sin\" (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": [0]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.24 Pedir 1 milanesa comun y 2 sin cebolla",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}}, {\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}, {\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.collectionVariables.set('uuid_a4', pm.collectionVariables.get('uuid_comanda'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.25 El cliente ve su pedido en dos renglones (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"pin\": \"{{pin4}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3000)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const uuid = pm.collectionVariables.get('uuid_a4').toLowerCase();",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid.toLowerCase() === uuid);",
+                  "pm.test('La comanda fue procesada (si falla: worker.py apagado)', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Dos renglones: la comun y la que va sin cebolla', () => { pm.expect(c.items.length).to.eql(2); const comun = c.items.find(i => i.sin.length === 0); const sin = c.items.find(i => i.sin.length === 1); pm.expect(comun.cantidad).to.eql(1); pm.expect(sin.cantidad).to.eql(2); pm.expect(sin.sin[0]).to.match(/Cebolla/); });",
+                  "pm.test('Quitar un ingrediente no cambia el precio: 3 x 6000', () => pm.expect(parseFloat(c.total)).to.eql(18000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.26 Cocina lo ve en el tablero con el \"sin\"",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const uuid = pm.collectionVariables.get('uuid_a4').toLowerCase();",
+                  "const c = pm.response.json().find(x => x.id_comanda_uuid.toLowerCase() === uuid);",
+                  "pm.test('Esta en el tablero', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('El renglon sin cebolla lo dice', () => { const sin = c.items.find(i => i.cantidad === 2); pm.expect(sin.sin.length).to.eql(1); pm.expect(sin.sin[0]).to.match(/Cebolla/); });",
+                  "pm.test('El comun no trae ningun \"sin\"', () => pm.expect(c.items.find(i => i.cantidad === 1).sin).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.27 El stock: lo quitado no se descuenta (cebolla: solo la de la comun, 30 g)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "pm.test('Carne 1400 g, cebolla 70 g, pan 17 u', () => pm.expect([v('ins_carne'), v('ins_cebolla'), v('ins_pan')]).to.eql([1400, 70, 17]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.28 En el libro hay un solo consumo de cebolla (-30)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_cebolla}}&tipo=consumo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test('Un movimiento de -30', () => { pm.expect(m.length).to.eql(1); pm.expect(parseFloat(m[0].cantidad)).to.eql(-30); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.29 Pedir 3 comunes con cebolla para 2: \"2 de 3\" (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}}, {\"id\": {{producto_id4}}}, {\"id\": {{producto_id4}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('Mensaje generico: 2 de 3', () => pm.expect(d.error).to.match(/^Insumos insuficientes\\. Podemos preparar solamente 2 de 3 ZZ Modif Milanesa/));",
+                  "pm.test('No dice que ingrediente falta', () => pm.expect(d.error).to.not.match(/cebolla|carne|pan\\b/i));",
+                  "pm.test('Informa pedido y posibles', () => { const f = d.productos_sin_stock[0]; pm.expect(f.pedido).to.eql(3); pm.expect(f.posibles).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.30 Pero 3 SIN cebolla alcanzan (no necesitan cebolla)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}, {\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}, {\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.collectionVariables.set('uuid_b4', pm.collectionVariables.get('uuid_comanda'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.31 Aceptada, en un solo renglon de 3 (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"pin\": \"{{pin4}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3000)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const uuid = pm.collectionVariables.get('uuid_b4').toLowerCase();",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid.toLowerCase() === uuid);",
+                  "pm.test('Procesada y aceptada', () => { pm.expect(c).to.not.be.undefined; pm.expect(c.estado).to.eql('pendiente'); });",
+                  "pm.test('Un solo renglon: 3 sin cebolla', () => { pm.expect(c.items.length).to.eql(1); pm.expect(c.items[0].cantidad).to.eql(3); pm.expect(c.items[0].sin.length).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.32 La cebolla no se toco; carne y pan si (3 x 200 y 3 panes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock?vista=detallada&buscar={{sufijo4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json().insumos;",
+                  "const v = n => parseFloat(filas.find(i => i.id === pm.collectionVariables.get(n)).stock_actual);",
+                  "pm.test('Carne 800 g, cebolla 70 g, pan 14 u', () => pm.expect([v('ins_carne'), v('ins_cebolla'), v('ins_pan')]).to.eql([800, 70, 14]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.33 Siguen siendo un solo consumo de cebolla",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?insumo={{ins_cebolla}}&tipo=consumo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Uno solo', () => pm.expect(pm.response.json().length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.34 Admin/Gerente marca la cebolla como fija",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas/{{receta_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Milanesa {{sufijo4}}\", \"ingredientes\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 200}, {\"insumo\": {{ins_cebolla}}, \"cantidad\": 30}, {\"insumo\": {{ins_pan}}, \"cantidad\": 1}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ya no hay ingredientes quitables', () => pm.expect(pm.response.json().ingredientes.some(i => i.quitable)).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.35 El menu (que va por el cache) se actualiza solo: ya no ofrece quitar nada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const menu = pm.response.json();",
+                  "const m = menu.find(x => x.id === pm.collectionVariables.get('producto_id4'));",
+                  "pm.test('La milanesa esta en el menu', () => pm.expect(m).to.not.be.undefined);",
+                  "pm.test('Ya no ofrece quitar nada', () => pm.expect(m.quitables).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.36 Pedir sin cebolla ahora da 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{uuid_comanda}}\", \"mesa_id\": 3, \"pin\": \"{{pin4}}\", \"items\": [{\"id\": {{producto_id4}}, \"sin\": [{{ins_cebolla}}]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('uuid_comanda', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.37 Se vuelve a marcar la cebolla como quitable",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/recetas/{{receta_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Modif Milanesa {{sufijo4}}\", \"ingredientes\": [{\"insumo\": {{ins_carne}}, \"cantidad\": 200}, {\"insumo\": {{ins_cebolla}}, \"cantidad\": 30, \"quitable\": true}, {\"insumo\": {{ins_pan}}, \"cantidad\": 1}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.38 El menu vuelve a ofrecer quitar la cebolla",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const menu = pm.response.json();",
+                  "const m = menu.find(x => x.id === pm.collectionVariables.get('producto_id4'));",
+                  "pm.test('La milanesa esta en el menu', () => pm.expect(m).to.not.be.undefined);",
+                  "pm.test('La milanesa ofrece quitar la cebolla (solo id y nombre)', () => { pm.expect(m.quitables.length).to.eql(1); pm.expect(Object.keys(m.quitables[0]).sort()).to.eql(['id', 'nombre']); pm.expect(m.quitables[0].id).to.eql(pm.collectionVariables.get('ins_cebolla')); pm.expect(m.quitables[0].nombre).to.match(/Cebolla/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.39 Cocina entrega el primer pedido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{uuid_a4}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.40 Cocina entrega el segundo pedido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{uuid_b4}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.41 El tablero queda sin esos pedidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(x => x.id_comanda_uuid.toLowerCase());",
+                  "pm.test('Ya no estan', () => { pm.expect(ids).to.not.include(pm.collectionVariables.get('uuid_a4').toLowerCase()); pm.expect(ids).to.not.include(pm.collectionVariables.get('uuid_b4').toLowerCase()); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.42 Limpieza: cerrar la jornada",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.43 Limpieza: cerrar la sesion de la mesa 3",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{id_sesion4}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.44 Limpieza: quitar la receta de la milanesa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id4}}/receta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receta\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.45 Limpieza: sacar la milanesa de la carta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"activo\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.46 Limpieza: sacar la bebida de la carta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{producto_sr4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"activo\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.47 Limpieza: borrar la receta",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/recetas/{{receta_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.48 Limpieza: dejar la carne en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_carne}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.49 Limpieza: dejar la cebolla en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_cebolla}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.50 Limpieza: dejar el pan en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins_pan}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.51 Limpieza: baja de la carne",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_carne}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.52 Limpieza: baja de la cebolla",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_cebolla}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.53 Limpieza: baja del pan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins_pan}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.54 Limpieza: baja del proveedor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/proveedores/{{prov_id4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.55 El libro termina consistente",
           "request": {
             "method": "GET",
             "header": [],

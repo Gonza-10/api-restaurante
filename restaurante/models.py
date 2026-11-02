@@ -506,7 +506,22 @@ class RecetaIngrediente(models.Model):
     receta = models.ForeignKey(Receta, on_delete=models.CASCADE, db_column='IdReceta', related_name='ingredientes')
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='usos_en_recetas')
     cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')  # unidad base, por unidad vendida
+    es_quitable = models.BooleanField(default=False, db_column='EsQuitable')  # el cliente puede pedir el plato SIN este ingrediente (hito 5)
 
     class Meta:
         db_table = 'RecetaIngrediente'
+        managed = False
+
+
+class PedidoDetalleModificador(models.Model):
+    """Lo que se quito en un renglon del pedido (hito 5): un registro por ingrediente quitado ("sin cebolla").
+    Lo quitado no se descuenta del stock."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    detalle = models.ForeignKey(
+        PedidoDetalle, on_delete=models.CASCADE, db_column='IdPedidoDetalle', related_name='modificadores'
+    )
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='+')
+
+    class Meta:
+        db_table = 'PedidoDetalleModificador'
         managed = False

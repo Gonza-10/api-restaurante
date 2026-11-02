@@ -114,41 +114,69 @@ def porciones_posibles(ingredientes, disponible):
     return mejor, limitante
 
 
+# Una LINEA de pedido es un producto con sus modificadores: (id_producto, (ids de insumos quitados)). Dos unidades del
+# mismo plato son la misma linea solo si piden lo mismo. Por compatibilidad, un entero (solo el id del producto)
+# es una linea sin modificadores.
+
+def clave_de_linea(id_producto, sin=()):
+    """La clave de una linea: (id_producto, ids de los insumos quitados, ordenados y sin repetir)."""
+    return (id_producto, tuple(sorted(set(sin or ()))))
+
+
+def id_de_linea(clave):
+    return clave[0] if isinstance(clave, tuple) else clave
+
+
+def sin_de_linea(clave):
+    return tuple(clave[1]) if isinstance(clave, tuple) else ()
+
+
+def receta_efectiva(ingredientes, sin):
+    """La receta de una unidad SIN los ingredientes quitados: [(id_insumo, cantidad)] sin esos insumos."""
+    quitados = set(sin or ())
+    return [(id_insumo, cantidad) for id_insumo, cantidad in ingredientes if id_insumo not in quitados]
+
+
 def requerimiento_por_insumo(conteo, recetas):
-    """Cuanto de cada insumo necesita un pedido. conteo: {id_producto: cantidad pedida};
-    recetas: {id_producto: [(id_insumo, cantidad)]} (los productos sin receta no consumen).
-    Devuelve {id_insumo: cantidad_total} con los insumos de todas las recetas sumados."""
+    """Cuanto de cada insumo necesita un pedido. conteo: {linea: cantidad pedida} (la linea es un id de producto o
+    (id_producto, quitados)); recetas: {linea: [(id_insumo, cantidad)]} ya con lo quitado descontado (los productos
+    sin receta no consumen). Devuelve {id_insumo: cantidad_total} con los insumos de todas las recetas sumados."""
     total = {}
-    for id_producto, pedido in conteo.items():
-        for id_insumo, cantidad in recetas.get(id_producto, ()):
+    for linea, pedido in conteo.items():
+        for id_insumo, cantidad in recetas.get(linea, ()):
             total[id_insumo] = total.get(id_insumo, CERO) + a_decimal(cantidad) * pedido
     return total
 
 
 def evaluar_pedido(conteo, recetas, disponible):
-    """Decide si alcanza el stock para todo el pedido. Los productos se evaluan en orden de id y cada uno reserva
-    lo suyo, asi dos platos que comparten un insumo no cuentan dos veces la misma cantidad.
-    Devuelve la lista de faltantes (vacia si alcanza todo):
-    [{'id_producto', 'pedido', 'posibles', 'id_insumo_limitante'}], donde `posibles` es cuantas unidades de ese
-    producto se pueden preparar (0 si ninguna)."""
+    """Decide si alcanza el stock para todo el pedido. Las lineas se evaluan en orden y cada una reserva lo suyo, asi
+    dos platos que comparten un insumo no cuentan dos veces la misma cantidad.
+    conteo: {linea: cantidad pedida}; recetas: {linea: [(id_insumo, cantidad)]} (la receta efectiva de esa linea).
+    Devuelve la lista de faltantes (vacia si alcanza todo), UNO POR PRODUCTO aunque lo pidan con distintos
+    modificadores: [{'id_producto', 'pedido', 'posibles', 'id_insumo_limitante'}], donde `pedido` y `posibles`
+    suman todas las lineas de ese producto (posibles = cuantas unidades se pueden preparar, 0 si ninguna)."""
     restante = {k: a_decimal(v) for k, v in disponible.items()}
-    faltantes = []
-    for id_producto in sorted(conteo):
-        ingredientes = recetas.get(id_producto)
+    por_producto = {}
+    for linea in sorted(conteo):
+        ingredientes = recetas.get(linea)
         if not ingredientes:
             continue
-        pedido = conteo[id_producto]
+        pedido = conteo[linea]
         posibles, limitante = porciones_posibles(ingredientes, restante)
         if posibles is None:
             continue
         reservar = min(posibles, pedido)
         for id_insumo, cantidad in ingredientes:
             restante[id_insumo] = restante.get(id_insumo, CERO) - a_decimal(cantidad) * reservar
-        if posibles < pedido:
-            faltantes.append({
-                'id_producto': id_producto, 'pedido': pedido, 'posibles': posibles, 'id_insumo_limitante': limitante,
-            })
-    return faltantes
+        id_producto = id_de_linea(linea)
+        acumulado = por_producto.setdefault(
+            id_producto, {'id_producto': id_producto, 'pedido': 0, 'posibles': 0, 'id_insumo_limitante': None}
+        )
+        acumulado['pedido'] += pedido
+        acumulado['posibles'] += reservar
+        if posibles < pedido and acumulado['id_insumo_limitante'] is None:
+            acumulado['id_insumo_limitante'] = limitante
+    return [a for a in por_producto.values() if a['posibles'] < a['pedido']]
 
 
 def mensaje_cliente_faltantes(faltantes, nombres_producto):

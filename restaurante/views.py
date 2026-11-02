@@ -48,6 +48,7 @@ from .auth import (
 from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
 from .especiales import precios_especiales_vigentes
+from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
 from .recetas import evaluar_conteo, faltantes_para_respuesta, mensaje_para_cliente
 from .catalogo import (
     invalidar_cache_catalogo, version_catalogo, clave_cache_catalogo, guardar_precios_vistos, precios_vistos,
@@ -181,6 +182,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         contexto = super().get_serializer_context()
         contexto['precios_especiales'] = precios_especiales_vigentes()  # una sola consulta por pedido
+        if self.action == 'list':
+            contexto['quitables_por_producto'] = quitables_de_productos()  # tambien una sola consulta
         return contexto
 
     def list(self, request, *args, **kwargs):
@@ -531,7 +534,7 @@ def _publicar_evento_comanda_lista(id_comanda_uuid: str):
 def _armar_tablero_cocina():
     comandas = ComandaRecibida.objects.select_related(
         'pedido_cabecera__mesa'
-    ).prefetch_related('detalles__producto').order_by('fecha_hora_recepcion')
+    ).prefetch_related('detalles__producto', 'detalles__modificadores__insumo').order_by('fecha_hora_recepcion')
 
     resultado = []
     for comanda in comandas:
@@ -543,7 +546,7 @@ def _armar_tablero_cocina():
 
         # solo los items de ESTA comanda (no los de toda la sesion de la mesa)
         items = [
-            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad}
+            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad, 'sin': nombres_quitados(d)}
             for d in comanda.detalles.all()
         ]
 
@@ -637,9 +640,20 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        # modificadores ("sin cebolla"): solo se puede quitar lo que la receta marca como quitable
+        invalidos = validar_modificadores(datos['items'])
+        if invalidos:
+            for problema in invalidos:
+                problema['nombre'] = existentes[problema['id']].nombre
+            return Response(
+                {'error': 'Hay ingredientes que no se pueden quitar de ese plato. Actualiza el menu y volve a armar el pedido.',
+                 'modificadores_invalidos': invalidos},
+                status=status.HTTP_409_CONFLICT
+            )
+
         # hay insumos para todo lo que pide? Es un aviso previo: la palabra final la tiene el worker, que descuenta el
         # stock. Si no alcanza se rechaza el pedido entero y se informa cuanto se puede preparar de cada plato.
-        faltantes, _, _ = evaluar_conteo(Counter(item['id'] for item in datos['items']))
+        faltantes, _, _ = evaluar_conteo(lineas_de_items(datos['items']))
         if faltantes:
             detalle, _nombres = faltantes_para_respuesta(faltantes)
             return Response(
@@ -655,7 +669,11 @@ class ComandaCreateView(APIView):
             'id_comanda_uuid': str(datos['id_comanda_uuid']),
             'id_pedido_cabecera': pedido_cabecera.id,
             'items': [
-                {'id': item['id'], 'precio': str(vistos[item['id']]) if item['id'] in vistos else None}
+                {
+                    'id': item['id'],
+                    'precio': str(vistos[item['id']]) if item['id'] in vistos else None,
+                    'sin': item['sin'],
+                }
                 for item in datos['items']
             ],
         }
@@ -866,7 +884,7 @@ def _sesion_cliente(request, numero_mesa, pin):
 def _comandas_de_sesion(sesion):
     """Comandas de una sesion con sus items y su estado. El estado vive en Redis mientras la comanda
     esta activa; cuando ya no esta ahi, la comanda fue entregada."""
-    comandas = sesion.comandas.prefetch_related('detalles__producto').order_by('fecha_hora_recepcion')
+    comandas = sesion.comandas.prefetch_related('detalles__producto', 'detalles__modificadores__insumo').order_by('fecha_hora_recepcion')
     resultado = []
     for comanda in comandas:
         items = [
@@ -875,6 +893,7 @@ def _comandas_de_sesion(sesion):
                 'precio': d.precio_unitario,
                 'cantidad': d.cantidad,
                 'sub_total': d.sub_total,
+                'sin': nombres_quitados(d),
             }
             for d in comanda.detalles.all()
         ]

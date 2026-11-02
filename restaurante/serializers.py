@@ -9,6 +9,7 @@ from rest_framework.validators import UniqueValidator
 
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 from .especiales import precios_especiales_vigentes
+from .modificadores import quitables_de_productos
 
 
 def fecha_iso(valor):
@@ -38,12 +39,14 @@ class ProductoSerializer(serializers.ModelSerializer):
     agotado_desde = serializers.SerializerMethodField()
     agotado_por = serializers.SerializerMethodField()
     visible = serializers.BooleanField(source='visible_cliente', read_only=True)
+    # ingredientes que el cliente puede pedir quitar de este plato (hito 5): solo id y nombre, el resto de la receta es interno
+    quitables = serializers.SerializerMethodField()
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
                   'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy',
-                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible']
+                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible', 'quitables']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
@@ -63,6 +66,13 @@ class ProductoSerializer(serializers.ModelSerializer):
         # el menu es publico: quien agoto un plato (nombre del empleado) solo lo ve el personal logueado
         solicitud = self.context.get('request')
         return bool(getattr(getattr(solicitud, 'user', None), 'is_authenticated', False))
+
+    def get_quitables(self, obj):
+        por_producto = self.context.get('quitables_por_producto')
+        if por_producto is None:  # fuera del listado (por ejemplo, tras crear o editar un producto)
+            por_producto = quitables_de_productos([obj.id])
+        quitables = por_producto.get(obj.id, {})
+        return [{'id': i, 'nombre': nombre} for i, nombre in sorted(quitables.items(), key=lambda par: par[1].lower())]
 
     def get_agotado_desde(self, obj):
         return fecha_iso(obj.fecha_hora_agotado) if obj.agotado_manual and self._es_personal() else None
@@ -323,6 +333,14 @@ class ItemComandaSerializer(serializers.Serializer):
     id = serializers.IntegerField()  # asumido: Producto.Id
     nombre = serializers.CharField(required=False)  # se recibe, se ignora
     precio = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)  # se recibe, se ignora
+    # ids de los insumos que se quitan de ESTA unidad ("sin cebolla"); solo valen los que la receta marca como quitables
+    sin = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), required=False, default=list, max_length=20,
+        error_messages={'not_a_list': 'Debe ser una lista de ids de insumos.'},
+    )
+
+    def validate_sin(self, value):
+        return sorted(set(value))  # sin repetidos y en orden: dos unidades iguales quedan en el mismo renglon
 
 
 class ComandaEntradaSerializer(serializers.Serializer):
@@ -346,6 +364,8 @@ class ItemCocinaSerializer(serializers.Serializer):
     nombre = serializers.CharField()
     precio = serializers.DecimalField(max_digits=10, decimal_places=2)
     cantidad = serializers.IntegerField()
+    # ingredientes que el cliente pidio quitar ("Cebolla"), ordenados; lista vacia si no quito ninguno
+    sin = serializers.ListField(child=serializers.CharField(), required=False)
 
 
 class ComandaCocinaSerializer(serializers.Serializer):
@@ -373,6 +393,7 @@ class ItemHistorialSerializer(serializers.Serializer):
     precio = serializers.DecimalField(max_digits=10, decimal_places=2)
     cantidad = serializers.IntegerField()
     sub_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    sin = serializers.ListField(child=serializers.CharField(), required=False)  # ingredientes quitados
 
 
 class ComandaHistorialSerializer(serializers.Serializer):

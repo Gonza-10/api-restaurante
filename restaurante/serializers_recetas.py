@@ -19,6 +19,8 @@ class IngredienteEntradaSerializer(serializers.Serializer):
                         'min_value': 'Debe ser mayor que cero.', 'max_decimal_places': 'Maximo 3 decimales.',
                         'max_digits': 'Numero demasiado grande.', 'max_whole_digits': 'Numero demasiado grande.'},
     )
+    # el cliente puede pedir el plato SIN este ingrediente (por defecto, no)
+    quitable = serializers.BooleanField(required=False, default=False)
 
     def validate(self, datos):
         # las unidades no se parten: no existe "medio huevo" en una receta
@@ -52,4 +54,6 @@ class RecetaEntradaSerializer(serializers.Serializer):
         ids = [i['insumo'].id for i in valor]
         if len(ids) != len(set(ids)):
             raise serializers.ValidationError('Un insumo no puede repetirse en la misma receta.')
+        if all(i['quitable'] for i in valor):
+            raise serializers.ValidationError('Al menos un ingrediente tiene que ser fijo: si todos se pueden quitar, el plato podria quedar vacio.')
         return valor
