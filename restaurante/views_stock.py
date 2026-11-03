@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from .auth import ADMIN_GERENTE, COCINA
 from .models import Compra, Insumo, LoteInsumo, MovimientoStock, Proveedor, StockInsumo
+from .vencimientos import dias_aviso
 from .serializers_stock import (
     AjusteStockSerializer, AsignarProveedoresSerializer, CompraCrearSerializer, CompraSerializer, InsumoSerializer,
     LoteSerializer, MovimientoSerializer, ProveedorSerializer,
@@ -111,6 +112,7 @@ class InsumoViewSet(viewsets.ModelViewSet):
         self._contexto_listado = {
             'stock_por_insumo': {f.insumo_id: f for f in StockInsumo.objects.filter(insumo_id__in=ids)},
             'proveedores_por_insumo': proveedores_por_insumo(ids),
+            'dias_aviso_general': dias_aviso(),
         }
         return Response(self.get_serializer(insumos, many=True).data)
 

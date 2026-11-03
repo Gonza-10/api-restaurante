@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores y Elaboraciones)",
-    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores y Elaboraciones. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 15 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores, Elaboraciones y Reposicion)",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores, Elaboraciones y Reposicion. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 16 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13669,7 +13669,50 @@
           ]
         },
         {
-          "name": "9.56 Lista de reposicion: faltan 12 ajies (8 de 20), a 5 cada uno = 60, con el proveedor principal",
+          "name": "9.56 Para probar las cuentas de la reposicion, el aviso baja a 0 dias",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.57 Lista de reposicion: faltan 12 ajies (8 de 20), a 5 cada uno = 60, con el proveedor principal",
           "request": {
             "method": "GET",
             "header": [],
@@ -13705,7 +13748,7 @@
           ]
         },
         {
-          "name": "9.57 Cocina NO ve la reposicion (403)",
+          "name": "9.58 Cocina NO ve la reposicion (403)",
           "request": {
             "method": "GET",
             "header": [],
@@ -13734,7 +13777,7 @@
           ]
         },
         {
-          "name": "9.58 Se pierden 1800 g de Salsa base (se cayo la olla)",
+          "name": "9.59 Se pierden 1800 g de Salsa base (se cayo la olla)",
           "request": {
             "method": "POST",
             "header": [
@@ -13777,7 +13820,7 @@
           ]
         },
         {
-          "name": "9.59 Quedan 200 g de Salsa base (10 % de su objetivo)",
+          "name": "9.60 Quedan 200 g de Salsa base (10 % de su objetivo)",
           "request": {
             "method": "GET",
             "header": [],
@@ -13810,7 +13853,7 @@
           ]
         },
         {
-          "name": "9.60 Cocina recibe el aviso de producir (y no uno de insumo critico duplicado)",
+          "name": "9.61 Cocina recibe el aviso de producir (y no uno de insumo critico duplicado)",
           "request": {
             "method": "GET",
             "header": [],
@@ -13844,7 +13887,7 @@
           ]
         },
         {
-          "name": "9.61 La reposicion lo manda a elaborar: faltan 1800 g = 2 tandas",
+          "name": "9.62 La reposicion lo manda a elaborar: faltan 1800 g = 2 tandas",
           "request": {
             "method": "GET",
             "header": [],
@@ -13877,7 +13920,7 @@
           ]
         },
         {
-          "name": "9.62 Cocina elabora 2 tandas de Salsa base",
+          "name": "9.63 Cocina elabora 2 tandas de Salsa base",
           "request": {
             "method": "POST",
             "header": [
@@ -13921,7 +13964,7 @@
           ]
         },
         {
-          "name": "9.63 Salsa base 2200, tomate 8400, aceite 1775",
+          "name": "9.64 Salsa base 2200, tomate 8400, aceite 1775",
           "request": {
             "method": "GET",
             "header": [],
@@ -13954,7 +13997,7 @@
           ]
         },
         {
-          "name": "9.64 El aviso de producir desaparece solo",
+          "name": "9.65 El aviso de producir desaparece solo",
           "request": {
             "method": "GET",
             "header": [],
@@ -13985,7 +14028,51 @@
           ]
         },
         {
-          "name": "9.65 Limpieza: cerrar la jornada",
+          "name": "9.66 Se vuelve a 5 dias de aviso",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/configuracion/stock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 5}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Quedo en 5', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.67 Limpieza: cerrar la jornada",
           "request": {
             "method": "POST",
             "header": [],
@@ -14014,7 +14101,7 @@
           ]
         },
         {
-          "name": "9.66 Una elaboracion que ya produjo no se puede borrar (409)",
+          "name": "9.68 Una elaboracion que ya produjo no se puede borrar (409)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14044,7 +14131,7 @@
           ]
         },
         {
-          "name": "9.67 Limpieza: tomate en cero",
+          "name": "9.69 Limpieza: tomate en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -14087,7 +14174,7 @@
           ]
         },
         {
-          "name": "9.68 Limpieza: aceite en cero",
+          "name": "9.70 Limpieza: aceite en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -14130,7 +14217,7 @@
           ]
         },
         {
-          "name": "9.69 Limpieza: aji en cero",
+          "name": "9.71 Limpieza: aji en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -14173,7 +14260,7 @@
           ]
         },
         {
-          "name": "9.70 Limpieza: Salsa base en cero",
+          "name": "9.72 Limpieza: Salsa base en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -14216,7 +14303,7 @@
           ]
         },
         {
-          "name": "9.71 Limpieza: Salsa picante en cero",
+          "name": "9.73 Limpieza: Salsa picante en cero",
           "request": {
             "method": "POST",
             "header": [
@@ -14259,7 +14346,7 @@
           ]
         },
         {
-          "name": "9.72 Limpieza: baja del tomate",
+          "name": "9.74 Limpieza: baja del tomate",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14288,7 +14375,7 @@
           ]
         },
         {
-          "name": "9.73 Limpieza: baja del aceite",
+          "name": "9.75 Limpieza: baja del aceite",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14317,7 +14404,7 @@
           ]
         },
         {
-          "name": "9.74 Limpieza: baja del aji",
+          "name": "9.76 Limpieza: baja del aji",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14346,7 +14433,7 @@
           ]
         },
         {
-          "name": "9.75 Limpieza: baja de la Salsa base",
+          "name": "9.77 Limpieza: baja de la Salsa base",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14375,7 +14462,7 @@
           ]
         },
         {
-          "name": "9.76 Limpieza: baja de la Salsa picante",
+          "name": "9.78 Limpieza: baja de la Salsa picante",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14404,7 +14491,7 @@
           ]
         },
         {
-          "name": "9.77 Limpieza: baja del proveedor",
+          "name": "9.79 Limpieza: baja del proveedor",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -14433,7 +14520,1503 @@
           ]
         },
         {
-          "name": "9.78 El libro termina consistente",
+          "name": "9.80 El libro termina consistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Aviso por insumo y reposicion con stock util (hito 6.1)",
+      "item": [
+        {
+          "name": "10.0 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_gerente', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.1 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "const datos = pm.response.json();",
+                  "pm.collectionVariables.set('token_cocina', datos.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.2 Crear proveedor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/proveedores",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Aviso Proveedor {{sufijo6}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufijo6', String(Date.now()));",
+                  "const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));",
+                  "const dos = n => String(n).padStart(2, '0');",
+                  "const f = d => { const x = new Date(ahora.getTime() + d * 86400000); return x.getFullYear() + '-' + dos(x.getMonth() + 1) + '-' + dos(x.getDate()); };",
+                  "pm.collectionVariables.set('v6_3', f(3));",
+                  "pm.collectionVariables.set('v6_20', f(20));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('prov_id6', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.3 Insumo: Harina (g, objetivo 15 kg)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Aviso Harina {{sufijo6}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 15000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins6_harina', pm.response.json().id);",
+                  "pm.test('Nace sin dias propios: usa los generales', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.4 Insumo: Tomate (g, objetivo 1,2 kg)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Aviso Tomate {{sufijo6}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 1200}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins6_tomate', pm.response.json().id);",
+                  "pm.test('Nace sin dias propios: usa los generales', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.5 Insumo: Aceite (ml, objetivo 5 l)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Aviso Aceite {{sufijo6}}\", \"tipo_medida\": \"Volumen\", \"stock_objetivo\": 5000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins6_aceite', pm.response.json().id);",
+                  "pm.test('Nace sin dias propios: usa los generales', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.6 Insumo: Salsa (g, objetivo 2 kg, se elabora)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"ZZ Aviso Salsa {{sufijo6}}\", \"tipo_medida\": \"Masa\", \"stock_objetivo\": 2000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ins6_salsa', pm.response.json().id);",
+                  "pm.test('Nace sin dias propios: usa los generales', () => pm.expect(pm.response.json().dias_aviso_vencimiento).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.7 Compra: harina en DOS lotes (6 kg vencen en 3 dias, 4 kg en 20), 1 kg de tomate y 5 l de aceite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id6}}, \"lineas\": [{\"insumo\": {{ins6_harina}}, \"cantidad\": 6000, \"costo_total\": 6, \"fecha_vencimiento\": \"{{v6_3}}\"},{\"insumo\": {{ins6_harina}}, \"cantidad\": 4000, \"costo_total\": 4, \"fecha_vencimiento\": \"{{v6_20}}\"},{\"insumo\": {{ins6_tomate}}, \"cantidad\": 1000, \"costo_total\": 5},{\"insumo\": {{ins6_aceite}}, \"cantidad\": 5000, \"costo_total\": 50}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Cuatro lotes', () => pm.expect(pm.response.json().lineas.length).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.8 Los dias propios no pueden ser negativos (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": -1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Senala el campo', () => pm.expect(pm.response.json()).to.have.property('dias_aviso_vencimiento'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.9 Ni pasar de 365 (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 366}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.10 Ni ser texto (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": \"muchos\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.11 Cocina NO cambia los dias de aviso (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.12 Con el aviso general (5 dias): de 10 kg de harina, 6 kg vencen en 3 dias -> solo 4 kg utiles, se piden 11 kg",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const h = comprar.find(i => i.insumo === id('ins6_harina'));",
+                  "pm.test('La harina se repone aunque tenga 66,7 % de su objetivo', () => pm.expect(h).to.not.be.undefined);",
+                  "pm.test('Stock 10 kg, a perder 6 kg, util 4 kg', () => { pm.expect(parseFloat(h.stock)).to.eql(10000); pm.expect(parseFloat(h.a_perder)).to.eql(6000); pm.expect(parseFloat(h.stock_util)).to.eql(4000); });",
+                  "pm.test('Con 4 kg esta Baja (26,7 %) y faltan 11 kg', () => { pm.expect(h.estado).to.eql('Bajo'); pm.expect(parseFloat(h.porcentaje)).to.eql(26.7); pm.expect(parseFloat(h.faltante)).to.eql(11000); pm.expect(h.faltante_texto).to.eql('11 kg'); });",
+                  "pm.test('Costo estimado: 11000 g x 0,001 = 11,00', () => pm.expect(parseFloat(h.costo_estimado)).to.eql(11));",
+                  "pm.test('El tomate (83 %) y el aceite (100 %) estan bien: no se piden', () => pm.expect(comprar.map(i => i.insumo)).to.not.include.members([id('ins6_tomate'), id('ins6_aceite')]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.13 La harina avisa con 2 dias propios (el lote de 6 kg vence en 3)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Propios: 2; se usan 2', () => { pm.expect(r.dias_aviso_vencimiento).to.eql(2); pm.expect(r.dias_aviso_efectivo).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.14 Con 2 dias, el lote que vence en 3 todavia no se avisa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('La harina no figura por vencer', () => pm.expect(r.por_vencer.some(x => x.insumo === pm.collectionVariables.get('ins6_harina'))).to.eql(false));",
+                  "pm.test('Los dias generales siguen en 5', () => pm.expect(r.dias_aviso).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.15 Y la reposicion cuenta los 10 kg: ya no hace falta pedir harina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "pm.test('La harina no se pide', () => pm.expect(comprar.map(i => i.insumo)).to.not.include(id('ins6_harina')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.16 Con todos=true aparece (66,7 % del objetivo) y nada se pierde: 10 kg utiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion?todos=true",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const h = comprar.find(i => i.insumo === id('ins6_harina'));",
+                  "pm.test('Nada a perder, 10 kg utiles, faltan 5 kg', () => { pm.expect(parseFloat(h.a_perder)).to.eql(0); pm.expect(parseFloat(h.stock_util)).to.eql(10000); pm.expect(parseFloat(h.faltante)).to.eql(5000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.17 Ahora la harina avisa con 30 dias: los dos lotes entran en la ventana",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": 30}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Propios: 30; se usan 30', () => { pm.expect(r.dias_aviso_vencimiento).to.eql(30); pm.expect(r.dias_aviso_efectivo).to.eql(30); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.18 Los dos lotes de harina se avisan, cada uno con sus dias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/vencimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const mios = r.por_vencer.filter(x => x.insumo === pm.collectionVariables.get('ins6_harina'));",
+                  "pm.test('Dos lotes: vence en 3 dias y vence en 20 dias', () => { pm.expect(mios.map(x => x.texto)).to.eql(['vence en 3 dias', 'vence en 20 dias']); });",
+                  "pm.test('Cada fila dice con cuantos dias se avisa y que son propios', () => mios.forEach(x => { pm.expect(x.dias_aviso).to.eql(30); pm.expect(x.aviso_propio).to.eql(true); }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.19 La reposicion ve los 10 kg como perdidos: harina agotada para el uso, se piden los 15 kg",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const h = comprar.find(i => i.insumo === id('ins6_harina'));",
+                  "pm.test('Util 0, esta Agotada y faltan 15 kg', () => { pm.expect(parseFloat(h.a_perder)).to.eql(10000); pm.expect(parseFloat(h.stock_util)).to.eql(0); pm.expect(h.estado).to.eql('Agotado'); pm.expect(parseFloat(h.faltante)).to.eql(15000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.20 null: vuelve a los dias generales",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dias_aviso_vencimiento\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Propios: null; se usan 5', () => { pm.expect(r.dias_aviso_vencimiento).to.eql(null); pm.expect(r.dias_aviso_efectivo).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.21 Cocina ve la notificacion del lote que vence en 3 dias, con los dias de aviso que se usaron",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/notificaciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const nots = pm.response.json().notificaciones;",
+                  "const mias = nots.filter(n => n.tipo === 'lote_por_vencer' && n.lote.insumo === pm.collectionVariables.get('ins6_harina'));",
+                  "pm.test('Solo el lote de 3 dias (el de 20 queda fuera de los 5)', () => { pm.expect(mias.length).to.eql(1); pm.expect(mias[0].lote.dias_restantes).to.eql(3); pm.expect(mias[0].lote.dias_aviso).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.22 Crear la Salsa: 800 g de tomate + 50 ml de aceite rinden 1000 g (dura 30 dias)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/elaboraciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins6_salsa}}, \"rinde\": 1000, \"dias_vencimiento\": 30, \"ingredientes\": [{\"insumo\": {{ins6_tomate}}, \"cantidad\": 800}, {\"insumo\": {{ins6_aceite}}, \"cantidad\": 50}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('elab6', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.23 Salsa agotada: 2 tandas, pero con 1 kg de tomate solo alcanza para 1 -> faltan 600 g de tomate y van a la lista de compras",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const s = r.producir.find(i => i.insumo === id('ins6_salsa'));",
+                  "pm.test('La salsa se elabora (no se compra): 2000 g = 2 tandas', () => { pm.expect(s).to.not.be.undefined; pm.expect(s.tandas).to.eql(2); pm.expect(parseFloat(s.cantidad_a_producir)).to.eql(2000); pm.expect(comprar.map(i => i.insumo)).to.not.include(id('ins6_salsa')); });",
+                  "pm.test('Hoy alcanza para 1 tanda y no para las 2', () => { pm.expect(s.tandas_posibles).to.eql(1); pm.expect(s.alcanza).to.eql(false); });",
+                  "pm.test('Dice que falta tomate: necesita 1600 g, hay 1000 g, faltan 600 g -> comprar', () => { pm.expect(s.ingredientes_faltantes.length).to.eql(1); const f = s.ingredientes_faltantes[0]; pm.expect(f.insumo).to.eql(id('ins6_tomate')); pm.expect(parseFloat(f.necesario)).to.eql(1600); pm.expect(parseFloat(f.disponible)).to.eql(1000); pm.expect(parseFloat(f.faltante)).to.eql(600); pm.expect(f.accion).to.eql('comprar'); pm.expect(f.faltante_texto).to.eql('600 g'); });",
+                  "const t = comprar.find(i => i.insumo === id('ins6_tomate'));",
+                  "pm.test('El tomate esta en 83 % pero se pide igual 600 g, para la salsa', () => { pm.expect(t).to.not.be.undefined; pm.expect(t.estado).to.eql('Ok'); pm.expect(parseFloat(t.faltante)).to.eql(600); pm.expect(parseFloat(t.faltante_por_objetivo)).to.eql(0); pm.expect(parseFloat(t.faltante_para_elaborar)).to.eql(600); });",
+                  "pm.test('Y avisa para que elaboracion es', () => { pm.expect(t.para_elaborar.length).to.eql(1); pm.expect(t.para_elaborar[0].nombre).to.match(/Salsa/); pm.expect(parseFloat(t.para_elaborar[0].cantidad)).to.eql(1600); });",
+                  "pm.test('Costo estimado: 600 g x 0,005 = 3,00', () => pm.expect(parseFloat(t.costo_estimado)).to.eql(3));",
+                  "pm.test('El aceite alcanza: no se pide', () => pm.expect(comprar.map(i => i.insumo)).to.not.include(id('ins6_aceite')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.24 Cocina elabora 1 tanda (800 g de tomate + 50 ml de aceite -> 1000 g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/producciones",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"elaboracion\": {{elab6}}, \"tandas\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.25 Quedan 200 g de tomate (16,7 %) y la salsa en 50 %: se pide el MAYOR entre llegar al objetivo (1000 g) y lo que falta para la tanda (600 g)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const s = r.producir.find(i => i.insumo === id('ins6_salsa'));",
+                  "pm.test('Salsa: faltan 1000 g = 1 tanda, y hoy no alcanza ninguna', () => { pm.expect(s.estado).to.eql('Bajo'); pm.expect(parseFloat(s.faltante)).to.eql(1000); pm.expect(s.tandas).to.eql(1); pm.expect(s.tandas_posibles).to.eql(0); pm.expect(s.alcanza).to.eql(false); });",
+                  "const t = comprar.find(i => i.insumo === id('ins6_tomate'));",
+                  "pm.test('Tomate: se pide 1000 g (no 1600), por objetivo 1000 y para elaborar 600', () => { pm.expect(t.estado).to.eql('Critico'); pm.expect(parseFloat(t.faltante)).to.eql(1000); pm.expect(parseFloat(t.faltante_por_objetivo)).to.eql(1000); pm.expect(parseFloat(t.faltante_para_elaborar)).to.eql(600); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.26 Se compran 1000 g de tomate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/compras",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"proveedor\": {{prov_id6}}, \"lineas\": [{\"insumo\": {{ins6_tomate}}, \"cantidad\": 1000, \"costo_total\": 5}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.27 Ahora los ingredientes alcanzan: la salsa se puede elaborar y ya no se pide tomate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/reposicion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const comprar = r.comprar.flatMap(g => g.items);",
+                  "const id = n => pm.collectionVariables.get(n);",
+                  "const s = r.producir.find(i => i.insumo === id('ins6_salsa'));",
+                  "pm.test('Alcanza para 1 tanda', () => { pm.expect(s.tandas).to.eql(1); pm.expect(s.tandas_posibles).to.eql(1); pm.expect(s.alcanza).to.eql(true); pm.expect(s.ingredientes_faltantes).to.eql([]); });",
+                  "pm.test('El tomate (1200 g = 100 %) no se pide', () => pm.expect(comprar.map(i => i.insumo)).to.not.include(id('ins6_tomate')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.28 Limpieza: harina en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins6_harina}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.29 Limpieza: tomate en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins6_tomate}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.30 Limpieza: aceite en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins6_aceite}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.31 Limpieza: salsa en cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/stock/ajustes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"insumo\": {{ins6_salsa}}, \"cantidad_real\": 0, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.32 Limpieza: baja de la harina",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins6_harina}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.33 Limpieza: baja del tomate",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins6_tomate}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.34 Limpieza: baja del aceite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins6_aceite}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.35 Limpieza: baja de la salsa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/insumos/{{ins6_salsa}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.36 Limpieza: baja del proveedor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/proveedores/{{prov_id6}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.37 El libro termina consistente",
           "request": {
             "method": "GET",
             "header": [],

@@ -1,5 +1,5 @@
 """Prueba de los calculos del hito 6 que no usan la base de datos: ciclos entre elaboraciones, cuanto se necesita y cuanto
-sale al elaborar, costo real del lote producido, vencimientos y lista de reposicion. Solo libreria estandar; no hace falta
+sale al elaborar, costo real del lote producido, vencimientos y piezas de la lista de reposicion. Solo libreria estandar; no hace falta
 tener corriendo nada.
 
 Uso (PowerShell, en la raiz del proyecto):
@@ -101,39 +101,7 @@ chequear('entra si esta agotado, critico o bajo', [sc.entra_en_reposicion(e, D('
 chequear('sin objetivo nunca entra', sc.entra_en_reposicion('Agotado', D('0'), D('0')), False)
 chequear('con todos=True entra cualquiera por debajo del objetivo', (sc.entra_en_reposicion('Ok', D('9'), D('10'), True), sc.entra_en_reposicion('Ok', D('10'), D('10'), True)), (True, False))
 
-PROV_A = {'id': 1, 'nombre': 'Verduleria Sol'}
-PROV_B = {'id': 2, 'nombre': 'Almacen Central'}
-FILAS = [
-    {'id': 1, 'nombre': 'Tomate', 'tipo_medida': 'Masa', 'estado': 'Critico', 'porcentaje': D('10'), 'stock': D('1000'), 'objetivo': D('10000'),
-     'costo': D('0.005'), 'proveedor': PROV_A, 'rinde': None},
-    {'id': 2, 'nombre': 'Cebolla', 'tipo_medida': 'Masa', 'estado': 'Agotado', 'porcentaje': D('0'), 'stock': D('0'), 'objetivo': D('5000'),
-     'costo': D('0.002'), 'proveedor': PROV_A, 'rinde': None},
-    {'id': 5, 'nombre': 'Harina', 'tipo_medida': 'Masa', 'estado': 'Bajo', 'porcentaje': D('40'), 'stock': D('4000'), 'objetivo': D('10000'),
-     'costo': D('0.001'), 'proveedor': PROV_B, 'rinde': None},
-    {'id': 6, 'nombre': 'Sal', 'tipo_medida': 'Masa', 'estado': 'Agotado', 'porcentaje': D('0'), 'stock': D('0'), 'objetivo': D('2000'),
-     'costo': None, 'proveedor': None, 'rinde': None},
-    {'id': 7, 'nombre': 'Aceite', 'tipo_medida': 'Volumen', 'estado': 'Ok', 'porcentaje': D('90'), 'stock': D('9000'), 'objetivo': D('10000'),
-     'costo': D('0.01'), 'proveedor': PROV_B, 'rinde': None},
-    {'id': 10, 'nombre': 'Salsa base', 'tipo_medida': 'Masa', 'estado': 'Critico', 'porcentaje': D('15'), 'stock': D('300'), 'objetivo': D('2000'),
-     'costo': None, 'proveedor': None, 'rinde': D('1000')},
-]
-plan = sc.plan_reposicion(FILAS)
-chequear('proveedores por nombre y "sin proveedor" al final', [(g['proveedor'] or {}).get('nombre') for g in plan['comprar']],
-         ['Almacen Central', 'Verduleria Sol', None])
-verduleria = next(g for g in plan['comprar'] if g['proveedor'] == PROV_A)
-chequear('dentro de un proveedor, lo mas grave primero', [i['nombre'] for i in verduleria['items']], ['Cebolla', 'Tomate'])
-chequear('costo estimado a la ultima compra: 9000 g x 0,005 + 5000 g x 0,002', (verduleria['total_estimado'], verduleria['completo']),
-         (D('55.00'), True))
-sin_proveedor = next(g for g in plan['comprar'] if g['proveedor'] is None)
-chequear('un insumo sin costo conocido deja el total incompleto', (sin_proveedor['total_estimado'], sin_proveedor['completo'],
-                                                                    sin_proveedor['items'][0]['costo_estimado']), (D('0.00'), False, None))
-chequear('el que esta en verde no se pide', 'Aceite' in [i['nombre'] for g in plan['comprar'] for i in g['items']], False)
-chequear('lo que se elabora va aparte, con las tandas', [(i['nombre'], i['faltante'], i['tandas']) for i in plan['producir']],
-         [('Salsa base', D('1700'), 2)])
-chequear('lo elaborado no aparece en lo que se compra', 'Salsa base' in [i['nombre'] for g in plan['comprar'] for i in g['items']], False)
-plan_todos = sc.plan_reposicion(FILAS, todos=True)
-chequear('con todos=True entra tambien el que esta en verde pero bajo su objetivo',
-         'Aceite' in [i['nombre'] for g in plan_todos['comprar'] for i in g['items']], True)
+# El plan completo de reposicion (stock util, ingredientes de las elaboraciones) se prueba en probar_reposicion_calculos.py
 
 print('Notificaciones: los tipos nuevos se ordenan y se cuentan')
 nots = [

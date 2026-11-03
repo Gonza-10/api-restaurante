@@ -57,7 +57,8 @@ FROM (VALUES
     (N'Receta',         N'IdInsumoProducido',      N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
     (N'Receta',         N'Rinde',                  N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
     (N'Receta',         N'DiasVencimiento',        N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
-    (N'MovimientoStock',N'IdProduccion',           N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql')
+    (N'MovimientoStock',N'IdProduccion',           N'15_AE4_Elaboraciones_Vencimientos_Migraciones.sql'),
+    (N'Insumo',         N'DiasAvisoVencimiento',   N'16_AE4_Aviso_Vencimiento_Por_Insumo_Migraciones.sql')
 ) AS c (Tabla, Columna, Script)
 WHERE OBJECT_ID('dbo.' + c.Tabla, 'U') IS NOT NULL;
 

@@ -5,6 +5,9 @@ de Django) y despues prueba lo que pasa al abrir la jornada: los vencidos se dan
 'vencimiento', al costo real del lote; el lote que todavia no vencio no se toca; y se recuerdan los dias que faltan.
 NO abre ninguna jornada: llama a la misma funcion que usa la apertura. Al final deja su insumo de prueba dado de baja.
 
+Tambien prueba (hito 6.1) los dias de aviso propios de un insumo y que la lista de reposicion no cuente como stock lo
+que se va a perder.
+
 Uso (PowerShell, con el entorno virtual activo, en la raiz del proyecto; no hace falta tener nada corriendo):
     python Tests\\Scripts\\probar_vencimientos.py
 """
@@ -27,8 +30,9 @@ from django.utils import timezone  # noqa: E402
 
 from restaurante.models import Empleado, Insumo, LoteInsumo, MovimientoStock, Perdida  # noqa: E402
 from restaurante.notificaciones import armar_notificaciones  # noqa: E402
+from restaurante.reposicion import armar_reposicion  # noqa: E402
 from restaurante.stock import dar_baja_lote, inconsistencias_del_libro, stock_actual  # noqa: E402
-from restaurante.vencimientos import armar_vencimientos, vencimientos_al_abrir  # noqa: E402
+from restaurante.vencimientos import armar_vencimientos, dias_aviso, vencimientos_al_abrir  # noqa: E402
 
 RESULTADOS = []
 
@@ -86,6 +90,21 @@ nots = [n for n in armar_notificaciones()['notificaciones'] if n['tipo'].startsw
 chequear('notificaciones: 2 lotes vencidos urgentes y 1 por vencer', sorted((n['tipo'], n['severidad']) for n in nots),
          [('lote_por_vencer', 'aviso'), ('lote_vencido', 'urgente'), ('lote_vencido', 'urgente')])
 
+print('Dias de aviso propios del insumo (el lote vigente vence en 2 dias)')
+general = dias_aviso()
+for propios, esperado_estado, esperado_ventana in ((1, None, 1), (2, 'por_vencer', 2), (0, None, 0), (None, 'por_vencer', general)):
+    insumo.dias_aviso_vencimiento = propios
+    insumo.save(update_fields=['dias_aviso_vencimiento'])
+    r = armar_vencimientos(ve_costos=True)
+    filas = {f['lote']: f for f in r['vencidos'] + r['por_vencer'] if f['insumo'] == insumo.id}
+    nombre = 'usa los generales' if propios is None else f'propios: {propios}'
+    chequear(f'aviso {nombre}: el lote vigente {"se avisa" if esperado_estado else "no se avisa todavia"}',
+             filas[vigente.id]['estado'] if vigente.id in filas else None, esperado_estado)
+    chequear(f'aviso {nombre}: los vencidos aparecen igual', (ayer.id in filas, antes.id in filas), (True, True))
+    if esperado_estado:
+        chequear(f'aviso {nombre}: la fila dice con cuantos dias se avisa', (filas[vigente.id]['dias_aviso'], filas[vigente.id]['aviso_propio']),
+                 (esperado_ventana, propios is not None))
+
 print('Al abrir la jornada')
 resultado = vencimientos_al_abrir(gerente)
 bajas = {f['lote']: f for f in resultado['dados_de_baja']['lotes'] if f['insumo'] == insumo.id}
@@ -110,6 +129,25 @@ chequear('el libro sigue consistente (suma de movimientos = cantidad de cada lot
 por_vencer = [f for f in resultado['por_vencer'] if f['insumo'] == insumo.id]
 chequear('se recuerda el vigente con los dias que faltan', [(f['lote'], f['dias_restantes']) for f in por_vencer], [(vigente.id, 2)])
 chequear('y hay un aviso listo para mostrar', any(insumo.nombre in a and 'vence en 2 dias' in a for a in resultado['avisos']), True)
+
+print('Reposicion: lo que se va a perder no cuenta como stock')
+
+
+def fila_reposicion():
+    plan = armar_reposicion()
+    return next((i for g in plan['comprar'] for i in g['items'] if i['insumo'] == insumo.id), None)
+
+
+r = fila_reposicion()
+chequear('con el aviso general, el lote vigente (300 que vence en 2 dias) no cuenta: de 400 hay 100 utiles (10 %), se piden 900',
+         (r['stock'], r['a_perder'], r['stock_util'], r['estado'], r['faltante']), (D('400'), D('300'), D('100'), 'Critico', D('900')))
+insumo.dias_aviso_vencimiento = 1
+insumo.save(update_fields=['dias_aviso_vencimiento'])
+r = fila_reposicion()
+chequear('si el insumo avisa con 1 dia, el vigente todavia cuenta: 400 utiles (40 %), se piden 600',
+         (r['a_perder'], r['stock_util'], r['estado'], r['faltante']), (D('0'), D('400'), 'Bajo', D('600')))
+insumo.dias_aviso_vencimiento = None
+insumo.save(update_fields=['dias_aviso_vencimiento'])
 
 print('Abrir otra vez no repite las bajas')
 otra = vencimientos_al_abrir(gerente)

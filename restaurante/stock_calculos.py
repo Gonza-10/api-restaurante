@@ -454,40 +454,189 @@ def entra_en_reposicion(estado, stock, objetivo, todos=False):
     return estado in REQUIEREN_ATENCION
 
 
-def plan_reposicion(filas, todos=False):
-    """Lista de reposicion. filas: [{'id', 'nombre', 'tipo_medida', 'estado', 'porcentaje', 'stock', 'objetivo',
-    'costo' (por unidad base, o None), 'proveedor' ({'id','nombre'} o None), 'rinde' (None si se compra)}].
-    Cada insumo que entra se completa hasta su objetivo: lo que se compra se agrupa por proveedor principal (con el
-    costo estimado a la ultima compra), y lo que se elabora dice cuantas tandas hacen falta.
+# ---------- Aviso de vencimiento por insumo y reposicion con stock util (hito 6.1) ----------
+
+def ventana_aviso(propio, general):
+    """Dias de anticipacion con que se avisa un vencimiento de un insumo: los suyos si los tiene (0 vale: avisa recien
+    el dia que vence) y, si no, los generales de la configuracion."""
+    return general if propio is None else propio
+
+
+def estado_de_stock(stock, objetivo, umbral_bajo, umbral_critico):
+    """Estado y porcentaje de un stock respecto de su objetivo, con la MISMA regla que la vista vw_StockInsumo.
+    Devuelve (estado, porcentaje); el porcentaje es None si el insumo no tiene objetivo."""
+    stock = a_decimal(stock)
+    objetivo = a_decimal(objetivo)
+    porcentaje = (stock * 100 / objetivo).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP) if objetivo > 0 else None
+    if stock <= 0:
+        return 'Agotado', porcentaje
+    if porcentaje is None:
+        return 'SinObjetivo', None
+    if porcentaje <= umbral_critico:
+        return 'Critico', porcentaje
+    if porcentaje <= umbral_bajo:
+        return 'Bajo', porcentaje
+    return 'Ok', porcentaje
+
+
+def orden_elaboraciones(recetas):
+    """Ids de las elaboraciones en orden de arriba hacia abajo: primero las que usan a otras elaboraciones, y despues
+    las que ellas usan (la salsa picante antes que la salsa base). recetas: {id_producido: {'ingredientes': [(id, cant)]}}.
+    Las elaboraciones no tienen ciclos (la aplicacion los impide); aun asi nunca se visita dos veces la misma."""
+    visitadas = set()
+    posorden = []
+
+    def visitar(id_producido):
+        if id_producido in visitadas:
+            return
+        visitadas.add(id_producido)
+        for id_ingrediente, _ in recetas[id_producido]['ingredientes']:
+            if id_ingrediente in recetas:
+                visitar(id_ingrediente)
+        posorden.append(id_producido)
+
+    for id_producido in sorted(recetas):
+        visitar(id_producido)
+    return list(reversed(posorden))
+
+
+def profundidad_elaboracion(id_producido, recetas, memo=None):
+    """0 si la elaboracion solo usa insumos comprados; 1 mas que la mas profunda de las elaboraciones que usa. Sirve
+    para ordenar la cocina: primero lo que otras elaboraciones necesitan."""
+    memo = {} if memo is None else memo
+    if id_producido in memo:
+        return memo[id_producido]
+    memo[id_producido] = 0  # corta cualquier ciclo imposible
+    hijos = [i for i, _ in recetas[id_producido]['ingredientes'] if i in recetas]
+    memo[id_producido] = 1 + max(profundidad_elaboracion(h, recetas, memo) for h in hijos) if hijos else 0
+    return memo[id_producido]
+
+
+def plan_reposicion(filas, recetas=None, todos=False, costo_de=None):
+    """Lista de reposicion. Dos ideas que la hacen confiable:
+
+    1) STOCK UTIL: lo que va a vencer dentro de su ventana de aviso (o ya vencio) no se cuenta como stock, porque no se
+       va a poder usar. El estado y lo que falta para el objetivo se calculan con el stock util.
+    2) ELABORAR NECESITA INGREDIENTES: cada elaboracion que hay que producir (por estar baja, o porque otra elaboracion
+       la necesita) pide sus ingredientes. Lo que no alcance con lo disponible hoy se suma a lo que hay que comprar, o
+       a las tandas de otra elaboracion si el ingrediente es una elaboracion (en cadena).
+
+    filas (todos los insumos): [{'id', 'nombre', 'tipo_medida', 'activo', 'stock', 'a_perder' (vencido o por vencer),
+    'vencido' (ya vencido), 'objetivo', 'umbral_bajo', 'umbral_critico', 'proveedor' ({'id','nombre'} o None)}].
+    recetas: {id_insumo_producido: {'rinde', 'ingredientes': [(id_insumo, cantidad_por_tanda)]}}.
+    costo_de: funcion id_insumo -> costo por unidad base (o None); solo se llama para lo que se compra.
     Devuelve {'comprar': [{'proveedor', 'items', 'total_estimado', 'completo'}], 'producir': [items]}.
-    Ordenado por gravedad (y por nombre); los proveedores por nombre, con 'sin proveedor' al final."""
+    Se compra por proveedor principal (con 'sin proveedor' al final); lo que se elabora se ordena para cocinar primero
+    lo que otras elaboraciones usan. A igual orden, por gravedad y nombre."""
+    recetas = {k: v for k, v in (recetas or {}).items()}
+    datos = {}
+    for f in filas:
+        stock = max(CERO, a_decimal(f['stock']))
+        a_perder = min(max(CERO, a_decimal(f.get('a_perder', CERO))), stock)
+        vencido = min(max(CERO, a_decimal(f.get('vencido', CERO))), stock)
+        util = stock - a_perder
+        estado, porcentaje = estado_de_stock(util, f['objetivo'], f['umbral_bajo'], f['umbral_critico'])
+        activo = f.get('activo', True)
+        entra = activo and entra_en_reposicion(estado, util, f['objetivo'], todos)
+        datos[f['id']] = {
+            'fila': f, 'stock': stock, 'a_perder': a_perder, 'util': util, 'estado': estado, 'porcentaje': porcentaje,
+            'disponible': stock - vencido,  # lo que se puede usar hoy para cocinar: todo menos lo ya vencido
+            'faltante': faltante_a_objetivo(util, f['objetivo']) if entra else CERO,
+        }
+    recetas = {k: v for k, v in recetas.items() if k in datos}
+
+    consumo = {}        # cuanto van a gastar las producciones planeadas de cada ingrediente
+    demandan = {}       # ingrediente -> [(id elaboracion, cantidad)]
+    tandas = {}
+    tandas_por_objetivo = {}
+    for id_producido in orden_elaboraciones(recetas):
+        d = datos[id_producido]
+        rinde = a_decimal(recetas[id_producido]['rinde'])
+        por_objetivo = tandas_para(d['faltante'], rinde) if d['faltante'] > 0 else 0
+        falta_consumo = max(CERO, consumo.get(id_producido, CERO) - d['disponible'])
+        por_consumo = tandas_para(falta_consumo, rinde) if falta_consumo > 0 else 0
+        tandas[id_producido] = max(por_objetivo, por_consumo)
+        tandas_por_objetivo[id_producido] = por_objetivo
+        if tandas[id_producido] == 0:
+            continue
+        for id_ingrediente, cantidad in recetas[id_producido]['ingredientes']:
+            gasto = a_decimal(cantidad) * tandas[id_producido]
+            consumo[id_ingrediente] = consumo.get(id_ingrediente, CERO) + gasto
+            demandan.setdefault(id_ingrediente, []).append((id_producido, gasto))
+
+    def nombre_de(id_insumo):
+        return datos[id_insumo]['fila']['nombre'] if id_insumo in datos else f'insumo {id_insumo}'
+
+    def base(id_insumo):
+        d = datos[id_insumo]
+        f = d['fila']
+        return {
+            'insumo': id_insumo, 'nombre': f['nombre'], 'tipo_medida': f['tipo_medida'], 'estado': d['estado'],
+            'porcentaje': d['porcentaje'], 'stock': d['stock'], 'a_perder': d['a_perder'], 'stock_util': d['util'],
+            'objetivo': a_decimal(f['objetivo']),
+        }
+
+    def quien_necesita(id_insumo):
+        return [{'elaboracion': e, 'nombre': nombre_de(e), 'cantidad': c} for e, c in demandan.get(id_insumo, [])]
+
     comprar = {}
     producir = []
-    for fila in filas:
-        if not entra_en_reposicion(fila['estado'], fila['stock'], fila['objetivo'], todos):
+    for id_insumo, d in datos.items():
+        f = d['fila']
+        if not f.get('activo', True):
             continue
-        faltante = faltante_a_objetivo(fila['stock'], fila['objetivo'])
-        item = {
-            'insumo': fila['id'], 'nombre': fila['nombre'], 'tipo_medida': fila['tipo_medida'], 'estado': fila['estado'],
-            'porcentaje': fila['porcentaje'], 'stock': a_decimal(fila['stock']), 'objetivo': a_decimal(fila['objetivo']),
-            'faltante': faltante,
-        }
-        if fila.get('rinde'):
-            item['rinde'] = a_decimal(fila['rinde'])
-            item['tandas'] = tandas_para(faltante, fila['rinde'])
+        if id_insumo in recetas:
+            t = tandas.get(id_insumo, 0)
+            if t == 0:
+                continue
+            rinde = a_decimal(recetas[id_insumo]['rinde'])
+            item = base(id_insumo)
+            item.update({
+                'faltante': d['faltante'], 'rinde': rinde, 'tandas': t, 'cantidad_a_producir': cuantizar_cantidad(rinde * t),
+                'por_objetivo': tandas_por_objetivo[id_insumo] > 0, 'para_elaborar': quien_necesita(id_insumo),
+            })
+            posibles = None
+            faltan = []
+            for id_ingrediente, cantidad in sorted(recetas[id_insumo]['ingredientes']):
+                cantidad = a_decimal(cantidad)
+                disponible = datos[id_ingrediente]['disponible'] if id_ingrediente in datos else CERO
+                alcanza = int(disponible // cantidad) if cantidad > 0 else 0
+                posibles = alcanza if posibles is None else min(posibles, alcanza)
+                necesario = cantidad * t
+                if necesario > disponible:
+                    faltan.append({
+                        'insumo': id_ingrediente, 'nombre': nombre_de(id_ingrediente),
+                        'tipo_medida': datos[id_ingrediente]['fila']['tipo_medida'] if id_ingrediente in datos else 'Unidad',
+                        'necesario': cuantizar_cantidad(necesario), 'disponible': disponible,
+                        'faltante': cuantizar_cantidad(necesario - disponible),
+                        'accion': 'producir' if id_ingrediente in recetas else 'comprar',
+                    })
+            item['tandas_posibles'] = posibles
+            item['alcanza'] = not faltan
+            item['ingredientes_faltantes'] = faltan
             producir.append(item)
             continue
-        costo = fila.get('costo')
+        falta_consumo = max(CERO, consumo.get(id_insumo, CERO) - d['disponible'])
+        cantidad = max(d['faltante'], falta_consumo)
+        if cantidad <= 0:
+            continue
+        item = base(id_insumo)
+        costo = costo_de(id_insumo) if costo_de else None
         tiene_costo = costo is not None and a_decimal(costo) > 0
-        item['costo_estimado'] = redondear_dinero(faltante * a_decimal(costo)) if tiene_costo else None
-        clave = fila['proveedor']['id'] if fila.get('proveedor') else None
-        grupo = comprar.setdefault(clave, {'proveedor': fila.get('proveedor'), 'items': []})
+        item.update({
+            'faltante': cuantizar_cantidad(cantidad), 'faltante_por_objetivo': d['faltante'],
+            'faltante_para_elaborar': cuantizar_cantidad(falta_consumo), 'para_elaborar': quien_necesita(id_insumo),
+            'costo_estimado': redondear_dinero(cantidad * a_decimal(costo)) if tiene_costo else None,
+        })
+        clave = f['proveedor']['id'] if f.get('proveedor') else None
+        grupo = comprar.setdefault(clave, {'proveedor': f.get('proveedor'), 'items': []})
         grupo['items'].append(item)
 
     def gravedad(item):
         return clave_gravedad(item['estado'], item['porcentaje'], item['nombre'])
 
-    producir.sort(key=gravedad)
+    memo = {}
+    producir.sort(key=lambda i: (profundidad_elaboracion(i['insumo'], recetas, memo),) + gravedad(i))
     grupos = []
     for grupo in comprar.values():
         grupo['items'].sort(key=gravedad)

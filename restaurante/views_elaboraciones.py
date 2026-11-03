@@ -220,7 +220,9 @@ class ConfiguracionStockView(APIView):
 class ReposicionView(APIView):
     """GET /stock/reposicion. Que comprar (agrupado por proveedor principal, con costo estimado a la ultima compra) y que
     elaborar (con las tandas necesarias) para volver al stock objetivo. Por defecto solo los insumos que requieren
-    atencion (agotados, criticos o bajos); ?todos=true incluye cualquiera por debajo de su objetivo. Admin y Gerente."""
+    atencion (agotados, criticos o bajos); ?todos=true incluye cualquiera por debajo de su objetivo. Admin y Gerente.
+    Cuenta solo el stock UTIL (sin lo vencido ni lo que vence dentro del aviso de su insumo) y verifica que alcancen los
+    ingredientes de cada elaboracion: lo que falte se suma a lo que hay que comprar."""
     roles_lectura = ADMIN_GERENTE
 
     def get(self, request):

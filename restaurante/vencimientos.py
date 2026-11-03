@@ -5,6 +5,8 @@
   abrir cada jornada y a mano cuando se quiera (boton). Nunca desaparecen en silencio: quedan en perdidas y en el libro.
 - Los dias de aviso (5 por defecto) los cambian Admin y Gerente; el aviso se vuelve a calcular en cada consulta, asi
   que muestra siempre cuantos dias faltan.
+- Cada insumo puede tener sus PROPIOS dias de aviso (hito 6.1: el tomate avisa 2 dias antes, la harina 30). Si no los
+  tiene, usa los generales. Como se calcula en cada consulta, cambiarlos afecta al instante a todos sus lotes.
 """
 from django.utils import timezone
 
@@ -12,7 +14,7 @@ from .models import Configuracion, LoteInsumo
 from .stock import LoteNoActivo, dar_baja_lote
 from .stock_calculos import (
     CERO, DIAS_AVISO_POR_DEFECTO, MAX_DIAS_AVISO, MIN_DIAS_AVISO, MOTIVO_VENCIMIENTO, clave_vencimiento, dias_restantes,
-    estado_vencimiento, redondear_dinero, texto_cantidad, texto_dias_vencimiento,
+    estado_vencimiento, redondear_dinero, texto_cantidad, texto_dias_vencimiento, ventana_aviso,
 )
 
 CLAVE_DIAS_AVISO = 'dias_aviso_vencimiento'
@@ -36,7 +38,7 @@ def fijar_dias_aviso(valor, empleado):
     return int(valor)
 
 
-def _fila(lote, dias, estado, ve_costos):
+def _fila(lote, dias, estado, ve_costos, ventana=None):
     insumo = lote.insumo
     fila = {
         'lote': lote.id,
@@ -50,6 +52,8 @@ def _fila(lote, dias, estado, ve_costos):
         'dias_restantes': dias,
         'estado': estado,
         'texto': texto_dias_vencimiento(dias),
+        'dias_aviso': ventana,
+        'aviso_propio': insumo.dias_aviso_vencimiento is not None,
     }
     if ve_costos:
         fila['valor'] = redondear_dinero(lote.cantidad_actual * lote.costo_unitario)
@@ -58,8 +62,9 @@ def _fila(lote, dias, estado, ve_costos):
 
 
 def lotes_con_vencimiento_cercano(ve_costos=False, hoy=None):
-    """Lotes activos con stock que ya vencieron o vencen dentro de los dias de aviso, el que vence antes primero.
-    Devuelve (vencidos, por_vencer, dias_aviso)."""
+    """Lotes activos con stock que ya vencieron o vencen dentro de los dias de aviso de SU insumo (los propios del
+    insumo o, si no tiene, los generales), el que vence antes primero. Devuelve (vencidos, por_vencer, dias_aviso
+    generales)."""
     hoy = hoy or timezone.localdate()
     aviso = dias_aviso()
     lotes = (
@@ -69,13 +74,35 @@ def lotes_con_vencimiento_cercano(ve_costos=False, hoy=None):
     vencidos, por_vencer = [], []
     for lote in lotes:
         dias = dias_restantes(lote.fecha_vencimiento, hoy)
-        estado = estado_vencimiento(dias, aviso)
+        ventana = ventana_aviso(lote.insumo.dias_aviso_vencimiento, aviso)
+        estado = estado_vencimiento(dias, ventana)
         if estado is None:
             continue
-        (vencidos if estado == 'vencido' else por_vencer).append(_fila(lote, dias, estado, ve_costos))
+        (vencidos if estado == 'vencido' else por_vencer).append(_fila(lote, dias, estado, ve_costos, ventana))
     vencidos.sort(key=clave_vencimiento)
     por_vencer.sort(key=clave_vencimiento)
     return vencidos, por_vencer, aviso
+
+
+def cantidades_por_vencer(hoy=None):
+    """Para la reposicion: por insumo, cuanto stock ya vencio y cuanto se va a perder (ya vencido o dentro de la ventana
+    de aviso del insumo). Devuelve {id_insumo: {'vencido': Decimal, 'a_perder': Decimal}} (solo insumos con algo)."""
+    hoy = hoy or timezone.localdate()
+    general = dias_aviso()
+    resultado = {}
+    lotes = LoteInsumo.objects.filter(
+        estado='Activo', cantidad_actual__gt=0, fecha_vencimiento__isnull=False
+    ).select_related('insumo')
+    for lote in lotes:
+        dias = dias_restantes(lote.fecha_vencimiento, hoy)
+        estado = estado_vencimiento(dias, ventana_aviso(lote.insumo.dias_aviso_vencimiento, general))
+        if estado is None:
+            continue
+        acumulado = resultado.setdefault(lote.insumo_id, {'vencido': CERO, 'a_perder': CERO})
+        acumulado['a_perder'] += lote.cantidad_actual
+        if estado == 'vencido':
+            acumulado['vencido'] += lote.cantidad_actual
+    return resultado
 
 
 def armar_vencimientos(ve_costos, hoy=None):
@@ -104,8 +131,10 @@ def procesar_vencidos(empleado, motivo, ve_costos=True, hoy=None):
     dados_de_baja = []
     valor_total = CERO
     completo = True
+    general = dias_aviso()
     for lote in candidatos:
-        fila = _fila(lote, dias_restantes(lote.fecha_vencimiento, hoy), 'vencido', True)
+        fila = _fila(lote, dias_restantes(lote.fecha_vencimiento, hoy), 'vencido', True,
+                     ventana_aviso(lote.insumo.dias_aviso_vencimiento, general))
         try:
             dar_baja_lote(lote.id, empleado, motivo, MOTIVO_VENCIMIENTO)
         except LoteNoActivo:

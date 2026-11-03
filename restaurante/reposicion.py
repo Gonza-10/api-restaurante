@@ -1,45 +1,60 @@
-"""Lista de reposicion (hito 6): que hay que comprar y que hay que elaborar para volver al stock objetivo.
+"""Lista de reposicion (hito 6, mejorada en el 6.1): que hay que comprar y que hay que elaborar.
 
-Los insumos que se compran se agrupan por proveedor principal, con el costo estimado a la ultima compra. Los que se
-elaboran (salsa, masa) dicen cuantas tandas hacen falta. Solo la ven Admin y Gerente (lleva costos).
+Dos reglas la hacen confiable:
+- Solo cuenta el STOCK UTIL: lo que ya vencio o va a vencer dentro de la ventana de aviso de su insumo no se cuenta,
+  porque no se va a poder usar. Si hay 10 kg de harina y 6 kg vencen en 3 dias, para la reposicion hay 4 kg.
+- Elaborar necesita ingredientes: para cada elaboracion que hay que producir se verifica que alcancen; lo que falte se
+  suma a lo que hay que comprar (o a las tandas de otra elaboracion, si el ingrediente es una elaboracion).
+Los insumos que se compran se agrupan por proveedor principal, con el costo estimado a la ultima compra. Solo la ven
+Admin y Gerente (lleva costos). El calculo en si esta en stock_calculos.plan_reposicion (puro, se prueba solo).
 """
 from django.utils import timezone
 
-from .models import Receta, StockInsumo
+from .models import Insumo, Receta, StockInsumo
 from .stock import proveedores_por_insumo, ultimo_costo
-from .stock_calculos import entra_en_reposicion, plan_reposicion, redondear_dinero, texto_cantidad, CERO
+from .stock_calculos import CERO, plan_reposicion, redondear_dinero, texto_cantidad
+from .vencimientos import cantidades_por_vencer, dias_aviso
 
 
-def armar_reposicion(todos=False):
-    filas_vista = [
-        f for f in StockInsumo.objects.filter(activo=True)
-        if entra_en_reposicion(f.estado, f.stock_actual, f.stock_objetivo, todos)
-    ]
-    ids = [f.insumo_id for f in filas_vista]
-    rindes = dict(
-        Receta.objects.filter(insumo_producido_id__in=ids).values_list('insumo_producido_id', 'rinde')
-    )
-    proveedores = proveedores_por_insumo([i for i in ids if i not in rindes])
+def armar_reposicion(todos=False, hoy=None):
+    hoy = hoy or timezone.localdate()
+    insumos = list(Insumo.objects.all())
+    stocks = {f.insumo_id: f.stock_actual for f in StockInsumo.objects.all()}
+    perdidas = cantidades_por_vencer(hoy)
+
+    recetas = {}
+    for receta in Receta.objects.filter(insumo_producido__isnull=False).prefetch_related('ingredientes'):
+        recetas[receta.insumo_producido_id] = {
+            'rinde': receta.rinde,
+            'ingredientes': [(i.insumo_id, i.cantidad) for i in receta.ingredientes.all()],
+        }
+    proveedores = proveedores_por_insumo([i.id for i in insumos if i.id not in recetas])
+
     filas = []
-    for f in filas_vista:
-        principal = next((p for p in proveedores.get(f.insumo_id, []) if p['es_principal']), None)
-        if principal is None and proveedores.get(f.insumo_id):
-            principal = proveedores[f.insumo_id][0]
+    for i in insumos:
+        principal = next((p for p in proveedores.get(i.id, []) if p['es_principal']), None)
+        if principal is None and proveedores.get(i.id):
+            principal = proveedores[i.id][0]
+        propio = perdidas.get(i.id, {})
         filas.append({
-            'id': f.insumo_id, 'nombre': f.nombre, 'tipo_medida': f.tipo_medida, 'estado': f.estado,
-            'porcentaje': f.porcentaje, 'stock': f.stock_actual, 'objetivo': f.stock_objetivo,
-            'costo': ultimo_costo(f.insumo_id) if f.insumo_id not in rindes else None,
+            'id': i.id, 'nombre': i.nombre, 'tipo_medida': i.tipo_medida, 'activo': i.activo,
+            'stock': stocks.get(i.id, CERO), 'a_perder': propio.get('a_perder', CERO), 'vencido': propio.get('vencido', CERO),
+            'objetivo': i.stock_objetivo, 'umbral_bajo': i.umbral_bajo_pct, 'umbral_critico': i.umbral_critico_pct,
             'proveedor': {'id': principal['id'], 'nombre': principal['nombre']} if principal else None,
-            'rinde': rindes.get(f.insumo_id),
         })
-    plan = plan_reposicion(filas, todos=todos)
-    medidas = {f['id']: f['tipo_medida'] for f in filas}
+    plan = plan_reposicion(filas, recetas, todos=todos, costo_de=ultimo_costo)
 
     def decorar(item):
-        medida = medidas[item['insumo']]
-        item['stock_texto'] = texto_cantidad(item['stock'], medida)
-        item['objetivo_texto'] = texto_cantidad(item['objetivo'], medida)
-        item['faltante_texto'] = texto_cantidad(item['faltante'], medida)
+        medida = item['tipo_medida']
+        for clave in ('stock', 'a_perder', 'stock_util', 'objetivo', 'faltante'):
+            item[f'{clave}_texto'] = texto_cantidad(item[clave], medida)
+        for falta in item.get('ingredientes_faltantes', []):
+            for clave in ('necesario', 'disponible', 'faltante'):
+                falta[f'{clave}_texto'] = texto_cantidad(falta[clave], falta['tipo_medida'])
+        if 'rinde' in item:
+            item['cantidad_a_producir_texto'] = texto_cantidad(item['cantidad_a_producir'], medida)
+        for quien in item.get('para_elaborar', []):
+            quien['cantidad_texto'] = texto_cantidad(quien['cantidad'], medida)
         return item
 
     total = CERO
@@ -52,6 +67,7 @@ def armar_reposicion(todos=False):
     return {
         'generado': timezone.localtime().isoformat(),
         'criterio': 'todos_bajo_objetivo' if todos else 'solo_los_que_requieren_atencion',
+        'dias_aviso': dias_aviso(),
         'total_insumos': sum(len(g['items']) for g in plan['comprar']) + len(plan['producir']),
         'costo_estimado_total': redondear_dinero(total),
         'costo_completo': completo,

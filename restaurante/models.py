@@ -377,6 +377,8 @@ class Insumo(models.Model):
     stock_objetivo = models.DecimalField(max_digits=12, decimal_places=3, default=0, db_column='StockObjetivo')  # el 100%
     umbral_bajo_pct = models.PositiveSmallIntegerField(default=50, db_column='UmbralBajoPct')  # amarillo
     umbral_critico_pct = models.PositiveSmallIntegerField(default=20, db_column='UmbralCriticoPct')  # rojo
+    # Dias de aviso de vencimiento propios de este insumo (hito 6.1). NULL = usa los generales de la configuracion.
+    dias_aviso_vencimiento = models.PositiveSmallIntegerField(null=True, blank=True, db_column='DiasAvisoVencimiento')
     activo = models.BooleanField(default=True, db_column='Activo')
 
     class Meta:

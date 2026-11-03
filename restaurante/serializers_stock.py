@@ -9,8 +9,10 @@ from .models import Compra, Insumo, LoteInsumo, MovimientoStock, Proveedor, Stoc
 from .serializers import fecha_iso
 from .stock import proveedores_por_insumo
 from .stock_calculos import (
-    SEMAFORO, TIPOS_MEDIDA, UNIDAD_BASE, costo_total_lote, cuantizar_cantidad, es_entera, texto_cantidad,
+    MAX_DIAS_AVISO, MIN_DIAS_AVISO, SEMAFORO, TIPOS_MEDIDA, UNIDAD_BASE, costo_total_lote, cuantizar_cantidad, es_entera,
+    texto_cantidad, ventana_aviso,
 )
+from .vencimientos import dias_aviso
 
 CANTIDAD = dict(max_digits=12, decimal_places=3, min_value=Decimal('0.001'))
 
@@ -65,6 +67,11 @@ class InsumoSerializer(serializers.ModelSerializer):
     stock_objetivo = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal('0'), required=False)
     umbral_bajo_pct = serializers.IntegerField(min_value=1, max_value=100, required=False)
     umbral_critico_pct = serializers.IntegerField(min_value=0, max_value=99, required=False)
+    dias_aviso_vencimiento = serializers.IntegerField(
+        min_value=MIN_DIAS_AVISO, max_value=MAX_DIAS_AVISO, required=False, allow_null=True,
+        help_text='Dias de aviso de vencimiento propios de este insumo. null = usa los generales (/configuracion/stock).',
+    )
+    dias_aviso_efectivo = serializers.SerializerMethodField()
     unidad_base = serializers.SerializerMethodField()
     stock_actual = serializers.SerializerMethodField()
     porcentaje = serializers.SerializerMethodField()
@@ -76,7 +83,7 @@ class InsumoSerializer(serializers.ModelSerializer):
         model = Insumo
         fields = [
             'id', 'nombre', 'tipo_medida', 'unidad_base', 'stock_objetivo', 'umbral_bajo_pct', 'umbral_critico_pct',
-            'activo', 'stock_actual', 'porcentaje', 'estado', 'semaforo', 'proveedores',
+            'dias_aviso_vencimiento', 'dias_aviso_efectivo', 'activo', 'stock_actual', 'porcentaje', 'estado', 'semaforo', 'proveedores',
         ]
 
     # --- lectura: el stock y los proveedores llegan precalculados en el contexto (listados) o se buscan de a uno ---
@@ -88,6 +95,13 @@ class InsumoSerializer(serializers.ModelSerializer):
 
     def get_unidad_base(self, obj):
         return UNIDAD_BASE[obj.tipo_medida]
+
+    def get_dias_aviso_efectivo(self, obj):
+        """Los dias con que de verdad se avisa: los propios del insumo o, si no tiene, los generales."""
+        general = self.context.get('dias_aviso_general')
+        if general is None:
+            general = self.context['dias_aviso_general'] = dias_aviso()
+        return ventana_aviso(obj.dias_aviso_vencimiento, general)
 
     def get_stock_actual(self, obj):
         fila = self._stock(obj)

@@ -100,7 +100,7 @@ def armar_notificaciones():
             'lote': {
                 'id': fila['lote'], 'insumo': fila['insumo'], 'insumo_nombre': fila['insumo_nombre'],
                 'cantidad_texto': fila['cantidad_texto'], 'fecha_vencimiento': fila['fecha_vencimiento'].isoformat(),
-                'dias_restantes': fila['dias_restantes'],
+                'dias_restantes': fila['dias_restantes'], 'dias_aviso': fila['dias_aviso'],
             },
         })
 
