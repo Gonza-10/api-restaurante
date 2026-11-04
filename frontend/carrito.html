@@ -71,6 +71,12 @@
         .badge-pendiente { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
         .badge-proceso { background: rgba(255, 122, 0, 0.15); color: #ff7a00; border: 1px solid rgba(255, 122, 0, 0.3); }
         .badge-listo { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+        
+        /* Estilo para items sin stock (Error 409) */
+        .item-error {
+            border: 2px solid #e74c3c !important;
+            background: rgba(231, 76, 60, 0.05) !important;
+        }
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
@@ -100,7 +106,7 @@
                 </div>
             </div>
 
-            <!-- Botón de Envío a Cocina con animación verde -->
+            <!-- Botón de Envío a Cocina -->
             <button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
                 Enviar Selección a Cocina
             </button>
@@ -188,6 +194,9 @@
     <script>
         let callbackAviso = null;
         const VALOR_CUBIERTO_POR_PERSONA = 1500;
+        
+        // VARIABLE GLOBAL NUEVA: Para llevar registro de los IDs que rebotaron por falta de stock
+        window.itemsBloqueadosPorStock = []; 
 
         document.addEventListener('DOMContentLoaded', () => {
             const temaGuardado = localStorage.getItem('savage-tema');
@@ -266,19 +275,19 @@
             const contenedor = document.getElementById('contenedor-items-carrito');
             const comensales = parseInt(sessionStorage.getItem('savage-comensales')) || 2;
             const costoCubiertoTotal = comensales * VALOR_CUBIERTO_POR_PERSONA;
+            const btnEnviar = document.getElementById('btn-enviar-cocina');
             
             let subtotalGral = 0;
+            let bloqueoActivo = false;
 
-            // 1. Sumamos el historial (platos que ya mandó a pedir)
+            // Sumamos el historial (platos que ya mandó a pedir)
             historial.forEach(comanda => {
                 if (comanda.items && Array.isArray(comanda.items)) {
-                    comanda.items.forEach(item => {
-                        subtotalGral += parseFloat(item.precio) || 0;
-                    });
+                    comanda.items.forEach(item => { subtotalGral += parseFloat(item.precio) || 0; });
                 }
             });
 
-            // 2. Sumamos lo que tiene seleccionado en el carrito actualmente
+            // Sumamos lo que tiene seleccionado en el carrito actualmente
             carrito.forEach(item => {
                 subtotalGral += (item.precio * item.cantidad);
             });
@@ -288,13 +297,12 @@
                 document.getElementById('lbl-subtotal').textContent = `$${subtotalGral.toFixed(2)}`;
                 document.getElementById('lbl-cubierto').textContent = `$${costoCubiertoTotal.toFixed(2)} (${comensales} personas)`;
                 document.getElementById('lbl-total').textContent = `$${(subtotalGral + costoCubiertoTotal).toFixed(2)}`;
-                document.getElementById('btn-enviar-cocina').style.opacity = '0.5';
-                document.getElementById('btn-enviar-cocina').style.pointerEvents = 'none';
+                btnEnviar.style.opacity = '0.5';
+                btnEnviar.style.pointerEvents = 'none';
+                btnEnviar.textContent = 'Enviar Selección a Cocina';
                 return;
             }
 
-            document.getElementById('btn-enviar-cocina').style.opacity = '1';
-            document.getElementById('btn-enviar-cocina').style.pointerEvents = 'auto';
             contenedor.innerHTML = '';
 
             carrito.forEach((item, index) => {
@@ -304,13 +312,25 @@
                 if (img.startsWith('/')) { img = `http://localhost:8080${img}`; }
                 if (!img) { img = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'; }
 
+                // VERIFICACIÓN DE STOCK (Para bloquear y pintar de rojo si David devuelve 409)
+                const tieneError = window.itemsBloqueadosPorStock.includes(item.id);
+                if (tieneError) bloqueoActivo = true;
+                const claseError = tieneError ? 'item-error' : '';
+                const msjErrorHtml = tieneError ? `<div style="color: #e74c3c; font-size: 11px; font-weight: bold; margin-top: 4px;">⚠️ Agotado o no disponible. Eliminalo para continuar.</div>` : '';
+                
+                // VERIFICACIÓN DE MODIFICADORES "SIN..."
+                const badgePersonalizado = (item.sin && item.sin.length > 0) ? `<span style="background: rgba(255, 122, 0, 0.2); color: var(--primary-orange); padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 6px; vertical-align: middle;">PERSONALIZADO</span>` : '';
+
                 contenedor.innerHTML += `
-                    <div class="item-carrito-card">
+                    <div class="item-carrito-card ${claseError}">
                         <img src="${img}" alt="${item.nombre}" style="width: 55px; height: 55px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'">
                         
                         <div style="flex-grow: 1; min-width: 0;">
-                            <h4 style="margin: 0 0 3px 0; color: var(--text-main); font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nombre}</h4>
+                            <h4 style="margin: 0 0 3px 0; color: var(--text-main); font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${item.nombre} ${badgePersonalizado}
+                            </h4>
                             <span style="color: var(--primary-orange); font-weight: bold; font-size: 13px;">$${item.precio.toFixed(2)} c/u</span>
+                            ${msjErrorHtml}
                         </div>
                         
                         <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--glass-border);">
@@ -328,8 +348,20 @@
                 `;
             });
 
-            const totalFinal = subtotalGral + costoCubiertoTotal;
+            // GESTIÓN DEL BOTÓN DE ENVÍO
+            if (bloqueoActivo) {
+                btnEnviar.style.opacity = '0.5';
+                btnEnviar.style.pointerEvents = 'none';
+                btnEnviar.style.backgroundColor = '#e74c3c';
+                btnEnviar.textContent = 'Quitá los platos agotados para enviar';
+            } else {
+                btnEnviar.style.opacity = '1';
+                btnEnviar.style.pointerEvents = 'auto';
+                btnEnviar.style.backgroundColor = 'var(--primary-orange)';
+                btnEnviar.textContent = 'Enviar Selección a Cocina';
+            }
 
+            const totalFinal = subtotalGral + costoCubiertoTotal;
             document.getElementById('lbl-subtotal').textContent = `$${subtotalGral.toFixed(2)}`;
             document.getElementById('lbl-cubierto').textContent = `$${costoCubiertoTotal.toFixed(2)} (${comensales} personas)`;
             document.getElementById('lbl-total').textContent = `$${totalFinal.toFixed(2)}`;
@@ -339,14 +371,22 @@
             let carrito = obtenerCarrito();
             carrito[index].cantidad += delta;
             if (carrito[index].cantidad <= 0) {
-                carrito.splice(index, 1);
+                eliminarItem(index);
+            } else {
+                guardarCarrito(carrito);
             }
-            guardarCarrito(carrito);
         }
 
         function eliminarItem(index) {
             let carrito = obtenerCarrito();
+            const idEliminado = carrito[index].id;
             carrito.splice(index, 1);
+            
+            // Si eliminó el plato problemático y ya no quedan copias en el carrito, lo sacamos de la lista negra
+            if (!carrito.find(i => i.id === idEliminado)) {
+                window.itemsBloqueadosPorStock = window.itemsBloqueadosPorStock.filter(id => id !== idEliminado);
+            }
+            
             guardarCarrito(carrito);
         }
 
@@ -361,10 +401,8 @@
                 const comandasTablero = await resp.json();
                 const misComandasActivas = comandasTablero.filter(c => parseInt(c.mesa_id) === parseInt(mesaActual));
 
-                // Usamos LocalStorage o SessionStorage para no perder lo que se despacha
                 let historial = JSON.parse(sessionStorage.getItem('savage-historial-pedidos')) || [];
 
-                // 1. Agregar nuevos pedidos al historial o actualizar el estado de los existentes
                 misComandasActivas.forEach(comandaActiva => {
                     const index = historial.findIndex(c => c.id_comanda_uuid === comandaActiva.id_comanda_uuid);
                     if (index > -1) {
@@ -374,7 +412,6 @@
                     }
                 });
 
-                // 2. Si un pedido estaba en el historial y ya no está en la cocina, se marcó como "Entregado"
                 historial.forEach(item => {
                     const sigueEnTablero = misComandasActivas.find(c => c.id_comanda_uuid === item.id_comanda_uuid);
                     if (!sigueEnTablero && item.estado !== 'entregado') {
@@ -382,11 +419,8 @@
                     }
                 });
 
-                // Mantenemos ordenado por horario
                 historial.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                 sessionStorage.setItem('savage-historial-pedidos', JSON.stringify(historial));
-
-                // Recalculamos los precios totales para sumar este historial
                 cargarCarritoStorage();
 
                 if (historial.length === 0) {
@@ -397,7 +431,11 @@
                 contenedorHistorial.innerHTML = '';
                 historial.forEach(comanda => {
                     let conteo = {};
-                    comanda.items.forEach(i => { conteo[i.nombre] = (conteo[i.nombre] || 0) + 1; });
+                    comanda.items.forEach(i => { 
+                        // Mostramos en el historial si el plato tiene modificaciones para que el cliente lo recuerde
+                        let nombreDisplay = i.nombre + (i.sin && i.sin.length > 0 ? ' (Modif.)' : '');
+                        conteo[nombreDisplay] = (conteo[nombreDisplay] || 0) + 1; 
+                    });
                     let nombresItems = Object.entries(conteo).map(([nom, cant]) => `<span style="color:var(--text-main); font-weight:800;">${cant}x</span> ${nom}`).join(', ');
 
                     let badgeClass = 'badge-pendiente';
@@ -456,10 +494,15 @@
             btn.style.backgroundColor = '#f39c12';
             btn.textContent = 'Enviando a cocina...';
 
+            // Armamos el payload desglosando la cantidad e inyectando el array "sin" si existe
             let itemsPlana = [];
             carrito.forEach(item => {
                 for(let i = 0; i < item.cantidad; i++) {
-                    itemsPlana.push({ id: item.id });
+                    let obj = { id: item.id };
+                    if (item.sin && item.sin.length > 0) {
+                        obj.sin = item.sin;
+                    }
+                    itemsPlana.push(obj);
                 }
             });
 
@@ -477,7 +520,7 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (resp.ok) {
+                if (resp.status === 202 || resp.status === 200 || resp.status === 201) {
                     sessionStorage.removeItem('savage-carrito');
                     
                     btn.style.backgroundColor = '#4CAF50';
@@ -489,6 +532,20 @@
                         btn.style.backgroundColor = 'var(--primary-orange)';
                         btn.textContent = 'Enviar Selección a Cocina';
                     }, 1500);
+
+                } else if (resp.status === 409) {
+                    // ATAJAMOS LOS ERRORES DE STOCK REAL DE DAVID
+                    const data = await resp.json();
+                    
+                    window.itemsBloqueadosPorStock = []; // Limpiamos y recolectamos los nuevos baneados
+                    if (data.productos_sin_stock) data.productos_sin_stock.forEach(p => window.itemsBloqueadosPorStock.push(p.id));
+                    if (data.productos_no_disponibles) data.productos_no_disponibles.forEach(p => window.itemsBloqueadosPorStock.push(p.id));
+                    if (data.modificadores_invalidos) data.modificadores_invalidos.forEach(p => window.itemsBloqueadosPorStock.push(p.id));
+
+                    // El mensaje de error que armó David lo mostramos intacto en pantalla
+                    mostrarAviso("Problema con el stock", data.error || "No hay stock suficiente para preparar todos los platos de tu pedido. Quitá los que están marcados en rojo para poder continuar.");
+                    
+                    cargarCarritoStorage(); // Refresca la vista aplicando el bloqueo visual
                 } else {
                     const err = await resp.json().catch(() => ({}));
                     let mensajeError = "No se pudo enviar el pedido.";

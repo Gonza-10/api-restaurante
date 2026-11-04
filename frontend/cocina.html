@@ -6,239 +6,697 @@
     <title>Panel de Cocina - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        /* Estilos específicos para el layout de la cocina (Pantalla completa) */
         body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px; flex-grow: 1; overflow: hidden; }
+        
+        /* Navegación por Pestañas */
+        .tabs-header {
+            display: flex;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0 40px;
+            gap: 20px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 15px 20px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--primary-orange);
+            border-bottom-color: var(--primary-orange);
+        }
+        .tab-content { display: none; flex-grow: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
+
+        /* Contenedores Genéricos para Pestañas de Stock y Notificaciones */
+        .panel-scrollable { padding: 30px 40px; flex-grow: 1; overflow-y: auto; background: var(--bg-dark); }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        /* Componente: Badge de Notificación */
+        .badge-noti {
+            background: #e74c3c;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: none; /* Se activa vía JS */
+        }
+
+        /* Estilos del Tablero Kanban (Tab 1) */
+        .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px; width: 100%; height: 100%; }
         .kanban-column { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
         body.light-mode .kanban-column { background: #f8fafc; border-color: #e2e8f0; }
-
         .kanban-header { padding: 20px; border-bottom: 1px solid var(--glass-border); text-align: center; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
-        body.light-mode .kanban-header { border-bottom-color: #e2e8f0; }
-
         .kanban-body { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        
-        /* Tarjetas de comandas */
         .comanda-card { background: rgba(18,18,18,0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
         body.light-mode .comanda-card { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .comanda-card:hover { transform: translateY(-3px); }
-
         .comanda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed var(--text-muted); padding-bottom: 10px; }
         .mesa-badge { background: var(--primary-orange); color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .tiempo-badge { color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-        .item-pedido { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; color: var(--text-main); }
+        .item-pedido { display: flex; flex-direction: column; font-size: 14px; margin-bottom: 8px; color: var(--text-main); }
+        
+        /* Modificador "SIN" (Tarea 10) */
+        .modificador-sin {
+            background: #e74c3c;
+            color: white;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: inline-block;
+            width: max-content;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Estilos Componentes Stock (Tabs 2 y 3) */
+        .card-panel { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; }
+        .noti-item { border-left: 4px solid #3498db; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
+        .noti-item.urgente { border-left-color: #e74c3c; background: rgba(231,76,60,0.1); }
+        .noti-item.info { border-left-color: #2ecc71; background: rgba(46,204,113,0.1); }
+        
+        .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid var(--glass-border); }
+        .stock-row:last-child { border-bottom: none; }
+        .semaforo { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+        .semaforo.rojo { background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+        .semaforo.amarillo { background-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+        .semaforo.verde { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+        .semaforo.gris { background-color: #7f8c8d; }
+
+        /* Formulario UI */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: bold; }
+        .form-control { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: white; padding: 10px; border-radius: 8px; font-family: inherit; }
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
-    <!-- ==========================================================================
-         CABECERA OPERATIVA (Solo lectura, sin navegación)
-         ========================================================================== -->
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.3);">
+    <!-- CABECERA OPERATIVA -->
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: rgba(0,0,0,0.3);">
         <h1 class="logo-restaurante" style="font-size: 24px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span> <span style="font-size: 14px; color: var(--text-muted); font-family: sans-serif; letter-spacing: 2px;">| COCINA</span></h1>
-        
         <div style="display: flex; align-items: center; gap: 15px;">
             <div id="indicador-conexion" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4CAF50; font-weight: bold;">
                 <div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div>
                 Sistema En Línea
             </div>
-            <!-- Reloj Digital en tiempo real -->
-            <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">
-                00:00:00
-            </span>
-
+            <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">00:00:00</span>
         </div>
     </header>
 
+    <!-- NAVEGADOR DE PESTAÑAS -->
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="cambiarTab('tab-comandas', this)">Tablero de Comandas</button>
+        <button class="tab-btn" onclick="cambiarTab('tab-notificaciones', this)">Notificaciones <span id="badge-noti-global" class="badge-noti">0</span></button>
+        <button class="tab-btn" onclick="cambiarTab('tab-stock', this)">Estado de Insumos</button>
+        <button class="tab-btn" onclick="cambiarTab('tab-acciones', this)">Gestión y Pérdidas</button>
+    </div>
+
     <!-- ==========================================================================
-         TABLERO KANBAN (Gestión de Estados de la Comanda)
+         TAB 1: TABLERO KANBAN (COMANDAS)
          ========================================================================== -->
-    <main class="kanban-board">
-        
-        <!-- Columna 1: Entrantes (Violeta) -->
-        <div class="kanban-column" style="border-top: 4px solid #a855f7;">
-            <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
-            <div class="kanban-body" id="columna-pendientes">
-                <!-- Inyección dinámica de JS -->
+    <main id="tab-comandas" class="tab-content active">
+        <div class="kanban-board">
+            <div class="kanban-column" style="border-top: 4px solid #a855f7;">
+                <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
+                <div class="kanban-body" id="columna-pendientes"></div>
+            </div>
+            <div class="kanban-column" style="border-top: 4px solid #ff7a00;">
+                <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
+                <div class="kanban-body" id="columna-proceso"></div>
+            </div>
+            <div class="kanban-column" style="border-top: 4px solid #2ecc71;">
+                <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
+                <div class="kanban-body" id="columna-listos"></div>
             </div>
         </div>
-
-        <!-- Columna 2: Preparación (Naranja) -->
-        <div class="kanban-column" style="border-top: 4px solid #ff7a00;">
-            <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
-            <div class="kanban-body" id="columna-proceso">
-                <!-- Inyección dinámica de JS -->
-            </div>
-        </div>
-
-        <!-- Columna 3: Despacho (Verde) -->
-        <div class="kanban-column" style="border-top: 4px solid #2ecc71;">
-            <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
-            <div class="kanban-body" id="columna-listos">
-                <!-- Inyección dinámica de JS -->
-            </div>
-        </div>
-
     </main>
 
     <!-- ==========================================================================
-         LÓGICA ASÍNCRONA DEL MÓDULO DE COCINA
+         TAB 2: NOTIFICACIONES (TAREA 6)
          ========================================================================== -->
+    <main id="tab-notificaciones" class="tab-content">
+        <div class="panel-scrollable">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--primary-orange);">Centro de Alertas</h2>
+                <button onclick="cargarNotificaciones()" class="btn-orange" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Actualizar Manual</button>
+            </div>
+            <div id="contenedor-notificaciones">
+                <p style="color: var(--text-muted);">Consultando alertas...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================================================
+         TAB 3: ESTADO DE STOCK (TAREA 7)
+         ========================================================================== -->
+    <main id="tab-stock" class="tab-content">
+        <div class="panel-scrollable">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--text-main);">Monitor de Insumos</h2>
+                <div style="display: flex; gap: 10px;">
+                    <select id="filtro-estado-stock" class="form-control" style="width: auto;" onchange="cargarPanelStock()">
+                        <option value="">Todos los insumos</option>
+                        <option value="critico,bajo,agotado">Solo estado crítico/bajo</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid-layout">
+                <!-- Columna Izquierda: Semáforos -->
+                <div class="card-panel">
+                    <h3 style="margin-top: 0; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">Niveles Actuales</h3>
+                    <div id="lista-semaforos-stock" style="margin-top: 15px;">
+                        <p style="color: var(--text-muted); font-size: 13px;">Cargando inventario...</p>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Lotes y Vencimientos -->
+                <div class="card-panel">
+                    <h3 style="margin-top: 0; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; display: flex; justify-content: space-between;">
+                        Control de Vencimientos
+                        <button onclick="procesarVencidos()" class="btn-orange" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; background-color: #e74c3c;">Dar de Baja Vencidos</button>
+                    </h3>
+                    <div id="lista-vencimientos" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <p style="color: var(--text-muted); font-size: 13px;">Analizando lotes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================================================
+         TAB 4: ACCIONES, PÉRDIDAS Y ELABORACIONES (TAREA 8 y 9)
+         ========================================================================== -->
+    <main id="tab-acciones" class="tab-content">
+        <div class="panel-scrollable grid-layout">
+            
+            <!-- Formulario Pérdidas -->
+            <div class="card-panel">
+                <h3 style="margin-top: 0; color: #e74c3c; border-bottom: 1px solid rgba(231,76,60,0.3); padding-bottom: 10px;">Registrar Pérdida</h3>
+                <form id="form-perdida" onsubmit="enviarPerdida(event)">
+                    <div class="form-group">
+                        <label class="form-label">Motivo</label>
+                        <!-- Le agregamos el onchange para detectar cuando requiere nota -->
+                        <select id="perdida-motivo" class="form-control" onchange="toggleNotaPerdida()" required></select>
+                    </div>
+                    
+                    <!-- NUEVO CAMPO NOTA (oculto por defecto) -->
+                    <div class="form-group" id="caja-nota" style="display: none;">
+                        <label class="form-label">Motivo de la pérdida</label>
+                        <textarea id="perdida-nota" class="form-control" rows="2" placeholder="Describa el motivo de la pérdida... (Ej: Se quemó la carne en la parrilla, se cayó un frasco al piso, plato rechazado por el cliente, etc.)"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Elemento</label>
+                        <select id="perdida-tipo" class="form-control" onchange="toggleSelectoresPerdida()" required>
+                            <option value="insumo">Insumo Suelto</option>
+                            <option value="plato">Plato Preparado</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="caja-insumo">
+                        <label class="form-label">Insumo Afectado</label>
+                        <select id="perdida-insumo" class="form-control"></select>
+                    </div>
+                    <div class="form-group" id="caja-plato" style="display: none;">
+                        <label class="form-label">Plato Afectado</label>
+                        <select id="perdida-plato" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cantidad (Unidad base o porciones)</label>
+                        <input type="number" id="perdida-cantidad" class="form-control" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="btn-orange" style="width: 100%; margin-top: 10px; background-color: #e74c3c;">Registrar Baja</button>
+                    <p id="perdida-msj" style="font-size: 13px; margin-top: 10px;"></p>
+                </form>
+            </div>
+
+            <!-- Formulario Producción (Elaboraciones) -->
+            <div class="card-panel">
+                <h3 style="margin-top: 0; color: #3498db; border-bottom: 1px solid rgba(52,152,219,0.3); padding-bottom: 10px;">Registrar Elaboración Interna</h3>
+                <form id="form-produccion" onsubmit="enviarProduccion(event)">
+                    <div class="form-group">
+                        <label class="form-label">Receta de Elaboración</label>
+                        <select id="prod-elaboracion" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cantidad de Tandas</label>
+                        <input type="number" id="prod-tandas" class="form-control" value="1" step="0.5" min="0.5" required>
+                    </div>
+                    <button type="submit" class="btn-orange" style="width: 100%; margin-top: 10px; background-color: #3498db;">Añadir al Stock</button>
+                    <p id="prod-msj" style="font-size: 13px; margin-top: 10px;"></p>
+                </form>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MOTOR DE LOGICA -->
     <script>
-        // Rutas exactas del backend de David
-        const API_TABLERO_URL = 'http://localhost:8080/api/v1/cocina/tablero';
-        const API_ESTADO_URL = 'http://localhost:8080/api/v1/pedidos';
-        const INTERVALO_POLLING = 3000; // Consulta al servidor cada 3 segundos
+        // API Base
+        const BASE_URL = 'http://localhost:8080/api/v1';
 
-        // Estado local de la vista
+        // Variables Globales
         let comandas = [];
+        let pollingActivo = true;
 
-        // Reloj digital para la cabecera en formato 24hs
+        /* ==================== SISTEMA DE TABS ==================== */
+        function cambiarTab(idTab, btnElement) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            btnElement.classList.add('active');
+            document.getElementById(idTab).classList.add('active');
+
+            // Cargas condicionales para no saturar al backend
+            if(idTab === 'tab-notificaciones') cargarNotificaciones();
+            if(idTab === 'tab-stock') { cargarPanelStock(); cargarVencimientos(); }
+            if(idTab === 'tab-acciones') cargarSelectoresAcciones();
+        }
+
+        /* ==================== RELOJ ==================== */
         setInterval(() => {
-            const ahora = new Date();
-            const reloj = document.getElementById('reloj-cocina');
-            if (reloj) reloj.textContent = ahora.toLocaleTimeString('es-AR', { hour12: false });
+            document.getElementById('reloj-cocina').textContent = new Date().toLocaleTimeString('es-AR', { hour12: false });
         }, 1000);
 
-        /* ==========================================================================
-           MOTOR DE RENDERIZADO (Actualización del DOM)
-           ========================================================================== */
-        function renderizarTablero() {
-            const colPendientes = document.getElementById('columna-pendientes');
-            const colProceso = document.getElementById('columna-proceso');
-            const colListos = document.getElementById('columna-listos');
+        // Fetch Wrapper para incluir token si lo tenemos (para los PATCH/POST)
+        async function fetchAutenticado(url, opciones = {}) {
+            const token = sessionStorage.getItem('savage_token');
+            const headers = { 'Content-Type': 'application/json', ...opciones.headers };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
             
-            if (!colPendientes || !colProceso || !colListos) return;
+            const respuesta = await fetch(url, { ...opciones, headers });
+            if (respuesta.status === 401) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+                throw new Error("Sesión expirada");
+            }
+            return respuesta;
+        }
 
-            colPendientes.innerHTML = '';
-            colProceso.innerHTML = '';
-            colListos.innerHTML = '';
-
-            let contPendientes = 0, contProceso = 0, contListos = 0;
+        /* ==================== TAB 1: KANBAN COMANDAS ==================== */
+        function renderizarTablero() {
+            ['pendientes', 'proceso', 'listos'].forEach(est => document.getElementById(`columna-${est}`).innerHTML = '');
+            let cont = { pendiente: 0, proceso: 0, listo: 0 };
 
             comandas.forEach(comanda => {
                 let itemsHTML = '';
-                if (comanda.items && Array.isArray(comanda.items)) {
+                
+                // TAREA 10: Resaltado visual MUY CLARO si quitaron ingredientes
+                if (comanda.items) {
                     comanda.items.forEach(item => {
-                        itemsHTML += `<div class="item-pedido"><span>1x ${item.nombre || 'Plato'}</span></div>`;
+                        let divSin = '';
+                        if(item.sin && item.sin.length > 0) {
+                            divSin = `<span class="modificador-sin">SIN: ${item.sin.join(', ')}</span>`;
+                        }
+                        itemsHTML += `
+                            <div class="item-pedido">
+                                <span style="font-weight: bold;">1x ${item.nombre}</span>
+                                ${divSin}
+                            </div>
+                        `;
                     });
                 }
 
-                let botonesHTML = '';
+                let botones = '';
                 if (comanda.estado === 'pendiente') {
-                    contPendientes++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #ff7a00; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">Comenzar Preparación ➔</button>`;
+                    cont.pendiente++;
+                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #ff7a00; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Comenzar Preparación ➔</button>`;
                 } else if (comanda.estado === 'proceso') {
-                    contProceso++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">✔ Marcar como Listo</button>`;
+                    cont.proceso++;
+                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">✔ Marcar como Listo</button>`;
                 } else if (comanda.estado === 'listo') {
-                    contListos++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">Despachado (Ocultar)</button>`;
+                    cont.listo++;
+                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; cursor: pointer;">Despachado (Ocultar)</button>`;
                 }
 
-                const tarjeta = document.createElement('div');
-                tarjeta.className = 'comanda-card';
-                tarjeta.innerHTML = `
-                    <div class="comanda-header">
-                        <span class="mesa-badge">Mesa #${comanda.mesa_id}</span>
-                        <span class="tiempo-badge">⏱ ${comanda.timestamp ? new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false}) : '--:--'}</span>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        ${itemsHTML}
-                    </div>
-                    <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--glass-border); padding-top: 8px; margin-top: 8px;">
-                        Ref: ${comanda.id_comanda_uuid ? comanda.id_comanda_uuid.substring(0,8) : 'N/A'}...
-                    </div>
-                    ${botonesHTML}
-                `;
-
-                if (comanda.estado === 'pendiente') colPendientes.appendChild(tarjeta);
-                else if (comanda.estado === 'proceso') colProceso.appendChild(tarjeta);
-                else if (comanda.estado === 'listo') colListos.appendChild(tarjeta);
+                if (comanda.estado !== 'entregado') {
+                    const col = document.getElementById(`columna-${comanda.estado}s` || `columna-${comanda.estado}`);
+                    if(col) {
+                        col.innerHTML += `
+                            <div class="comanda-card">
+                                <div class="comanda-header">
+                                    <span class="mesa-badge">Mesa #${comanda.mesa_id}</span>
+                                    <span class="tiempo-badge">⏱ ${new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false})}</span>
+                                </div>
+                                <div style="margin-bottom: 10px;">${itemsHTML}</div>
+                                ${botones}
+                            </div>
+                        `;
+                    }
+                }
             });
 
-            const elPend = document.getElementById('contador-pendientes');
-            const elProc = document.getElementById('contador-proceso');
-            const elList = document.getElementById('contador-listos');
-            if(elPend) elPend.textContent = contPendientes;
-            if(elProc) elProc.textContent = contProceso;
-            if(elList) elList.textContent = contListos;
+            document.getElementById('contador-pendientes').textContent = cont.pendiente;
+            document.getElementById('contador-proceso').textContent = cont.proceso;
+            document.getElementById('contador-listos').textContent = cont.listo;
         }
 
-        /* ==========================================================================
-           INTEGRACIÓN REST (Comunicación con Backend)
-           ========================================================================== */
-        async function sincronizarComandas() {
+        async function cambiarEstado(uuid, nuevoEstado) {
             try {
-                const respuesta = await fetch(API_TABLERO_URL);
-                if (respuesta.ok) {
-                    comandas = await respuesta.json();
-                    renderizarTablero();
-                    const indicador = document.getElementById('indicador-conexion');
-                    if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> Sistema En Línea';
-                }
-            } catch (error) {
-                console.error("Fallo de conexión con el backend:", error);
-                const indicador = document.getElementById('indicador-conexion');
-                if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Sin Conexión';
-            }
-        }
+                // Actualización optimista local
+                const idx = comandas.findIndex(c => c.id_comanda_uuid === uuid);
+                if (idx > -1) comandas[idx].estado = nuevoEstado;
+                renderizarTablero();
 
-        async function cambiarEstado(idComanda, nuevoEstado) {
-            const index = comandas.findIndex(c => c.id_comanda_uuid === idComanda);
-            if (index === -1) return;
-            const estadoAnterior = comandas[index].estado;
-            
-            if (nuevoEstado === 'entregado') {
-                comandas.splice(index, 1);
-            } else {
-                comandas[index].estado = nuevoEstado;
-            }
-            renderizarTablero();
-
-            try {
-                const respuesta = await fetch(`${API_ESTADO_URL}/${idComanda}/estado`, {
+                // Petición al backend autenticada
+                await fetchAutenticado(`${BASE_URL}/pedidos/${uuid}/estado`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ estado: nuevoEstado })
                 });
-                
-                if (!respuesta.ok) throw new Error("Rechazo del servidor");
-            } catch (error) {
-                console.error("Fallo al actualizar estado. Realizando Rollback visual:", error);
-                if (nuevoEstado !== 'entregado') {
-                    comandas[index].estado = estadoAnterior;
-                    renderizarTablero();
-                }
+            } catch(e) {
+                console.error("Error al actualizar estado");
+                sincronizarComandas(); // Rollback recargando desde DB
             }
         }
 
-        // Inicialización y ciclo asíncrono
-        sincronizarComandas();
-        setInterval(sincronizarComandas, INTERVALO_POLLING);
-    </script>
-    <script>
-        // Inyector local de Modo Claro/Oscuro sincronizado globalmente
-        document.addEventListener('DOMContentLoaded', () => {
-            const temaGuardado = localStorage.getItem('savage-tema');
-            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+        async function sincronizarComandas() {
+            if (!pollingActivo) return;
+            try {
+                const res = await fetch(`${BASE_URL}/cocina/tablero`);
+                if (res.ok) {
+                    comandas = await res.json();
+                    renderizarTablero();
+                    document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> En Línea';
+                }
+            } catch(e) {
+                document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Error';
+            }
+        }
 
-            const btnTema = document.createElement('button');
-            btnTema.className = 'btn-tema';
+        /* ==================== TAB 2: NOTIFICACIONES ==================== */
+        async function cargarNotificaciones() {
+            try {
+                const res = await fetch(`${BASE_URL}/cocina/notificaciones`);
+                const data = await res.json();
+                
+                const cont = document.getElementById('contenedor-notificaciones');
+                cont.innerHTML = '';
+
+                // Badge Global numérico
+                const badge = document.getElementById('badge-noti-global');
+                if (data.resumen && data.resumen.total > 0) {
+                    badge.textContent = data.resumen.total;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                    cont.innerHTML = '<p style="color: var(--text-muted);">Todo bajo control. No hay alertas.</p>';
+                    return;
+                }
+
+                data.notificaciones.forEach(not => {
+                    let clase = 'info';
+                    let btn = '';
+                    
+                    if(not.severidad === 'urgente') clase = 'urgente';
+                    else if(not.severidad === 'aviso') clase = '';
+
+                    // Lógica para el botón "Reactivar Plato"
+                    if(not.tipo === 'se_puede_reactivar' && not.producto) {
+                        btn = `<button onclick="reactivarPlato(${not.producto.id})" class="btn-orange" style="background:#2ecc71; padding: 4px 8px; font-size:11px;">Activar Plato</button>`;
+                    }
+
+                    cont.innerHTML += `
+                        <div class="noti-item ${clase}">
+                            <div>
+                                <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">${not.mensaje}</strong>
+                                <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${not.tipo.replace(/_/g, ' ')}</span>
+                            </div>
+                            ${btn}
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                console.error("Error en notificaciones", e);
+            }
+        }
+
+        async function reactivarPlato(id) {
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/productos/${id}/reactivar`, { method: 'POST' });
+                if(res.ok) {
+                    alert("Plato reactivado en el catálogo con éxito.");
+                    cargarNotificaciones();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || "No se puede reactivar. Verificá si el stock ya alcanzó.");
+                }
+            } catch(e) {
+                alert("Error de conexión");
+            }
+        }
+
+        /* ==================== TAB 3: ESTADO STOCK Y VENCIMIENTOS ==================== */
+        async function cargarPanelStock() {
+            const estadoFiltro = document.getElementById('filtro-estado-stock').value;
+            let url = `${BASE_URL}/stock`;
+            if (estadoFiltro) url += `?estado=${estadoFiltro}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                const cont = document.getElementById('lista-semaforos-stock');
+                cont.innerHTML = '';
+                
+                if(!data.insumos || data.insumos.length === 0) {
+                    cont.innerHTML = '<p>No hay insumos registrados para esta vista.</p>';
+                    return;
+                }
+
+                data.insumos.forEach(ins => {
+                    const claseSemaforo = ins.semaforo || 'gris';
+                    cont.innerHTML += `
+                        <div class="stock-row">
+                            <div style="display:flex; align-items:center;">
+                                <span class="semaforo ${claseSemaforo}" title="${ins.estado}"></span>
+                                <span style="font-weight: 500;">${ins.nombre}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 900;">${ins.cantidad_actual_texto || '0'}</div>
+                                <div style="font-size:11px; color:var(--text-muted);">Obj: ${ins.stock_objetivo_texto || '-'}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch(e) { console.error("Error en panel stock", e); }
+        }
+
+        async function cargarVencimientos() {
+            try {
+                const res = await fetch(`${BASE_URL}/vencimientos`);
+                const data = await res.json();
+                
+                const cont = document.getElementById('lista-vencimientos');
+                cont.innerHTML = '';
+                
+                const todos = [...(data.vencidos || []), ...(data.por_vencer || [])];
+                
+                if (todos.length === 0) {
+                    cont.innerHTML = '<p>No hay lotes próximos a vencer.</p>';
+                    return;
+                }
+
+                todos.forEach(lote => {
+                    let color = lote.dias_restantes < 0 ? '#e74c3c' : (lote.dias_restantes === 0 ? '#f39c12' : 'var(--text-muted)');
+                    cont.innerHTML += `
+                        <div style="background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong style="font-size: 14px;">${lote.insumo_nombre}</strong>
+                                <span style="font-size: 13px; font-weight: bold;">${lote.cantidad_texto}</span>
+                            </div>
+                            <div style="color: ${color}; font-size: 12px; font-weight: bold;">
+                                📅 ${lote.texto} (Vence: ${lote.fecha_vencimiento})
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch(e) { console.error("Error cargando vencimientos"); }
+        }
+
+        async function procesarVencidos() {
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/vencimientos/procesar`, { method: 'POST' });
+                const data = await res.json();
+                alert(`Se dieron de baja ${data.cantidad} lotes vencidos correctamente.`);
+                cargarVencimientos();
+                cargarNotificaciones();
+            } catch(e) { alert("Error dando de baja lotes."); }
+        }
+
+        // Variable global para guardar qué motivos exigen nota
+        let motivosPerdidaGlobal = [];
+
+        /* ==================== TAB 4: ACCIONES (Pérdidas y Producción) ==================== */
+        async function cargarSelectoresAcciones() {
+            try {
+                // Motivos de Pérdida
+                const resMot = await fetchAutenticado(`${BASE_URL}/perdidas/motivos`);
+                if(resMot.ok) {
+                    motivosPerdidaGlobal = await resMot.json();
+                    document.getElementById('perdida-motivo').innerHTML = motivosPerdidaGlobal.map(m => `<option value="${m.codigo}" style="background: #111; color: white;">${m.etiqueta}</option>`).join('');
+                    toggleNotaPerdida(); // Verificamos si la primera opción exige nota
+                }
+
+                // Insumos (usando el endpoint de STOCK permitido para Cocina)
+                const resStock = await fetchAutenticado(`${BASE_URL}/stock`);
+                if(resStock.ok) {
+                    const dataStock = await resStock.json();
+                    document.getElementById('perdida-insumo').innerHTML = dataStock.insumos.map(i => `<option value="${i.id}" style="background: #111; color: white;">${i.nombre}</option>`).join('');
+                }
+
+                // Platos (Catálogo, usando el endpoint general)
+                const resProd = await fetchAutenticado(`${BASE_URL}/productos`);
+                if(resProd.ok) {
+                    const prods = await resProd.json();
+                    document.getElementById('perdida-plato').innerHTML = prods.map(p => `<option value="${p.id}" style="background: #111; color: white;">${p.nombre}</option>`).join('');
+                }
+
+                // Elaboraciones (usando el endpoint permitido)
+                const resElab = await fetchAutenticado(`${BASE_URL}/elaboraciones`);
+                if(resElab.ok) {
+                    const elabs = await resElab.json();
+                    document.getElementById('prod-elaboracion').innerHTML = elabs.map(e => `<option value="${e.id}" style="background: #111; color: white;">Elaborar: ${e.insumo_nombre} (Rinde: ${e.rinde_texto} por tanda)</option>`).join('');
+                }
+                
+            } catch(e) { console.error("Error poblando selects", e); }
+        }
+
+        // NUEVA FUNCIÓN: Muestra u oculta el campo de texto de la Nota
+        function toggleNotaPerdida() {
+            const codigoSeleccionado = document.getElementById('perdida-motivo').value;
+            const motivoObj = motivosPerdidaGlobal.find(m => m.codigo === codigoSeleccionado);
+            const cajaNota = document.getElementById('caja-nota');
+            const inputNota = document.getElementById('perdida-nota');
             
-            const actualizarTexto = () => {
-                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+            if (motivoObj && motivoObj.requiere_nota) {
+                cajaNota.style.display = 'block';
+                inputNota.required = true;
+            } else {
+                cajaNota.style.display = 'none';
+                inputNota.required = false;
+                inputNota.value = ''; // Limpiamos si lo oculta
+            }
+        }
+
+        function toggleSelectoresPerdida() {
+            const tipo = document.getElementById('perdida-tipo').value;
+            document.getElementById('caja-insumo').style.display = tipo === 'insumo' ? 'block' : 'none';
+            document.getElementById('caja-plato').style.display = tipo === 'plato' ? 'block' : 'none';
+        }
+
+        async function enviarPerdida(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const msj = document.getElementById('perdida-msj');
+            btn.disabled = true;
+
+            const payload = {
+                tipo: document.getElementById('perdida-tipo').value,
+                motivo: document.getElementById('perdida-motivo').value,
+                cantidad: parseFloat(document.getElementById('perdida-cantidad').value)
             };
-            
-            actualizarTexto();
-            
-            btnTema.onclick = () => {
-                document.body.classList.toggle('light-mode');
-                actualizarTexto();
-                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+
+            // Agregamos la nota al payload si el usuario escribió algo
+            const notaText = document.getElementById('perdida-nota').value.trim();
+            if (notaText) payload.nota = notaText;
+
+            if (payload.tipo === 'insumo') payload.insumo = parseInt(document.getElementById('perdida-insumo').value);
+            else payload.producto = parseInt(document.getElementById('perdida-plato').value);
+
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/perdidas`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                if(res.ok) {
+                    msj.style.color = '#2ecc71';
+                    msj.textContent = 'Pérdida registrada con éxito. Inventario ajustado.';
+                    e.target.reset();
+                    toggleNotaPerdida(); // Reseteamos la visibilidad de la nota
+                } else {
+                    const err = await res.json();
+                    msj.style.color = '#e74c3c';
+                    msj.textContent = err.error || 'Error al registrar pérdida. Revisa el stock disponible.';
+                }
+            } catch(err) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = 'Fallo de conexión.';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { msj.textContent = ''; }, 3000);
+            }
+        }
+
+        async function enviarProduccion(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const msj = document.getElementById('prod-msj');
+            btn.disabled = true;
+
+            const payload = {
+                elaboracion: parseInt(document.getElementById('prod-elaboracion').value),
+                tandas: parseFloat(document.getElementById('prod-tandas').value)
             };
-            
-            document.body.appendChild(btnTema);
-        });
+
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/producciones`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                if(res.ok) {
+                    msj.style.color = '#2ecc71';
+                    msj.textContent = 'Producción registrada. Ingredientes descontados y stock actualizado.';
+                    e.target.reset();
+                } else {
+                    const err = await res.json();
+                    msj.style.color = '#e74c3c';
+                    msj.textContent = err.error || 'Error en la producción. Verificá si tenés los ingredientes suficientes.';
+                }
+            } catch(err) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = 'Fallo de conexión.';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { msj.textContent = ''; }, 3000);
+            }
+        }
+
+        // Loop de polling ligero para Notificaciones de fondo
+        setInterval(() => {
+            if(!document.getElementById('tab-notificaciones').classList.contains('active')) {
+                // Hacemos un mini-fetch solo para actualizar la burbuja roja
+                fetch(`${BASE_URL}/cocina/notificaciones`)
+                .then(r => r.json())
+                .then(d => {
+                    const badge = document.getElementById('badge-noti-global');
+                    if(d.resumen && d.resumen.total > 0) {
+                        badge.textContent = d.resumen.total;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }).catch(()=>{});
+            }
+        }, 12000); // 12 segundos
+
+        // Iniciar tablero principal
+        setInterval(sincronizarComandas, INTERVALO_POLLING);
+        sincronizarComandas();
+        cambiarTab('tab-comandas', document.querySelector('.tab-btn.active'));
     </script>
 </body>
 </html>
