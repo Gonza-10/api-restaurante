@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú Digital - Savage Grill</title>
-    <!-- Vinculación de estilos base -->
     <link rel="stylesheet" href="styles.css">
     <style>
         .sin-ingrediente-checkbox {
@@ -19,21 +18,12 @@
             transition: border-color 0.2s;
             margin-bottom: 8px;
         }
-        .sin-ingrediente-checkbox:hover {
-            border-color: var(--primary-orange);
-        }
-        .sin-ingrediente-checkbox input[type="checkbox"] {
-            accent-color: var(--primary-orange);
-            width: 18px;
-            height: 18px;
-        }
+        .sin-ingrediente-checkbox:hover { border-color: var(--primary-orange); }
+        .sin-ingrediente-checkbox input[type="checkbox"] { accent-color: var(--primary-orange); width: 18px; height: 18px; cursor: pointer; }
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
-    <!-- ==========================================================================
-         CABECERA: Estado de Sesión y Mesa Activa
-         ========================================================================== -->
     <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
         <h1 class="logo-restaurante" style="margin: 0; font-family: 'Elemental End', sans-serif;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
         <div style="display: flex; align-items: center; gap: 15px;">
@@ -46,11 +36,7 @@
         </div>
     </header>
 
-    <!-- ==========================================================================
-         MÓDULO PRINCIPAL: Renderizado Dinámico del Catálogo
-         ========================================================================== -->
     <main style="padding: 40px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; position: relative;">
-        
         <!-- Overlay Local Cerrado -->
         <div id="overlay-local-cerrado" style="display: none; position: absolute; inset: 0; background: rgba(18,18,18,0.9); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 16px;">
             <span style="font-size: 60px; margin-bottom: 20px;">🌙</span>
@@ -59,98 +45,57 @@
         </div>
 
         <div style="background: linear-gradient(to right, rgba(18,18,18,0.98) 20%, rgba(18,18,18,0.4)), url('https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80') center/cover; border-radius: 24px; padding: 50px; margin-bottom: 40px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 320px; border: 1px solid var(--primary-orange); box-shadow: 0 15px 35px rgba(255, 122, 0, 0.15); position: relative; overflow: hidden;">
-            <span style="background-color: var(--primary-orange); color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px;">
-                Especial del Día
-            </span>
+            <span style="background-color: var(--primary-orange); color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px;">Especial del Día</span>
             <h2 style="color: #FFFFFF; font-size: 48px; margin: 0 0 16px 0; font-weight: 900; text-shadow: 3px 3px 6px rgba(0,0,0,0.9); line-height: 1.1;">Savage Burger Doble</h2>
-            <p style="color: #F5F5F5; max-width: 550px; line-height: 1.6; margin: 0 0 24px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); font-size: 17px; font-weight: 600;">
-                Doble medallón de carne, cuádruple cheddar, bacon ahumado crujiente, cebolla caramelizada y nuestra salsa en pan brioche.
-            </p>
+            <p style="color: #F5F5F5; max-width: 550px; line-height: 1.6; margin: 0 0 24px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); font-size: 17px; font-weight: 600;">Doble medallón de carne, cuádruple cheddar, bacon ahumado crujiente, cebolla caramelizada y nuestra salsa en pan brioche.</p>
             <div style="display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 12px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1);">
-                <span style="color: var(--text-muted); text-decoration: line-through; font-size: 18px;">$18000.00</span>
-                <span style="font-size: 34px; font-weight: 900; color: var(--primary-orange); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">$14500.00</span>
+                <span style="color: var(--text-muted); text-decoration: line-through; font-size: 18px;">$18000.00</span><span style="font-size: 34px; font-weight: 900; color: var(--primary-orange); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">$14500.00</span>
             </div>
         </div>
 
-        <!-- BLOQUE DE FILTROS DINÁMICOS -->
         <div style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px;">
             <span style="color: var(--primary-orange); font-weight: bold; letter-spacing: 2px; font-size: 14px;">NUESTRA CARTA</span>
-            
             <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
                 <input type="text" id="filtro-texto" placeholder="Buscar plato o ingrediente..." style="flex-grow: 1; padding: 12px 16px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; outline: none;">
-                
                 <input type="number" id="filtro-min" placeholder="Precio Min ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
                 <input type="number" id="filtro-max" placeholder="Precio Max ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
-                
                 <select id="filtro-orden" style="padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--glass-border); color: white;">
-                    <option value="">Ordenar por defecto</option>
-                    <option value="precio">Menor Precio</option>
-                    <option value="-precio">Mayor Precio</option>
-                    <option value="nombre">Nombre (A-Z)</option>
+                    <option value="">Ordenar por defecto</option><option value="precio">Menor Precio</option><option value="-precio">Mayor Precio</option><option value="nombre">Nombre (A-Z)</option>
                 </select>
-                
                 <button onclick="aplicarFiltrosAvanzados()" style="padding: 12px 24px; border-radius: 10px; background: var(--primary-orange); color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s;">Buscar</button>
             </div>
-
-            <div id="contenedor-categorias" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <p style="color: var(--text-muted); font-size: 14px;">Cargando categorías...</p>
-            </div>
+            <div id="contenedor-categorias" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
 
-        <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">
-            Fallo al cargar el menú digital. Verifique si el servidor backend está encendido.
-        </div>
-
-        <div id="listado" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-            <!-- Contenido dinámico renderizado por JS -->
-            <p style="color: var(--text-muted);">Cargando catálogo desde el servidor...</p>
-        </div>
+        <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">Fallo al cargar el menú digital. Verifique si el servidor backend está encendido.</div>
+        <div id="listado" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;"></div>
     </main>
 
-    <!-- ==========================================================================
-         OVERLAYS Y MODALES (UI Asíncrona)
-         ========================================================================== -->
-
+    <!-- OVERLAYS Y MODALES -->
     <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
             <div id="aviso-icono" style="font-size: 45px; margin-bottom: 15px;">📋</div>
             <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
             <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
-            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px; transition: background 0.2s;">
-                Entendido
-            </button>
+            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 14px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer; font-size: 15px; transition: background 0.2s;">Entendido</button>
         </div>
     </div>
 
-    <!-- 1. Modal de Información de Contexto -->
+    <!-- Modal Info Mesa -->
     <div id="modal-mesa" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(380px, 90%); padding: 30px; position: relative;">
             <button onclick="cerrarModalMesa()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
-            
             <h2 id="titulo-modal-mesa" style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">MESA #--</h2>
-            
             <div style="display: flex; flex-direction: column; gap: 16px;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
-                    <span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span>
-                    <span id="span-mozo" style="font-weight: 600;">(Pendiente API)</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
-                    <span style="color: var(--text-muted); font-size: 14px;">Comensales</span>
-                    <span id="span-comensales" style="font-weight: 600;">-- Personas</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
-                    <span style="color: var(--text-muted); font-size: 14px;">Tiempo en mesa</span>
-                    <span id="span-cronometro" style="font-weight: 600; color: #58d68d; font-family: monospace;">00:00:00</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;">
-                    <span style="color: var(--text-muted); font-size: 14px;">PIN de la Mesa</span>
-                    <span id="span-pin" style="font-size: 28px; font-weight: 900; letter-spacing: 6px; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 8px 20px; border-radius: 12px; border: 1px solid var(--glass-border);">----</span>
-                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span><span id="span-mozo" style="font-weight: 600;">(Pendiente API)</span></div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Comensales</span><span id="span-comensales" style="font-weight: 600;">-- Personas</span></div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Tiempo en mesa</span><span id="span-cronometro" style="font-weight: 600; color: #58d68d; font-family: monospace;">00:00:00</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;"><span style="color: var(--text-muted); font-size: 14px;">PIN de la Mesa</span><span id="span-pin" style="font-size: 28px; font-weight: 900; letter-spacing: 6px; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 8px 20px; border-radius: 12px; border: 1px solid var(--glass-border);">----</span></div>
             </div>
         </div>
     </div>
 
-    <!-- 2. Modal de Vista Rápida del Producto (Quick View) -->
+    <!-- Modal Detalle y Modificadores -->
     <div id="modal-detalle" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(450px, 90%); max-height: 90vh; overflow-y: auto; padding: 0; position: relative; display: flex; flex-direction: column; border: 1px solid var(--glass-border);">
             <button onclick="cerrarModalDetalle()" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border: none; color: white; cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 10; transition: background 0.2s;" onmouseover="this.style.background='var(--primary-orange)'" onmouseout="this.style.background='rgba(0,0,0,0.6)'">✕</button>
@@ -166,12 +111,10 @@
                 <h2 id="detalle-nombre" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 24px; font-weight: 900;"></h2>
                 <p id="detalle-desc" style="color: var(--text-muted); font-size: 14px; line-height: 1.5; margin: 0 0 20px 0;"></p>
                 
-                <!-- NUEVO: Selector de ingredientes quitables -->
+                <!-- Contenedor Condicional de Ingredientes Quitables -->
                 <div id="contenedor-quitables" style="display: none; margin-bottom: 20px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
                     <span style="display: block; font-size: 13px; font-weight: bold; color: var(--text-main); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Personalizá tu plato (Opcional)</span>
-                    <div id="lista-quitables" style="display: flex; flex-direction: column;">
-                        <!-- Se renderiza via JS -->
-                    </div>
+                    <div id="lista-quitables" style="display: flex; flex-direction: column;"></div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 20px;">
@@ -179,17 +122,22 @@
                         <span style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Precio final</span>
                         <span id="detalle-precio" style="font-size: 26px; font-weight: 900; color: var(--primary-orange);"></span>
                     </div>
-                    <button id="btn-detalle-agregar" class="btn-orange" style="padding: 12px 24px; font-size: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background-color: var(--primary-orange); color: white; box-shadow: 0 4px 15px rgba(255,122,0,0.3);">
-                        + Agregar
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                            <button onclick="cambiarCantidadModal(-1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 20px;">-</button>
+                            <span id="modal-cantidad" style="font-weight: 900; font-size: 18px; min-width: 20px; text-align: center;">1</span>
+                            <button onclick="cambiarCantidadModal(1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 20px;">+</button>
+                        </div>
+                        <button id="btn-detalle-agregar" class="btn-orange" style="padding: 12px 24px; font-size: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background-color: var(--primary-orange); color: white; box-shadow: 0 4px 15px rgba(255,122,0,0.3);">
+                            + Agregar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ==========================================================================
-         CALL TO ACTION (Barra Inferior Flotante)
-         ========================================================================== -->
+    <!-- CALL TO ACTION -->
     <div style="position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; padding-bottom: 20px; pointer-events: none; z-index: 1000;">
         <div id="boton-carrito" onclick="abrirModalCarrito()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
             <span id="texto-pedido">Mi pedido (0)</span>
@@ -197,11 +145,9 @@
         </div>
     </div>
 
-    <!-- Importación del motor asíncrono y transaccional compartido -->
     <script src="app.js"></script>
 
     <script>
-        // ESTADO GLOBAL DE UI
         window.carrito = [];
         window.totalPedido = 0;
         window.productosGlobal = []; 
@@ -210,59 +156,46 @@
         let timestampInicio = Date.now();
         let callbackAviso = null;
         const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
-        
-        // ESTADO PARA LOS FILTROS DINÁMICOS
         let filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
+
+        const ingredientesHamburguesa = ['Cebolla', 'Tomate', 'Lechuga', 'Pepinillos', 'Aderezo', 'Panceta'];
+        let cantidadSeleccionadaModal = 1;
+        let precioModalActual = 0;
 
         document.addEventListener('DOMContentLoaded', () => {
             const mesaNum = sessionStorage.getItem('savage-mesa-numero');
-            if (!mesaNum || !pinMesa) {
-                window.location.href = 'pin.html';
-                return;
-            }
-
+            if (!mesaNum || !pinMesa) { window.location.href = 'pin.html'; return; }
             document.getElementById('txt-nro-mesa').textContent = mesaNum;
             
-            if (!sessionStorage.getItem('savage-tiempo-inicio')) {
-                sessionStorage.setItem('savage-tiempo-inicio', Date.now().toString());
-            }
+            if (!sessionStorage.getItem('savage-tiempo-inicio')) { sessionStorage.setItem('savage-tiempo-inicio', Date.now().toString()); }
             timestampInicio = parseInt(sessionStorage.getItem('savage-tiempo-inicio'));
             intervaloCronometro = setInterval(actualizarCronometro, 1000);
 
             verificarJornadaAbierta();
             iniciarValidacionSesion();
-            
             cargarCategoriasCatalogo();
             aplicarFiltrosAvanzados();
-            actualizarBarraFlotanteDesdeStorage(); // Para sincronizar con el carrito
+            actualizarBarraFlotanteDesdeStorage(); 
         });
 
-        // NUEVO: Verificar estado del local
         async function verificarJornadaAbierta() {
             try {
                 const resp = await fetch('http://localhost:8080/api/v1/jornada/actual');
                 const data = await resp.json();
-                if (!data.abierta) {
-                    document.getElementById('overlay-local-cerrado').style.display = 'flex';
-                }
-            } catch(e) {
-                console.error("Error verificando jornada:", e);
-            }
+                if (!data.abierta) { document.getElementById('overlay-local-cerrado').style.display = 'flex'; }
+            } catch(e) { console.error("Error verificando jornada:", e); }
         }
 
         function actualizarBarraFlotanteDesdeStorage() {
             const c = JSON.parse(sessionStorage.getItem('savage-carrito')) || [];
-            window.carrito = c; // Sincronizamos
+            window.carrito = c; 
             let total = 0;
             c.forEach(item => total += (item.precio * (item.cantidad || 1)));
             window.totalPedido = total;
             document.getElementById('total-pedido').textContent = `$${total.toFixed(2)}`;
-            document.getElementById('texto-pedido').textContent = `Mi pedido (${c.length})`;
+            document.getElementById('texto-pedido').textContent = `Mi pedido (${c.reduce((sum, i) => sum + i.cantidad, 0)})`;
         }
 
-        /* ==========================================================================
-           LÓGICA DE FILTROS DINÁMICOS (Backend API)
-           ========================================================================== */
         async function cargarCategoriasCatalogo() {
             try {
                 const resp = await fetch('http://localhost:8080/api/v1/categorias');
@@ -272,50 +205,24 @@
                 const contenedor = document.getElementById('contenedor-categorias');
                 let html = `<button class="btn-filtro active" onclick="aplicarFiltroCategoria('', this)" style="background: var(--primary-orange); color: white; border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Todos</button>`;
                 
-                categorias.forEach(cat => {
-                    html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${cat.id}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${cat.nombre}</button>`;
-                });
+                categorias.forEach(cat => { html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${cat.id}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${cat.nombre}</button>`; });
                 
                 html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('vegetariano', this)" style="background: transparent; color: #2ecc71; border: 1px solid #2ecc71; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Vegetariano</button>`;
                 html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('sin_tacc', this)" style="background: transparent; color: #f39c12; border: 1px solid #f39c12; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>`;
                 
                 contenedor.innerHTML = html;
-            } catch (e) {
-                console.error("Error cargando categorías");
-            }
+            } catch (e) { console.error("Error cargando categorías"); }
         }
 
-        function aplicarFiltroCategoria(idCat, btnElement) {
-            filtroActual = { categoria: idCat, vegetariano: '', sin_tacc: '' };
-            actualizarBotonesFiltro(btnElement);
-            aplicarFiltrosAvanzados();
-        }
-
-        function aplicarFiltroDietario(tipo, btnElement) {
-            filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
-            filtroActual[tipo] = 'true';
-            actualizarBotonesFiltro(btnElement);
-            aplicarFiltrosAvanzados();
-        }
+        function aplicarFiltroCategoria(idCat, btnElement) { filtroActual = { categoria: idCat, vegetariano: '', sin_tacc: '' }; actualizarBotonesFiltro(btnElement); aplicarFiltrosAvanzados(); }
+        function aplicarFiltroDietario(tipo, btnElement) { filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' }; filtroActual[tipo] = 'true'; actualizarBotonesFiltro(btnElement); aplicarFiltrosAvanzados(); }
 
         function actualizarBotonesFiltro(btnActivo) {
-            document.querySelectorAll('.btn-filtro').forEach(btn => {
-                btn.style.background = 'transparent';
-                btn.style.color = 'var(--text-main)';
-                btn.style.borderColor = 'var(--glass-border)';
-            });
+            document.querySelectorAll('.btn-filtro').forEach(btn => { btn.style.background = 'transparent'; btn.style.color = 'var(--text-main)'; btn.style.borderColor = 'var(--glass-border)'; });
             btnActivo.style.color = 'white';
-            
-            if(btnActivo.textContent === 'Vegetariano') {
-                btnActivo.style.background = '#2ecc71';
-                btnActivo.style.borderColor = '#2ecc71';
-            } else if (btnActivo.textContent === 'Sin TACC') {
-                btnActivo.style.background = '#f39c12';
-                btnActivo.style.borderColor = '#f39c12';
-            } else {
-                btnActivo.style.background = 'var(--primary-orange)';
-                btnActivo.style.borderColor = 'var(--primary-orange)';
-            }
+            if(btnActivo.textContent === 'Vegetariano') { btnActivo.style.background = '#2ecc71'; btnActivo.style.borderColor = '#2ecc71'; } 
+            else if (btnActivo.textContent === 'Sin TACC') { btnActivo.style.background = '#f39c12'; btnActivo.style.borderColor = '#f39c12'; } 
+            else { btnActivo.style.background = 'var(--primary-orange)'; btnActivo.style.borderColor = 'var(--primary-orange)'; }
         }
 
         async function aplicarFiltrosAvanzados() {
@@ -347,9 +254,6 @@
             }
         }
 
-        /* ==========================================================================
-           LÓGICA DE AVISOS Y MODALES CUSTOM (Reemplaza a window.alert)
-           ========================================================================== */
         function mostrarAviso(titulo, mensaje, icono = '📋', callback = null) {
             document.getElementById('aviso-titulo').textContent = titulo;
             document.getElementById('aviso-mensaje').textContent = mensaje;
@@ -357,48 +261,21 @@
             callbackAviso = callback;
             document.getElementById('modal-aviso').style.display = 'flex';
         }
+        function cerrarModalAviso() { document.getElementById('modal-aviso').style.display = 'none'; if (callbackAviso) { callbackAviso(); callbackAviso = null; } }
 
-        function cerrarModalAviso() {
-            document.getElementById('modal-aviso').style.display = 'none';
-            if (callbackAviso) {
-                callbackAviso();
-                callbackAviso = null;
-            }
-        }
-
-        /* ==========================================================================
-           VALIDACIÓN EN TIEMPO REAL: ¿El mozo cerró la mesa?
-           ========================================================================== */
         async function validarSesionActiva() {
             if(!pinMesa) return; 
-
             try {
-                const resp = await fetch('http://localhost:8080/api/v1/acceso-mesa', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin: pinMesa })
-                });
-                
-                if (!resp.ok) {
-                    clearInterval(intervaloValidacion);
-                    mostrarAviso("Sesión Finalizada", "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", "👋", cerrarSesionCliente);
-                }
-            } catch (error) {
-                console.error("Error validando la sesión:", error);
-            }
+                const resp = await fetch('http://localhost:8080/api/v1/acceso-mesa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pinMesa }) });
+                if (!resp.ok) { clearInterval(intervaloValidacion); mostrarAviso("Sesión Finalizada", "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", "👋", cerrarSesionCliente); }
+            } catch (error) { console.error("Error validando la sesión:", error); }
         }
 
-        function iniciarValidacionSesion() {
-            intervaloValidacion = setInterval(validarSesionActiva, 10000);
-        }
+        function iniciarValidacionSesion() { intervaloValidacion = setInterval(validarSesionActiva, 10000); }
 
-        /* ==========================================================================
-           RENDERIZADO Y CARGA DEL CATÁLOGO DESDE LA API
-           ========================================================================== */
         function renderizarTarjetas() {
             const contenedorLista = document.getElementById('listado');
             contenedorLista.innerHTML = ''; 
-
             let filtrados = window.productosGlobal;
 
             if (filtrados.length === 0) {
@@ -407,26 +284,28 @@
             }
 
             filtrados.forEach(item => {
-                const nombreSeguro = item.nombre.replace(/'/g, "\\'");
-                const descSegura = (item.descripcion || 'Especialidad de la casa.').replace(/'/g, "\\'");
-                
                 const porcionesSegura = item.porciones ? `${item.porciones}` : ((item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona');
-                const tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
+                
+                // AJUSTE: Si la categoria es 1 (Bebidas), el tiempo es inmediato
+                let tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
+                if (item.categoria === 1) { tiempoEspera = 'Inmediato (Barra)'; }
 
                 const precioNormal = parseFloat(item.precio);
                 const precioEsp = item.precio_especial ? parseFloat(item.precio_especial) : null;
                 const tieneDescuento = precioEsp && precioEsp < precioNormal;
-                const precioFinal = tieneDescuento ? precioEsp : precioNormal;
                 
                 let htmlPrecio = tieneDescuento 
-                    ? `<div style="display: flex; flex-direction: column; align-items: flex-end;">
-                         <span style="font-size: 12px; color: var(--text-muted); text-decoration: line-through;">$${precioNormal.toFixed(2)}</span>
-                         <span style="font-size: 20px; font-weight: 900; color: var(--primary-orange);">$${precioEsp.toFixed(2)}</span>
-                       </div>`
+                    ? `<div style="display: flex; flex-direction: column; align-items: flex-end;"><span style="font-size: 12px; color: var(--text-muted); text-decoration: line-through;">$${precioNormal.toFixed(2)}</span><span style="font-size: 20px; font-weight: 900; color: var(--primary-orange);">$${precioEsp.toFixed(2)}</span></div>`
                     : `<span style="font-size: 20px; font-weight: 900; color: var(--text-main);">$${precioNormal.toFixed(2)}</span>`;
                 
-                let imagenUrl = item.imagen_url || item.imagen || item.foto || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
-                if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
+                // CORRECCIÓN IMÁGENES DINÁMICAS (Tomando url de la base de datos)
+                let imagenUrl = item.imagen_url || item.imagen || item.foto || '';
+                if (imagenUrl && imagenUrl.startsWith('/')) { 
+                    imagenUrl = `http://localhost:8080${imagenUrl}`;
+                } else if (!imagenUrl) {
+                    // Si el backend trae vacío, ponemos un placeholder genérico
+                    imagenUrl = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
+                }
                 
                 let badgesExtra = '';
                 if (tieneDescuento) badgesExtra += '<span title="Promoción" style="font-size: 10px; margin-left: 6px; background: var(--primary-orange); color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">PROMO</span>';
@@ -439,8 +318,7 @@
                 tarjeta.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
                 
                 tarjeta.innerHTML = `
-                    <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${item.id})">
-                    
+                    <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${item.id})" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80'">
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
@@ -452,89 +330,47 @@
                                 ${tiempoEspera}
                             </div>
                         </div>
-                        
-                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${item.id})">
-                            ${item.nombre}
-                        </h3>
-                        
-                        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
-                            ${item.descripcion || 'Deliciosa preparación exclusiva de nuestro chef.'}
-                        </p>
-                        
+                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${item.id})">${item.nombre}</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">${item.descripcion || 'Deliciosa preparación exclusiva de nuestro chef.'}</p>
                         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto;">
                             ${htmlPrecio}
-                            <!-- Se llama al modal para que el cliente decida si quiere quitar ingredientes antes de agregar -->
-                            <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease; height: fit-content;" onclick="abrirModalDetalle(${item.id})">
-                                + Agregar
-                            </button>
+                            <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease; height: fit-content;" onclick="abrirModalDetalle(${item.id})">+ Agregar</button>
                         </div>
                     </div>
                 `;
                 
                 tarjeta.onmouseover = function() { this.style.transform = "translateY(-5px)"; };
                 tarjeta.onmouseout = function() { this.style.transform = "translateY(0)"; };
-                
                 contenedorLista.appendChild(tarjeta);
             });
         }
 
-        /* ==========================================================================
-           GESTIÓN DEL CARRITO Y MODALES
-           ========================================================================== */
-        // NUEVA FUNCIÓN AGREGAR (Soluciona el undefined y agrupa platos idénticos)
-        function agregarAlCarritoDesdeDetalle(idProducto, nombre, precio, arrQuitables, botonElement) {
+        function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement) {
             const productoOriginal = window.productosGlobal.find(p => p.id === idProducto);
             let imagenUrl = productoOriginal ? (productoOriginal.imagen_url || productoOriginal.imagen || productoOriginal.foto || '') : '';
             if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
 
-            // Buscamos si ya existe el mismo plato con EXACTAMENTE las mismas modificaciones
-            const indexExistente = window.carrito.findIndex(item => 
-                item.id === idProducto && JSON.stringify(item.sin) === JSON.stringify(arrQuitables)
-            );
+            const indexExistente = window.carrito.findIndex(item => item.id === idProducto && JSON.stringify(item.sin) === JSON.stringify(arrQuitables));
 
             if (indexExistente > -1) {
-                // Si existe, solo sumamos 1 a la cantidad
-                window.carrito[indexExistente].cantidad += 1;
+                window.carrito[indexExistente].cantidad += cantidadSeleccionadaModal;
             } else {
-                // Si es nuevo (o tiene modificaciones distintas), lo agregamos indicando cantidad: 1
-                window.carrito.push({ 
-                    id: idProducto, 
-                    nombre: nombre, 
-                    precio: precio, 
-                    imagen: imagenUrl,
-                    sin: arrQuitables,
-                    cantidad: 1 
-                });
+                window.carrito.push({ id: idProducto, nombre: nombre, precio: precioModalActual, imagen: imagenUrl, sin: arrQuitables, cantidad: cantidadSeleccionadaModal });
             }
 
-            window.totalPedido += precio;
             sessionStorage.setItem('savage-carrito', JSON.stringify(window.carrito));
-            actualizarBarraFlotante();
+            actualizarBarraFlotanteDesdeStorage();
             animarBoton(botonElement);
             setTimeout(() => { cerrarModalDetalle(); }, 600);
         }
 
-        function actualizarBarraFlotante() {
-            document.getElementById('total-pedido').textContent = `$${window.totalPedido.toFixed(2)}`;
-            document.getElementById('texto-pedido').textContent = `Mi pedido (${window.carrito.length})`;
-        }
-
         function animarBoton(botonElement) {
             const textoOriginal = botonElement.innerHTML;
-            botonElement.innerHTML = 'Agregado';
-            botonElement.style.backgroundColor = '#4CAF50'; 
-            botonElement.style.color = 'white';
-            
-            const barra = document.getElementById('boton-carrito');
-            barra.style.transform = 'scale(1.05)';
-
+            botonElement.innerHTML = 'Agregado'; botonElement.style.backgroundColor = '#4CAF50'; botonElement.style.color = 'white';
+            const barra = document.getElementById('boton-carrito'); barra.style.transform = 'scale(1.05)';
             setTimeout(() => {
                 botonElement.innerHTML = textoOriginal;
-                if(!botonElement.classList.contains('btn-orange')) {
-                    botonElement.style.backgroundColor = 'transparent';
-                } else {
-                    botonElement.style.backgroundColor = '';
-                }
+                if(!botonElement.classList.contains('btn-orange')) { botonElement.style.backgroundColor = 'transparent'; } else { botonElement.style.backgroundColor = ''; }
                 barra.style.transform = 'scale(1)';
             }, 750);
         }
@@ -543,7 +379,6 @@
             const numero = sessionStorage.getItem('savage-mesa-numero') || '--';
             const comensales = sessionStorage.getItem('savage-comensales') || '2';
             const pin = sessionStorage.getItem('savage-mesa-pin') || '----';
-
             document.getElementById('titulo-modal-mesa').textContent = `MESA #${numero}`;
             document.getElementById('span-comensales').textContent = `${comensales} Persona(s)`;
             document.getElementById('span-pin').textContent = pin;
@@ -561,13 +396,32 @@
 
         function cerrarModalDetalle() { document.getElementById('modal-detalle').style.display = 'none'; }
 
-        // ACTUALIZADO: Modal Detalle procesa quitables
+        function actualizarPrecioModal() {
+            const precioTotalModal = precioModalActual * cantidadSeleccionadaModal;
+            document.getElementById('detalle-precio').textContent = `$${precioTotalModal.toFixed(2)}`;
+        }
+
+        function cambiarCantidadModal(delta) {
+            if (cantidadSeleccionadaModal + delta > 0) {
+                cantidadSeleccionadaModal += delta;
+                document.getElementById('modal-cantidad').textContent = cantidadSeleccionadaModal;
+                actualizarPrecioModal();
+            }
+        }
+
         function abrirModalDetalle(idProducto) {
             const item = window.productosGlobal.find(p => p.id === idProducto);
             if(!item) return;
 
-            let imagen = item.imagen_url || item.imagen || item.foto || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
-            if (imagen.startsWith('/')) imagen = `http://localhost:8080${imagen}`;
+            cantidadSeleccionadaModal = 1;
+            document.getElementById('modal-cantidad').textContent = cantidadSeleccionadaModal;
+
+            let imagen = item.imagen_url || item.imagen || item.foto || '';
+            if (imagen && imagen.startsWith('/')) { 
+                imagen = `http://localhost:8080${imagen}`;
+            } else if (!imagen) {
+                imagen = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
+            }
             
             document.getElementById('detalle-img').src = imagen;
             document.getElementById('detalle-nombre').textContent = item.nombre;
@@ -575,29 +429,28 @@
             
             const precioNormal = parseFloat(item.precio);
             const precioEsp = item.precio_especial ? parseFloat(item.precio_especial) : null;
-            const precioFinal = (precioEsp && precioEsp < precioNormal) ? precioEsp : precioNormal;
+            precioModalActual = (precioEsp && precioEsp < precioNormal) ? precioEsp : precioNormal;
             
-            if (precioEsp && precioEsp < precioNormal) {
-                document.getElementById('detalle-precio').innerHTML = `<span style="font-size: 16px; color: var(--text-muted); text-decoration: line-through; margin-right: 10px;">$${precioNormal.toFixed(2)}</span>$${precioEsp.toFixed(2)}`;
-            } else {
-                document.getElementById('detalle-precio').textContent = `$${precioNormal.toFixed(2)}`;
-            }
+            actualizarPrecioModal();
             
             const porciones = item.porciones ? `${item.porciones}` : ((item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona');
-            const tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
+            let tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
+            if (item.categoria === 1) { tiempoEspera = 'Inmediato (Barra)'; }
+
             document.getElementById('detalle-porciones').textContent = `${porciones} (Demora aprox: ${tiempoEspera})`;
     
-            // RENDERIZADO DE QUITABLES (Tarea 2)
+            // AJUSTE: Si NO es categoría 1 (Bebidas), muestra ingredientes quitables
             const contQuitables = document.getElementById('contenedor-quitables');
             const listaQuitables = document.getElementById('lista-quitables');
             listaQuitables.innerHTML = '';
 
-            if (item.quitables && Array.isArray(item.quitables) && item.quitables.length > 0) {
-                item.quitables.forEach(ing => {
+            // ID 1 es Bebidas según la DB. Si NO es 1, habilitamos que el cliente le saque ingredientes (Hamburguesas, Ensaladas, Pizzas).
+            if (item.categoria !== 1) {
+                ingredientesHamburguesa.forEach(ing => {
                     listaQuitables.innerHTML += `
                         <label class="sin-ingrediente-checkbox">
-                            <input type="checkbox" class="chk-quitable" value="${ing.id}" data-nombre="${ing.nombre}">
-                            <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">Sin ${ing.nombre}</span>
+                            <input type="checkbox" class="chk-quitable" value="${ing}">
+                            <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">Sin ${ing}</span>
                         </label>
                     `;
                 });
@@ -608,29 +461,16 @@
 
             const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
             btnDetalleAgregar.onclick = function() { 
-                // Recolectar ingredientes a quitar
                 const arrSin = [];
-                document.querySelectorAll('.chk-quitable:checked').forEach(chk => {
-                    arrSin.push(parseInt(chk.value));
-                });
-                agregarAlCarritoDesdeDetalle(item.id, item.nombre, precioFinal, arrSin, this); 
+                document.querySelectorAll('.chk-quitable:checked').forEach(chk => { arrSin.push(chk.value); });
+                agregarAlCarritoDesdeDetalle(item.id, item.nombre, arrSin, this); 
             };
             
             document.getElementById('modal-detalle').style.display = 'flex';
         }
 
-        /* ==========================================================================
-           PASARELA HACIA LA PANTALLA DEDICADA DEL CARRITO (`carrito.html`)
-           ========================================================================== */
-        function abrirModalCarrito() {
-            if (window.carrito.length === 0) return; 
-            window.location.href = 'carrito.html'; // Pasa directo porque ya guardamos todo en SessionStorage
-        }
-
-        function cerrarSesionCliente() {
-            sessionStorage.clear();
-            window.location.href = 'pin.html';
-        }
+        function abrirModalCarrito() { if (window.carrito.length === 0) return; window.location.href = 'carrito.html'; }
+        function cerrarSesionCliente() { sessionStorage.clear(); window.location.href = 'pin.html'; }
     </script>
 </body>
 </html>

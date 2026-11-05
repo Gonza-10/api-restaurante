@@ -5,7 +5,9 @@
 const API_URL = 'http://localhost:8080/api/v1/productos';
 const API_CATEGORIAS_URL = 'http://localhost:8080/api/v1/categorias';
 const API_PEDIDOS_URL = 'http://localhost:8080/api/v1/pedidos';
+const API_JORNADA_BASE = 'http://localhost:8080/api/v1/jornada';
 
+// Captura de nodos del DOM (Pueden ser null dependiendo de la pantalla actual)
 const contenedorLista = document.getElementById('listado');
 const alertaError = document.getElementById('caja-error');
 const alertaExito = document.getElementById('caja-exito');
@@ -67,6 +69,7 @@ function inicializarTema() {
 
     const btnTema = document.createElement('button');
     btnTema.className = 'btn-tema';
+    btnTema.title = 'Cambiar tema visual';
     
     const actualizarTexto = () => {
         btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
@@ -160,7 +163,7 @@ if (formulario) {
                 tarjeta.style.transition = 'all 0.3s ease';
                 
                 tarjeta.innerHTML = `
-                    <img src="${procesarImagen(item.imagen_url)}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px;">
+                    <img src="${procesarImagen(item.imagen_url || item.imagen || item.foto)}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px;">
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0;">
                             ${item.nombre} ${estaActivo ? '' : '(INACTIVO)'} ${badges}
@@ -193,7 +196,7 @@ if (formulario) {
 
     window.cambiarEstadoProducto = async function(idProducto, nuevoEstadoBoolean) {
         try {
-            const respuesta = await apiFetch(`${API_URL}/${idProducto}`, {
+            const respuesta = await apiFetch(`${API_URL}/${idProducto}/`, {
                 method: 'PATCH',
                 body: JSON.stringify({ activo: nuevoEstadoBoolean })
             });
@@ -219,7 +222,9 @@ if (formulario) {
         document.getElementById('editar-vegetariano').checked = Boolean(prod.vegetariano);
         document.getElementById('editar-sintacc').checked = Boolean(prod.sin_tacc);
         document.getElementById('editar-descripcion').value = prod.descripcion || "";
-        document.getElementById('editar-imagen-url').value = prod.imagen_url && prod.imagen_url.startsWith('http') ? prod.imagen_url : "";
+        
+        let urlImg = prod.imagen_url || prod.imagen || prod.foto;
+        document.getElementById('editar-imagen-url').value = urlImg && urlImg.startsWith('http') ? urlImg : "";
         document.getElementById('editar-imagen-archivo').value = ""; 
         
         document.getElementById('editar-error').style.display = 'none';
@@ -255,7 +260,8 @@ if (formulario) {
             if (urlImg) payload.imagen_url = urlImg;
 
             try {
-                const respuesta = await apiFetch(`${API_URL}/${idProd}`, {
+                // Modificamos datos planos
+                const respuesta = await apiFetch(`${API_URL}/${idProd}/`, {
                     method: 'PATCH',
                     body: JSON.stringify(payload)
                 });
@@ -265,7 +271,7 @@ if (formulario) {
                     if (archivoInput.files.length > 0) {
                         const formData = new FormData();
                         formData.append('imagen', archivoInput.files[0]);
-                        await apiFetch(`${API_URL}/${idProd}/imagen`, {
+                        await apiFetch(`${API_URL}/${idProd}/imagen/`, { // Ojo con la barra al final para DRF
                             method: 'POST',
                             body: formData
                         });
@@ -308,7 +314,7 @@ if (formulario) {
         btnSubmit.innerHTML = 'Guardando...';
 
         try {
-            const respuesta = await apiFetch(API_URL, {
+            const respuesta = await apiFetch(`${API_URL}/`, { // Ojo con la barra al final para POST en DRF
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
@@ -320,7 +326,7 @@ if (formulario) {
                 if (archivoInput.files.length > 0) {
                     const formData = new FormData();
                     formData.append('imagen', archivoInput.files[0]);
-                    await apiFetch(`${API_URL}/${resultado.id}/imagen`, {
+                    await apiFetch(`${API_URL}/${resultado.id}/imagen/`, { // Ojo con la barra al final
                         method: 'POST',
                         body: formData
                     });
@@ -348,7 +354,7 @@ if (formulario) {
 }
 
 /* ==========================================================================
-   PROCESAMIENTO TRANSACCIONAL Y RABBITMQ (CHECKOUT CLIENTE)
+   PROCESAMIENTO TRANSACCIONAL (CHECKOUT CLIENTE Y COMANDAS)
    ========================================================================== */
 function generarUUID() {
     return crypto.randomUUID();
@@ -384,55 +390,9 @@ async function enviarComandaServidor(comandaPayload) {
     }
 }
 
-async function confirmarPedido() {
-    if (typeof window.carrito === 'undefined' || window.carrito.length === 0) return; 
-
-    const btnModal = document.getElementById('btn-confirmar-modal');
-    const textoOriginalBtn = btnModal.textContent;
-
-    btnModal.style.pointerEvents = 'none';
-    btnModal.style.backgroundColor = '#666'; 
-    btnModal.innerHTML = '<span class="spinner" style="display:inline-block; width:15px; height:15px; border:2px solid white; border-top:2px solid transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right: 10px; vertical-align: middle;"></span> Procesando...';
-
-    try {
-        const numeroMesa = parseInt(sessionStorage.getItem('savage-mesa-numero'), 10) || 2;
-        const payload = estructurarComanda(window.carrito, numeroMesa);
-
-        const resultado = await enviarComandaServidor(payload);
-
-        if (resultado.exito) {
-            btnModal.style.backgroundColor = '#4CAF50'; 
-            btnModal.textContent = '¡Orden enviada con éxito!';
-
-            setTimeout(() => {
-                window.carrito = [];
-                window.totalPedido = 0;
-                document.getElementById('texto-pedido').textContent = 'Mi pedido (0)';
-                document.getElementById('total-pedido').textContent = '$0.00';
-                document.getElementById('modal-carrito').style.display = 'none';
-                btnModal.style.backgroundColor = 'var(--primary-orange)';
-                btnModal.style.pointerEvents = 'auto';
-                btnModal.textContent = textoOriginalBtn;
-            }, 2500);
-        }
-    } catch (error) {
-        console.error("Fallo transaccional:", error);
-        btnModal.style.backgroundColor = 'var(--error)';
-        btnModal.textContent = 'Error de conexión. Reintentar.';
-
-        setTimeout(() => {
-            btnModal.style.backgroundColor = 'var(--primary-orange)';
-            btnModal.textContent = textoOriginalBtn;
-            btnModal.style.pointerEvents = 'auto';
-        }, 3000);
-    }
-}
-
 /* ==========================================================================
-   GESTIÓN DE JORNADAS (GERENCIA) - NUEVA FUNCIONALIDAD
+   GESTIÓN DE JORNADAS (GERENCIA)
    ========================================================================== */
-const API_JORNADA_BASE = 'http://localhost:8080/api/v1/jornada';
-
 window.cargarEstadoJornada = async function() {
     const badge = document.getElementById('estado-jornada-badge');
     if (!badge) return; // Si no estamos en la pantalla que tiene el badge, salir
@@ -516,7 +476,7 @@ window.abrirJornada = async function() {
             alert("¡Jornada iniciada con éxito!");
             window.cargarEstadoJornada(); 
         } else {
-            // ACÁ ESTÁ EL CAMBIO: Leemos el mensaje exacto del servidor de David
+            // Leemos el mensaje exacto del servidor de David
             const errorData = await resp.json();
             console.error("Motivo del rechazo:", errorData);
             
@@ -542,7 +502,7 @@ window.cerrarJornada = async function() {
         if (resp.ok) {
             let msj = "Jornada cerrada correctamente.";
             if (data.advertencias && data.advertencias.length > 0) {
-                msj += "\n\nAtención:\n- " + data.advertencias.join("\n- ");
+                msj += "\n\nAtención:\n" + data.advertencias.join("\n");
             }
             alert(msj);
             window.cargarEstadoJornada();

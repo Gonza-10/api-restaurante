@@ -24,6 +24,7 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
+            position: relative; 
         }
         .mesa-card.libre:hover { 
             transform: translateY(-5px); 
@@ -32,6 +33,20 @@
         }
         .mesa-card.libre { border-color: rgba(46, 204, 113, 0.4); }
         .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.7; cursor: not-allowed; }
+
+        .mesa-card.pidiendo-cuenta {
+            border-color: #f1c40f !important;
+            background: rgba(241, 196, 15, 0.15) !important;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+            opacity: 1;
+            animation: pulseWarning 2s infinite;
+        }
+
+        @keyframes pulseWarning {
+            0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(241, 196, 15, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+        }
 
         .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
         .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
@@ -58,6 +73,11 @@
             gap: 15px;
             transition: all 0.3s ease;
         }
+        .sesion-card.pidiendo-cuenta {
+            border: 1px solid #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+        }
+
         .pin-display {
             font-family: monospace;
             font-size: 26px;
@@ -112,8 +132,27 @@
 
         <div style="display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start;">
             <div>
-                <h2 style="font-size: 24px; margin-bottom: 5px;">Mapa de Mesas</h2>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Hacé clic en una mesa libre para sentar a los clientes.</p>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px;">
+                    <div>
+                        <h2 style="font-size: 24px; margin-bottom: 5px;">Mapa de Mesas</h2>
+                        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Hacé clic en una mesa libre para sentar a los clientes.</p>
+                    </div>
+                    
+                    <!-- CUADRO DE REFERENCIAS CLARO -->
+                    <div style="display: flex; align-items: center; gap: 15px; font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.02); padding: 8px 16px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <strong style="text-transform: uppercase; color: var(--text-main);">Referencias:</strong>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 10px; height: 10px; background-color: rgba(46, 204, 113, 0.4); border: 2px solid #2ecc71; border-radius: 50%;"></div> Libre
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 10px; height: 10px; background-color: rgba(231, 76, 60, 0.4); border: 2px solid #e74c3c; border-radius: 50%;"></div> Ocupada
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 10px; height: 10px; background-color: rgba(241, 196, 15, 0.4); border: 2px solid #f1c40f; border-radius: 50%; box-shadow: 0 0 5px #f1c40f;"></div> Pide Cuenta
+                        </div>
+                    </div>
+                    
+                </div>
                 <div id="mapa-mesas" class="salon-grid">
                     <p style="color: var(--text-muted);">Cargando mapa interactivo...</p>
                 </div>
@@ -177,12 +216,12 @@
         </div>
     </div>
 
-    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA -->
+    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA (T.12) -->
     <div id="modal-confirmar-cierre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
-            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
-            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar Mesa</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">¿Estás seguro de CERRAR esta mesa?<br>El cliente será desconectado y no podrá seguir pidiendo.</p>
+            <div style="font-size: 40px; margin-bottom: 10px;">💵</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cobrar y Cerrar Mesa</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">¿Estás seguro de que deseas cerrar esta mesa y liberar su lugar en el salón?</p>
             <input type="hidden" id="input-sesion-a-cerrar">
             <div style="display: flex; gap: 10px;">
                 <button onclick="cerrarModalCierre()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">
@@ -197,8 +236,8 @@
 
     <script src="app.js"></script>
     <script>
-        // Nueva variable global para el temporizador del modal de pedidos
         let intervaloPedidosMozo = null;
+        let sesionesActivasCache = []; 
 
         document.addEventListener('DOMContentLoaded', () => {
             const usuario = obtenerUsuarioActual();
@@ -208,9 +247,9 @@
                 return;
             }
             document.getElementById('nombre-mozo').textContent = `${usuario.rol}: ${usuario.nombre} ${usuario.apellido}`;
+            
             cargarTablero();
-            // Actualización periódica del mapa de mesas
-            setInterval(cargarTablero, 10000); 
+            setInterval(cargarTablero, 5000); 
         });
 
         function mostrarToast(mensaje) {
@@ -230,54 +269,45 @@
         function cerrarModalCierre() { document.getElementById('modal-confirmar-cierre').style.display = 'none'; }
         function cerrarModalAbrir() { document.getElementById('modal-abrir').style.display = 'none'; }
         
-        // Al cerrar el modal de pedidos, detenemos el consumo en segundo plano
         function cerrarModalPedidos() { 
             document.getElementById('modal-pedidos').style.display = 'none'; 
             if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
         }
 
-        function confirmarCierreMesa(idSesion) {
+        async function confirmarCierreMesa(idSesion, numeroMesa) {
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/cocina/tablero');
+                if (resp.ok) {
+                    const comandas = await resp.json();
+                    const enCurso = comandas.some(c => 
+                        parseInt(c.mesa_id) === parseInt(numeroMesa) && 
+                        (c.estado === 'pendiente' || c.estado === 'proceso')
+                    );
+                    
+                    if (enCurso) {
+                        mostrarAviso("Cierre Bloqueado", `No podés cerrar la Mesa ${numeroMesa}. Todavía tienen platos preparándose en la cocina.`);
+                        return; 
+                    }
+                }
+            } catch (e) {
+                console.error("Error al validar pedidos en cocina:", e);
+            }
+
             document.getElementById('input-sesion-a-cerrar').value = idSesion;
             document.getElementById('modal-confirmar-cierre').style.display = 'flex';
         }
 
         async function cargarTablero() {
-            await Promise.all([cargarMesas(), cargarMisSesiones()]);
-        }
-
-        async function cargarMesas() {
-            try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/mesas');
-                const mesas = await resp.json();
-                const contenedor = document.getElementById('mapa-mesas');
-                contenedor.innerHTML = '';
-
-                mesas.forEach(mesa => {
-                    const div = document.createElement('div');
-                    div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'}`;
-                    
-                    let infoMozo = mesa.estado ? `<div class="mesa-mozo">Mesa Ocupada</div>` : '';
-
-                    div.innerHTML = `
-                        <div class="mesa-numero">${mesa.numero}</div>
-                        <div class="mesa-capacidad">Máx: ${mesa.capacidad_maxima} pers.</div>
-                        <div style="margin-top: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: ${mesa.estado ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)'}; color: ${mesa.estado ? '#e74c3c' : '#2ecc71'}">
-                            ${mesa.estado ? 'OCUPADA' : 'LIBRE'}
-                        </div>
-                        ${infoMozo}
-                    `;
-                    if (!mesa.estado) { div.onclick = () => abrirModalMesa(mesa); }
-                    contenedor.appendChild(div);
-                });
-            } catch (error) {
-                document.getElementById('mapa-mesas').innerHTML = '<p style="color: var(--error);">Error al cargar las mesas.</p>';
-            }
+            await cargarMisSesiones();
+            await cargarMesas();
         }
 
         async function cargarMisSesiones() {
             try {
                 const resp = await apiFetch('http://localhost:8080/api/v1/sesiones-mesa?estado=Abierto');
                 const sesiones = await resp.json();
+                sesionesActivasCache = sesiones; 
+
                 const contenedor = document.getElementById('mis-sesiones');
                 
                 if (sesiones.length === 0) {
@@ -288,19 +318,28 @@
                 contenedor.innerHTML = '';
                 sesiones.forEach(s => {
                     const div = document.createElement('div');
-                    div.className = 'sesion-card';
+                    
+                    const pideCuenta = s.cuenta_solicitada === true;
+                    div.className = `sesion-card ${pideCuenta ? 'pidiendo-cuenta' : ''}`;
+                    
+                    let etiquetaAviso = pideCuenta 
+                        ? `<span style="background:#f1c40f; color:#000; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:900;">¡PIDE CUENTA!</span>` 
+                        : '';
+
                     div.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <div style="color: var(--text-main); font-weight: bold; font-size: 18px;">Mesa ${s.numero_mesa}</div>
+                                <div style="color: var(--text-main); font-weight: bold; font-size: 18px; display:flex; gap:8px; align-items:center;">
+                                    Mesa ${s.numero_mesa} ${etiquetaAviso}
+                                </div>
                                 <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">👤 ${s.cantidad_comensales} personas</div>
                             </div>
                             <div style="text-align: center; border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); padding: 0 15px;">
                                 <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">PIN Cliente</div>
                                 <div class="pin-display">${s.codigo_pin}</div>
                             </div>
-                            <button onclick="confirmarCierreMesa(${s.id})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
-                                Cerrar
+                            <button onclick="confirmarCierreMesa(${s.id}, ${s.numero_mesa})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
+                                Cobrar
                             </button>
                         </div>
                         
@@ -318,24 +357,58 @@
             }
         }
 
-        // Nueva lógica para abrir el modal y disparar la actualización en vivo
+        async function cargarMesas() {
+            try {
+                const resp = await apiFetch('http://localhost:8080/api/v1/mesas');
+                const mesas = await resp.json();
+                const contenedor = document.getElementById('mapa-mesas');
+                contenedor.innerHTML = '';
+
+                mesas.forEach(mesa => {
+                    const div = document.createElement('div');
+                    
+                    const sesionVinculada = sesionesActivasCache.find(s => parseInt(s.numero_mesa) === parseInt(mesa.numero));
+                    const pideCuenta = sesionVinculada && sesionVinculada.cuenta_solicitada === true;
+
+                    div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'} ${pideCuenta ? 'pidiendo-cuenta' : ''}`;
+                    
+                    let estadoTxt = mesa.estado ? 'OCUPADA' : 'LIBRE';
+                    let bgBadge = mesa.estado ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)';
+                    let colBadge = mesa.estado ? '#e74c3c' : '#2ecc71';
+                    
+                    if (pideCuenta) {
+                        estadoTxt = 'PIDE CUENTA';
+                        bgBadge = '#f1c40f';
+                        colBadge = '#000';
+                    }
+
+                    div.innerHTML = `
+                        <div class="mesa-numero">${mesa.numero}</div>
+                        <div class="mesa-capacidad">Máx: ${mesa.capacidad_maxima} pers.</div>
+                        <div style="margin-top: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: ${bgBadge}; color: ${colBadge};">
+                            ${estadoTxt}
+                        </div>
+                    `;
+                    if (!mesa.estado) { div.onclick = () => abrirModalMesa(mesa); }
+                    contenedor.appendChild(div);
+                });
+            } catch (error) {
+                document.getElementById('mapa-mesas').innerHTML = '<p style="color: var(--error);">Error al cargar las mesas.</p>';
+            }
+        }
+
         async function verPedidosMesa(numeroMesa) {
             document.getElementById('span-pedidos-mesa').textContent = numeroMesa;
             const contenedor = document.getElementById('lista-pedidos-mozo');
             contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">Consultando estado...</p>';
             document.getElementById('modal-pedidos').style.display = 'flex';
 
-            // Ejecuta la primera carga inmediata
             await cargarPedidosModalEnVivo(numeroMesa);
-
-            // Inicia el polling cada 3 segundos
             if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
             intervaloPedidosMozo = setInterval(() => cargarPedidosModalEnVivo(numeroMesa), 3000);
         }
 
-        // Función que consume la API e inyecta sin parpadear
         async function cargarPedidosModalEnVivo(numeroMesa) {
-            // Si el mozo cerró la ventana, matamos el ciclo de consumo
             if (document.getElementById('modal-pedidos').style.display === 'none') {
                 clearInterval(intervaloPedidosMozo);
                 return;
