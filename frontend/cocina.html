@@ -99,6 +99,60 @@
         .form-group { margin-bottom: 15px; }
         .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: bold; }
         .form-control { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: white; padding: 10px; border-radius: 8px; font-family: inherit; }
+
+        /* Botones anchos dentro de tarjetas: evitar que el zoom del hover (styles.css)
+           los saque de su contenedor. Conserva los colores y las acciones existentes. */
+        #form-produccion > .btn-orange,
+        #form-perdida > .btn-orange {
+            width: 100%;
+            max-width: 100%;
+            transform: none;
+        }
+        #form-produccion > .btn-orange:hover,
+        #form-produccion > .btn-orange:active,
+        #form-perdida > .btn-orange:hover,
+        #form-perdida > .btn-orange:active {
+            transform: none;
+            filter: brightness(1.07);
+        }
+
+
+        /* SELECTORES SAVAGE GRILL: reemplaza el menú celeste nativo del navegador. */
+
+        /* SAVAGE SELECT: menú desplegable propio. No usa el listado azul nativo de Chrome. */
+        .sg-select-shell { position:relative; display:block; width:100%; min-width:0; flex-shrink:1; }
+        .sg-select-shell .sg-select-native { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; margin:0 !important; border:0 !important; opacity:0 !important; clip-path:inset(50%); overflow:hidden; pointer-events:none; }
+        .sg-select-button { width:100%; min-height:46px; padding:11px 14px; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--text-main); font:inherit; font-size:14px; font-weight:500; background:#0b0b0b; border:1px solid var(--glass-border); border-radius:10px; cursor:pointer; transition:border-color .18s, background .18s, box-shadow .18s; }
+        .sg-select-button:hover { border-color:rgba(255,122,0,.65); }
+        .sg-select-button:focus-visible, .sg-select-button[aria-expanded="true"] { outline:2px solid var(--primary-orange); outline-offset:2px; border-color:var(--primary-orange); }
+        .sg-select-button:disabled { opacity:.55; cursor:not-allowed; }
+        .sg-select-value { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sg-select-button.sg-select-placeholder .sg-select-value { color:var(--text-muted); }
+        .sg-select-arrow { flex-shrink:0; width:10px; height:10px; border-right:2px solid var(--primary-orange); border-bottom:2px solid var(--primary-orange); transform:translateY(-2px) rotate(45deg); transition:transform .2s; margin:0 4px 3px; }
+        .sg-select-button[aria-expanded="true"] .sg-select-arrow { transform:translateY(3px) rotate(225deg); }
+        .sg-select-list { position:fixed; z-index:4100; box-sizing:border-box; max-height:min(300px, 55vh); overflow-y:auto; overscroll-behavior:contain; border:1px solid rgba(255,122,0,.58); border-radius:12px; background:#151313; color:#f5f5f5; padding:6px; box-shadow:0 18px 45px rgba(0,0,0,.65); scrollbar-width:thin; scrollbar-color:#805039 transparent; }
+        .sg-select-list[hidden] { display:none !important; }
+        .sg-select-list::-webkit-scrollbar { width:6px; }
+        .sg-select-list::-webkit-scrollbar-thumb { background:#805039; border-radius:8px; }
+        .sg-select-option { display:flex; align-items:center; gap:9px; width:100%; border:0; border-radius:8px; color:inherit; padding:12px 13px; line-height:1.35; font-size:14px; font-weight:550; overflow-wrap:anywhere; cursor:pointer; }
+        .sg-select-option[aria-disabled="true"] { opacity:.38; cursor:not-allowed; }
+        .sg-select-option[aria-selected="true"] { color:#ffb16c; background:rgba(255,122,0,.13); }
+        .sg-select-option.sg-select-highlight:not([aria-disabled="true"]), .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.23); color:#fff; }
+        .sg-select-option.sg-select-highlight { outline:1px solid rgba(255,122,0,.5); outline-offset:-1px; }
+        body.light-mode .sg-select-button { background:#f8fafc; color:#181818; border-color:#d6dce5; }
+        body.light-mode .sg-select-list { background:#ffffff; color:#181818; border-color:rgba(224,109,0,.7); box-shadow:0 18px 45px rgba(0,0,0,.17); }
+        body.light-mode .sg-select-option[aria-selected="true"] { color:#9f4200; background:rgba(255,122,0,.13); }
+        body.light-mode .sg-select-option.sg-select-highlight:not([aria-disabled="true"]),body.light-mode .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.20); color:#181818; }
+        .sg-select-shell:has(> .admin-input) .sg-select-button { min-height:52px; }
+        .sg-admin-toolbar .sg-select-shell,.sg-compra-tools .sg-select-shell { flex:0 1 auto; width:auto; min-width:115px; }
+        .sg-admin-toolbar .sg-select-button,.sg-compra-tools .sg-select-button { min-height:42px; }
+        @media (max-width:650px) { .sg-select-list { max-height:min(260px, 55vh); } }
+
+        /* Encaje específico para el filtro de Estado de Insumos en Cocina. */
+        #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:215px; min-width:200px; }
+        .form-group .sg-select-shell { width:100%; }
+        @media (max-width:700px) { #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:190px; min-width:160px; } }
+
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
@@ -207,7 +261,7 @@
                 <h3 style="margin-top: 0; color: #e74c3c; border-bottom: 1px solid rgba(231,76,60,0.3); padding-bottom: 10px;">Registrar Pérdida</h3>
                 <form id="form-perdida" onsubmit="enviarPerdida(event)">
                     <div class="form-group">
-                        <label class="form-label">Motivo</label>
+                        <label class="form-label" for="perdida-motivo">Motivo</label>
                         <!-- Le agregamos el onchange para detectar cuando requiere nota -->
                         <select id="perdida-motivo" class="form-control" onchange="toggleNotaPerdida()" required></select>
                     </div>
@@ -219,18 +273,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Tipo de Elemento</label>
+                        <label class="form-label" for="perdida-tipo">Tipo de Elemento</label>
                         <select id="perdida-tipo" class="form-control" onchange="toggleSelectoresPerdida()" required>
                             <option value="insumo">Insumo Suelto</option>
                             <option value="plato">Plato Preparado</option>
                         </select>
                     </div>
                     <div class="form-group" id="caja-insumo">
-                        <label class="form-label">Insumo Afectado</label>
+                        <label class="form-label" for="perdida-insumo">Insumo Afectado</label>
                         <select id="perdida-insumo" class="form-control"></select>
                     </div>
                     <div class="form-group" id="caja-plato" style="display: none;">
-                        <label class="form-label">Plato Afectado</label>
+                        <label class="form-label" for="perdida-plato">Plato Afectado</label>
                         <select id="perdida-plato" class="form-control"></select>
                     </div>
                     <div class="form-group">
@@ -247,7 +301,7 @@
                 <h3 style="margin-top: 0; color: #3498db; border-bottom: 1px solid rgba(52,152,219,0.3); padding-bottom: 10px;">Registrar Elaboración Interna</h3>
                 <form id="form-produccion" onsubmit="enviarProduccion(event)">
                     <div class="form-group">
-                        <label class="form-label">Receta de Elaboración</label>
+                        <label class="form-label" for="prod-elaboracion">Receta de Elaboración</label>
                         <select id="prod-elaboracion" class="form-control" required></select>
                     </div>
                     <div class="form-group">
@@ -263,13 +317,17 @@
     </main>
 
     <!-- MOTOR DE LOGICA -->
+    <script src="config.js"></script>
     <script>
         // API Base
-        const BASE_URL = 'http://localhost:8080/api/v1';
+        const BASE_URL = window.SAVAGE_CONFIG.API_BASE_URL;
 
         // Variables Globales
         let comandas = [];
         let pollingActivo = true;
+        const INTERVALO_POLLING = 5000; // 5 segundos, tablero visible
+        const cambiosEnCurso = new Set();
+        let sincronizando = false;
 
         /* ==================== SISTEMA DE TABS ==================== */
         function cambiarTab(idTab, btnElement) {
@@ -290,249 +348,381 @@
             document.getElementById('reloj-cocina').textContent = new Date().toLocaleTimeString('es-AR', { hour12: false });
         }, 1000);
 
-        // Fetch Wrapper para incluir token si lo tenemos (para los PATCH/POST)
+        // Peticiones protegidas de Cocina: el token nunca viaja en la URL.
         async function fetchAutenticado(url, opciones = {}) {
             const token = sessionStorage.getItem('savage_token');
-            const headers = { 'Content-Type': 'application/json', ...opciones.headers };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            
-            const respuesta = await fetch(url, { ...opciones, headers });
-            if (respuesta.status === 401) {
-                sessionStorage.clear();
-                window.location.href = 'login.html';
-                throw new Error("Sesión expirada");
+            if (!token) {
+                window.location.replace('login.html');
+                throw new Error('No hay una sesión de personal activa.');
             }
-            return respuesta;
+
+            const headers = { ...opciones.headers, Authorization: `Bearer ${token}` };
+            if (opciones.body != null && !(opciones.body instanceof FormData) && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            // Evita que una solicitud quede pendiente indefinidamente.
+            const controlador = new AbortController();
+            const temporizador = setTimeout(() => controlador.abort(), 12000);
+            try {
+                const respuesta = await fetch(url, {
+                    ...opciones,
+                    headers,
+                    signal: controlador.signal,
+                    cache: 'no-store'
+                });
+                if (respuesta.status === 401) {
+                    sessionStorage.removeItem('savage_token');
+                    sessionStorage.removeItem('savage_usuario');
+                    window.location.replace('login.html');
+                    throw new Error('La sesión venció. Iniciá sesión nuevamente.');
+                }
+                return respuesta;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('La solicitud tardó demasiado. Intentá nuevamente.');
+                }
+                throw error;
+            } finally {
+                clearTimeout(temporizador);
+            }
+        }
+
+        // Nunca insertar texto del backend como HTML ejecutable.
+        function escaparHTML(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[caracter]);
+        }
+
+        async function leerMensajeError(respuesta) {
+            let datos = {};
+            try { datos = await respuesta.json(); } catch (_) { /* Sin cuerpo JSON */ }
+            for (const campo of ['error', 'mensaje', 'texto', 'detail']) {
+                if (typeof datos?.[campo] === 'string' && datos[campo].trim()) return datos[campo];
+            }
+            if (Array.isArray(datos?.errores) && datos.errores.length) {
+                return datos.errores.map(e => [e.campo, e.mensaje].filter(Boolean).join(': ')).join('; ');
+            }
+            if (respuesta.status === 404) return 'La función no está disponible en esta versión del backend (HTTP 404).';
+            if (respuesta.status === 403) return 'No tenés permiso para realizar esta acción (HTTP 403).';
+            if (respuesta.status === 429) return 'Demasiados intentos. Intentá más tarde (HTTP 429).';
+            return `La operación no se pudo completar (HTTP ${respuesta.status}).`;
+        }
+
+        function mostrarErrorEn(contenedorId, mensaje) {
+            const cont = document.getElementById(contenedorId);
+            cont.replaceChildren();
+            const p = document.createElement('p');
+            p.style.cssText = 'color:#e74c3c;font-size:13px;line-height:1.5;';
+            p.textContent = mensaje;
+            cont.appendChild(p);
+        }
+
+        function llenarSelect(id, items, formatoTexto, clave = 'id') {
+            const select = document.getElementById(id);
+            select.replaceChildren();
+            for (const item of items) {
+                const option = document.createElement('option');
+                option.value = String(item[clave] ?? '');
+                option.textContent = formatoTexto(item);
+                select.appendChild(option);
+            }
+        }
+
+        function indicarConexion(mensaje, correcto) {
+            const indicador = document.getElementById('indicador-conexion');
+            indicador.replaceChildren();
+            const punto = document.createElement('div');
+            punto.style.cssText = 'width:10px;height:10px;border-radius:50%;flex-shrink:0;';
+            punto.style.backgroundColor = correcto ? '#4CAF50' : '#e74c3c';
+            indicador.append(punto, document.createTextNode(mensaje));
         }
 
         /* ==================== TAB 1: KANBAN COMANDAS ==================== */
         function renderizarTablero() {
-            ['pendientes', 'proceso', 'listos'].forEach(est => document.getElementById(`columna-${est}`).innerHTML = '');
-            let cont = { pendiente: 0, proceso: 0, listo: 0 };
+            // IDs reales del HTML: pendientes, proceso (sin "s"), listos.
+            const columnas = {
+                pendiente: document.getElementById('columna-pendientes'),
+                proceso: document.getElementById('columna-proceso'),
+                listo: document.getElementById('columna-listos')
+            };
+            Object.values(columnas).forEach(columna => columna.replaceChildren());
+            const contadores = { pendiente: 0, proceso: 0, listo: 0 };
 
-            comandas.forEach(comanda => {
-                let itemsHTML = '';
-                
-                // TAREA 10: Resaltado visual MUY CLARO si quitaron ingredientes
-                if (comanda.items) {
-                    comanda.items.forEach(item => {
-                        let divSin = '';
-                        if(item.sin && item.sin.length > 0) {
-                            divSin = `<span class="modificador-sin">SIN: ${item.sin.join(', ')}</span>`;
-                        }
-                        itemsHTML += `
-                            <div class="item-pedido">
-                                <span style="font-weight: bold;">1x ${item.nombre}</span>
-                                ${divSin}
-                            </div>
-                        `;
-                    });
-                }
+            for (const comanda of comandas) {
+                const estado = String(comanda.estado ?? '').toLowerCase();
+                const columna = columnas[estado];
+                if (!columna) continue;
+                contadores[estado] += 1;
 
-                let botones = '';
-                if (comanda.estado === 'pendiente') {
-                    cont.pendiente++;
-                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #ff7a00; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Comenzar Preparación ➔</button>`;
-                } else if (comanda.estado === 'proceso') {
-                    cont.proceso++;
-                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">✔ Marcar como Listo</button>`;
-                } else if (comanda.estado === 'listo') {
-                    cont.listo++;
-                    botones = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; cursor: pointer;">Despachado (Ocultar)</button>`;
-                }
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'comanda-card';
 
-                if (comanda.estado !== 'entregado') {
-                    const col = document.getElementById(`columna-${comanda.estado}s` || `columna-${comanda.estado}`);
-                    if(col) {
-                        col.innerHTML += `
-                            <div class="comanda-card">
-                                <div class="comanda-header">
-                                    <span class="mesa-badge">Mesa #${comanda.mesa_id}</span>
-                                    <span class="tiempo-badge">⏱ ${new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false})}</span>
-                                </div>
-                                <div style="margin-bottom: 10px;">${itemsHTML}</div>
-                                ${botones}
-                            </div>
-                        `;
+                const cabecera = document.createElement('div');
+                cabecera.className = 'comanda-header';
+                const mesa = document.createElement('span');
+                mesa.className = 'mesa-badge';
+                mesa.textContent = `Mesa #${comanda.mesa_id ?? '--'}`;
+                const tiempo = document.createElement('span');
+                tiempo.className = 'tiempo-badge';
+                const fecha = new Date(comanda.timestamp);
+                tiempo.textContent = Number.isNaN(fecha.getTime())
+                    ? '⏱ --:--'
+                    : `⏱ ${fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+                cabecera.append(mesa, tiempo);
+                tarjeta.appendChild(cabecera);
+
+                const lista = document.createElement('div');
+                lista.style.marginBottom = '10px';
+                for (const item of (Array.isArray(comanda.items) ? comanda.items : [])) {
+                    const renglon = document.createElement('div');
+                    renglon.className = 'item-pedido';
+                    const nombre = document.createElement('span');
+                    nombre.style.fontWeight = 'bold';
+                    const cantidad = Number(item.cantidad);
+                    nombre.textContent = `${Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1}x ${item.nombre ?? 'Plato'}`;
+                    renglon.appendChild(nombre);
+                    if (Array.isArray(item.sin) && item.sin.length > 0) {
+                        const modificador = document.createElement('span');
+                        modificador.className = 'modificador-sin';
+                        modificador.textContent = `SIN: ${item.sin.join(', ')}`;
+                        renglon.appendChild(modificador);
                     }
+                    lista.appendChild(renglon);
                 }
-            });
+                tarjeta.appendChild(lista);
 
-            document.getElementById('contador-pendientes').textContent = cont.pendiente;
-            document.getElementById('contador-proceso').textContent = cont.proceso;
-            document.getElementById('contador-listos').textContent = cont.listo;
+                const acciones = {
+                    pendiente: ['proceso', 'Comenzar Preparación ➔', '#ff7a00'],
+                    proceso: ['listo', '✔ Marcar como Listo', '#2ecc71'],
+                    listo: ['entregado', 'Despachado (Ocultar)', 'transparent']
+                };
+                const [siguienteEstado, textoBoton, color] = acciones[estado];
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.textContent = textoBoton;
+                boton.style.cssText = 'width:100%;margin-top:15px;padding:10px;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;';
+                boton.style.backgroundColor = color;
+                if (estado === 'listo') {
+                    boton.style.color = 'var(--text-muted)';
+                    boton.style.border = '1px solid var(--text-muted)';
+                }
+                const uuid = String(comanda.id_comanda_uuid ?? '');
+                boton.disabled = cambiosEnCurso.has(uuid);
+                boton.addEventListener('click', () => cambiarEstado(uuid, siguienteEstado));
+                tarjeta.appendChild(boton);
+                columna.appendChild(tarjeta);
+            }
+
+            document.getElementById('contador-pendientes').textContent = contadores.pendiente;
+            document.getElementById('contador-proceso').textContent = contadores.proceso;
+            document.getElementById('contador-listos').textContent = contadores.listo;
         }
 
         async function cambiarEstado(uuid, nuevoEstado) {
+            if (!uuid || cambiosEnCurso.has(uuid)) return;
+            cambiosEnCurso.add(uuid);
+            renderizarTablero();
             try {
-                // Actualización optimista local
-                const idx = comandas.findIndex(c => c.id_comanda_uuid === uuid);
-                if (idx > -1) comandas[idx].estado = nuevoEstado;
-                renderizarTablero();
-
-                // Petición al backend autenticada
-                await fetchAutenticado(`${BASE_URL}/pedidos/${uuid}/estado`, {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/pedidos/${encodeURIComponent(uuid)}/estado`, {
                     method: 'PATCH',
                     body: JSON.stringify({ estado: nuevoEstado })
                 });
-            } catch(e) {
-                console.error("Error al actualizar estado");
-                sincronizarComandas(); // Rollback recargando desde DB
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                // La respuesta del servidor confirma el cambio.
+                // El refresco se ejecuta en finally para evitar solapamientos.
+            } catch (error) {
+                alert(error.message || 'No se pudo actualizar el estado del pedido.');
+            } finally {
+                cambiosEnCurso.delete(uuid);
+                await sincronizarComandas();
+                renderizarTablero();
             }
         }
 
         async function sincronizarComandas() {
-            if (!pollingActivo) return;
+            if (!pollingActivo || document.hidden || cambiosEnCurso.size > 0 || sincronizando) return;
+            sincronizando = true;
             try {
-                const res = await fetch(`${BASE_URL}/cocina/tablero`);
-                if (res.ok) {
-                    comandas = await res.json();
-                    renderizarTablero();
-                    document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> En Línea';
-                }
-            } catch(e) {
-                document.getElementById('indicador-conexion').innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Error';
+                const respuesta = await fetchAutenticado(`${BASE_URL}/cocina/tablero`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                if (!Array.isArray(datos)) throw new Error('El tablero no devolvió una lista de comandas.');
+                comandas = datos;
+                renderizarTablero();
+                indicarConexion('En Línea', true);
+            } catch (error) {
+                indicarConexion(error.message || 'Sin conexión', false);
+                console.error('Error al sincronizar comandas:', error);
+            } finally {
+                sincronizando = false;
             }
         }
 
         /* ==================== TAB 2: NOTIFICACIONES ==================== */
-        async function cargarNotificaciones() {
+        async function cargarNotificaciones({soloBadge = false} = {}) {
             try {
-                const res = await fetch(`${BASE_URL}/cocina/notificaciones`);
-                const data = await res.json();
-                
-                const cont = document.getElementById('contenedor-notificaciones');
-                cont.innerHTML = '';
-
-                // Badge Global numérico
+                const respuesta = await fetchAutenticado(`${BASE_URL}/cocina/notificaciones`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                const lista = Array.isArray(datos.notificaciones) ? datos.notificaciones : [];
+                const total = Number(datos?.resumen?.total ?? lista.length);
                 const badge = document.getElementById('badge-noti-global');
-                if (data.resumen && data.resumen.total > 0) {
-                    badge.textContent = data.resumen.total;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                    cont.innerHTML = '<p style="color: var(--text-muted);">Todo bajo control. No hay alertas.</p>';
+                badge.textContent = String(total);
+                badge.style.display = total > 0 ? 'inline-block' : 'none';
+                if (soloBadge) return;
+
+                const cont = document.getElementById('contenedor-notificaciones');
+                cont.replaceChildren();
+                if (!lista.length) {
+                    const p = document.createElement('p');
+                    p.style.color = 'var(--text-muted)';
+                    p.textContent = 'Todo bajo control. No hay alertas.';
+                    cont.appendChild(p);
                     return;
                 }
-
-                data.notificaciones.forEach(not => {
-                    let clase = 'info';
-                    let btn = '';
-                    
-                    if(not.severidad === 'urgente') clase = 'urgente';
-                    else if(not.severidad === 'aviso') clase = '';
-
-                    // Lógica para el botón "Reactivar Plato"
-                    if(not.tipo === 'se_puede_reactivar' && not.producto) {
-                        btn = `<button onclick="reactivarPlato(${not.producto.id})" class="btn-orange" style="background:#2ecc71; padding: 4px 8px; font-size:11px;">Activar Plato</button>`;
+                for (const aviso of lista) {
+                    const fila = document.createElement('div');
+                    fila.className = `noti-item ${aviso.severidad === 'urgente' ? 'urgente' : aviso.severidad === 'info' ? 'info' : ''}`;
+                    const texto = document.createElement('div');
+                    const titulo = document.createElement('strong');
+                    titulo.style.cssText = 'color:var(--text-main);display:block;margin-bottom:4px;';
+                    titulo.textContent = String(aviso.mensaje ?? '');
+                    const tipo = document.createElement('span');
+                    tipo.style.cssText = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;';
+                    tipo.textContent = String(aviso.tipo ?? '').replace(/_/g, ' ');
+                    texto.append(titulo, tipo);
+                    fila.appendChild(texto);
+                    if (aviso.tipo === 'se_puede_reactivar' && Number.isInteger(Number(aviso.producto?.id)) && Number(aviso.producto.id) > 0) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-orange';
+                        btn.style.cssText = 'background:#2ecc71;padding:4px 8px;font-size:11px;';
+                        btn.textContent = 'Activar Plato';
+                        btn.addEventListener('click', () => reactivarPlato(Number(aviso.producto.id)));
+                        fila.appendChild(btn);
                     }
-
-                    cont.innerHTML += `
-                        <div class="noti-item ${clase}">
-                            <div>
-                                <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">${not.mensaje}</strong>
-                                <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${not.tipo.replace(/_/g, ' ')}</span>
-                            </div>
-                            ${btn}
-                        </div>
-                    `;
-                });
-            } catch(e) {
-                console.error("Error en notificaciones", e);
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                if (!soloBadge) mostrarErrorEn('contenedor-notificaciones', error.message || 'No se pudieron cargar las notificaciones.');
+                console.error('Notificaciones:', error);
             }
         }
 
         async function reactivarPlato(id) {
             try {
-                const res = await fetchAutenticado(`${BASE_URL}/productos/${id}/reactivar`, { method: 'POST' });
-                if(res.ok) {
-                    alert("Plato reactivado en el catálogo con éxito.");
-                    cargarNotificaciones();
-                } else {
-                    const data = await res.json();
-                    alert(data.error || "No se puede reactivar. Verificá si el stock ya alcanzó.");
-                }
-            } catch(e) {
-                alert("Error de conexión");
+                const respuesta = await fetchAutenticado(`${BASE_URL}/productos/${encodeURIComponent(id)}/reactivar`, { method: 'POST' });
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                alert('Plato reactivado correctamente.');
+                await cargarNotificaciones();
+            } catch (error) {
+                alert(error.message || 'No se pudo reactivar el plato.');
             }
         }
 
         /* ==================== TAB 3: ESTADO STOCK Y VENCIMIENTOS ==================== */
         async function cargarPanelStock() {
-            const estadoFiltro = document.getElementById('filtro-estado-stock').value;
-            let url = `${BASE_URL}/stock`;
-            if (estadoFiltro) url += `?estado=${estadoFiltro}`;
-
+            const estado = document.getElementById('filtro-estado-stock').value;
+            const params = new URLSearchParams();
+            // Cocina necesita la vista detallada: el resumen no incluye cantidades ni objetivos.
+            // Django omite los costos para el rol Cocina.
+            params.set('vista', 'detallada');
+            if (estado) params.set('estado', estado);
+            const url = `${BASE_URL}/stock${params.size ? `?${params}` : ''}`;
             try {
-                const res = await fetch(url);
-                const data = await res.json();
-                
+                const respuesta = await fetchAutenticado(url);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
                 const cont = document.getElementById('lista-semaforos-stock');
-                cont.innerHTML = '';
-                
-                if(!data.insumos || data.insumos.length === 0) {
-                    cont.innerHTML = '<p>No hay insumos registrados para esta vista.</p>';
+                cont.replaceChildren();
+                const insumos = Array.isArray(datos.insumos) ? datos.insumos : [];
+                if (!insumos.length) {
+                    const p = document.createElement('p');
+                    p.textContent = 'No hay insumos registrados para esta vista.';
+                    cont.appendChild(p);
                     return;
                 }
-
-                data.insumos.forEach(ins => {
-                    const claseSemaforo = ins.semaforo || 'gris';
-                    cont.innerHTML += `
-                        <div class="stock-row">
-                            <div style="display:flex; align-items:center;">
-                                <span class="semaforo ${claseSemaforo}" title="${ins.estado}"></span>
-                                <span style="font-weight: 500;">${ins.nombre}</span>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-weight: 900;">${ins.cantidad_actual_texto || '0'}</div>
-                                <div style="font-size:11px; color:var(--text-muted);">Obj: ${ins.stock_objetivo_texto || '-'}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch(e) { console.error("Error en panel stock", e); }
+                const gravedad = { Agotado: 0, Critico: 1, Bajo: 2, SinObjetivo: 3, Ok: 4 };
+                insumos.sort((a, b) => (gravedad[a.estado] ?? 99) - (gravedad[b.estado] ?? 99));
+                for (const ins of insumos) {
+                    const fila = document.createElement('div');
+                    fila.className = 'stock-row';
+                    const izquierda = document.createElement('div');
+                    izquierda.style.cssText = 'display:flex;align-items:center;';
+                    const semaforo = document.createElement('span');
+                    const color = ['rojo', 'amarillo', 'verde', 'gris'].includes(ins.semaforo) ? ins.semaforo : 'gris';
+                    semaforo.className = `semaforo ${color}`;
+                    semaforo.title = String(ins.estado ?? '');
+                    const nombre = document.createElement('span');
+                    nombre.style.fontWeight = '500';
+                    nombre.textContent = String(ins.nombre ?? 'Insumo');
+                    izquierda.append(semaforo, nombre);
+                    const derecha = document.createElement('div');
+                    derecha.style.textAlign = 'right';
+                    const cantidad = document.createElement('div');
+                    cantidad.style.fontWeight = '900';
+                    cantidad.textContent = String(ins.stock_actual_texto ?? 'Cantidad no disponible');
+                    const objetivo = document.createElement('div');
+                    objetivo.style.cssText = 'font-size:11px;color:var(--text-muted);';
+                    const porcentaje = ins.porcentaje == null ? '' : ` · ${Number(ins.porcentaje).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+                    objetivo.textContent = `Obj: ${ins.stock_objetivo_texto ?? 'No disponible'}${porcentaje}`;
+                    derecha.append(cantidad, objetivo);
+                    fila.append(izquierda, derecha);
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                mostrarErrorEn('lista-semaforos-stock', error.message || 'No se pudo consultar el stock.');
+            }
         }
 
         async function cargarVencimientos() {
             try {
-                const res = await fetch(`${BASE_URL}/vencimientos`);
-                const data = await res.json();
-                
+                const respuesta = await fetchAutenticado(`${BASE_URL}/vencimientos`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                const todos = [...(datos.vencidos || []), ...(datos.por_vencer || [])];
                 const cont = document.getElementById('lista-vencimientos');
-                cont.innerHTML = '';
-                
-                const todos = [...(data.vencidos || []), ...(data.por_vencer || [])];
-                
-                if (todos.length === 0) {
-                    cont.innerHTML = '<p>No hay lotes próximos a vencer.</p>';
+                cont.replaceChildren();
+                if (!todos.length) {
+                    const p = document.createElement('p');
+                    p.textContent = 'No hay lotes próximos a vencer.';
+                    cont.appendChild(p);
                     return;
                 }
-
-                todos.forEach(lote => {
-                    let color = lote.dias_restantes < 0 ? '#e74c3c' : (lote.dias_restantes === 0 ? '#f39c12' : 'var(--text-muted)');
-                    cont.innerHTML += `
-                        <div style="background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 6px; border: 1px solid var(--glass-border);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <strong style="font-size: 14px;">${lote.insumo_nombre}</strong>
-                                <span style="font-size: 13px; font-weight: bold;">${lote.cantidad_texto}</span>
-                            </div>
-                            <div style="color: ${color}; font-size: 12px; font-weight: bold;">
-                                📅 ${lote.texto} (Vence: ${lote.fecha_vencimiento})
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch(e) { console.error("Error cargando vencimientos"); }
+                for (const lote of todos) {
+                    const fila = document.createElement('div');
+                    fila.style.cssText = 'background:rgba(0,0,0,0.2);padding:10px 15px;border-radius:6px;border:1px solid var(--glass-border);';
+                    const cabecera = document.createElement('div');
+                    cabecera.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:5px;';
+                    const nombre = document.createElement('strong');
+                    nombre.style.fontSize = '14px';
+                    nombre.textContent = String(lote.insumo_nombre ?? 'Insumo');
+                    const cantidad = document.createElement('span');
+                    cantidad.style.cssText = 'font-size:13px;font-weight:bold;';
+                    cantidad.textContent = String(lote.cantidad_texto ?? '');
+                    cabecera.append(nombre, cantidad);
+                    const leyenda = document.createElement('div');
+                    leyenda.style.cssText = 'font-size:12px;font-weight:bold;';
+                    leyenda.style.color = Number(lote.dias_restantes) < 0 ? '#e74c3c' : Number(lote.dias_restantes) === 0 ? '#f39c12' : 'var(--text-muted)';
+                    leyenda.textContent = `📅 ${lote.texto ?? ''} (Vence: ${lote.fecha_vencimiento ?? '-'})`;
+                    fila.append(cabecera, leyenda);
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                mostrarErrorEn('lista-vencimientos', error.message || 'No se pudieron consultar los vencimientos.');
+            }
         }
 
         async function procesarVencidos() {
             try {
                 const res = await fetchAutenticado(`${BASE_URL}/vencimientos/procesar`, { method: 'POST' });
+                if (!res.ok) throw new Error(await leerMensajeError(res));
                 const data = await res.json();
                 alert(`Se dieron de baja ${data.cantidad} lotes vencidos correctamente.`);
                 cargarVencimientos();
                 cargarNotificaciones();
-            } catch(e) { alert("Error dando de baja lotes."); }
+            } catch(e) { alert(e.message || "Error dando de baja lotes."); }
         }
 
         // Variable global para guardar qué motivos exigen nota
@@ -540,37 +730,35 @@
 
         /* ==================== TAB 4: ACCIONES (Pérdidas y Producción) ==================== */
         async function cargarSelectoresAcciones() {
-            try {
-                // Motivos de Pérdida
-                const resMot = await fetchAutenticado(`${BASE_URL}/perdidas/motivos`);
-                if(resMot.ok) {
-                    motivosPerdidaGlobal = await resMot.json();
-                    document.getElementById('perdida-motivo').innerHTML = motivosPerdidaGlobal.map(m => `<option value="${m.codigo}" style="background: #111; color: white;">${m.etiqueta}</option>`).join('');
-                    toggleNotaPerdida(); // Verificamos si la primera opción exige nota
+            // Se consultan por separado: un endpoint no disponible no impide cargar los demás.
+            const consultas = [
+                {ruta: '/perdidas/motivos', id: 'perdida-motivo', extraer: d => d, texto: m => String(m.etiqueta ?? ''), clave: 'codigo'},
+                {ruta: '/stock', id: 'perdida-insumo', extraer: d => d.insumos, texto: i => String(i.nombre ?? '')},
+                {ruta: '/productos', id: 'perdida-plato', extraer: d => d, texto: p => String(p.nombre ?? '')},
+                {ruta: '/elaboraciones', id: 'prod-elaboracion', extraer: d => d, texto: e => `Elaborar: ${e.insumo_nombre ?? ''} (Rinde: ${e.rinde_texto ?? e.rinde ?? '-'} por tanda)`}
+            ];
+            for (const consulta of consultas) {
+                try {
+                    const respuesta = await fetchAutenticado(`${BASE_URL}${consulta.ruta}`);
+                    if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                    const datos = await respuesta.json();
+                    const items = consulta.extraer(datos);
+                    if (!Array.isArray(items)) throw new Error('Respuesta inválida del servidor.');
+                    llenarSelect(consulta.id, items, consulta.texto, consulta.clave);
+                    if (consulta.ruta === '/perdidas/motivos') {
+                        motivosPerdidaGlobal = items;
+                        toggleNotaPerdida();
+                    }
+                } catch (error) {
+                    const selector = document.getElementById(consulta.id);
+                    selector.replaceChildren();
+                    const option = document.createElement('option');
+                    option.textContent = error.message || 'No disponible';
+                    option.value = '';
+                    selector.appendChild(option);
+                    console.warn(`No se pudo cargar ${consulta.ruta}:`, error.message);
                 }
-
-                // Insumos (usando el endpoint de STOCK permitido para Cocina)
-                const resStock = await fetchAutenticado(`${BASE_URL}/stock`);
-                if(resStock.ok) {
-                    const dataStock = await resStock.json();
-                    document.getElementById('perdida-insumo').innerHTML = dataStock.insumos.map(i => `<option value="${i.id}" style="background: #111; color: white;">${i.nombre}</option>`).join('');
-                }
-
-                // Platos (Catálogo, usando el endpoint general)
-                const resProd = await fetchAutenticado(`${BASE_URL}/productos`);
-                if(resProd.ok) {
-                    const prods = await resProd.json();
-                    document.getElementById('perdida-plato').innerHTML = prods.map(p => `<option value="${p.id}" style="background: #111; color: white;">${p.nombre}</option>`).join('');
-                }
-
-                // Elaboraciones (usando el endpoint permitido)
-                const resElab = await fetchAutenticado(`${BASE_URL}/elaboraciones`);
-                if(resElab.ok) {
-                    const elabs = await resElab.json();
-                    document.getElementById('prod-elaboracion').innerHTML = elabs.map(e => `<option value="${e.id}" style="background: #111; color: white;">Elaborar: ${e.insumo_nombre} (Rinde: ${e.rinde_texto} por tanda)</option>`).join('');
-                }
-                
-            } catch(e) { console.error("Error poblando selects", e); }
+            }
         }
 
         // NUEVA FUNCIÓN: Muestra u oculta el campo de texto de la Nota
@@ -608,6 +796,13 @@
                 cantidad: parseFloat(document.getElementById('perdida-cantidad').value)
             };
 
+            if (!Number.isFinite(payload.cantidad) || payload.cantidad <= 0 || (payload.tipo === 'plato' && !Number.isInteger(payload.cantidad))) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = 'Ingresá una cantidad válida (para platos, un número entero).';
+                btn.disabled = false;
+                return;
+            }
+
             // Agregamos la nota al payload si el usuario escribió algo
             const notaText = document.getElementById('perdida-nota').value.trim();
             if (notaText) payload.nota = notaText;
@@ -627,13 +822,12 @@
                     e.target.reset();
                     toggleNotaPerdida(); // Reseteamos la visibilidad de la nota
                 } else {
-                    const err = await res.json();
                     msj.style.color = '#e74c3c';
-                    msj.textContent = err.error || 'Error al registrar pérdida. Revisa el stock disponible.';
+                    msj.textContent = await leerMensajeError(res);
                 }
             } catch(err) {
                 msj.style.color = '#e74c3c';
-                msj.textContent = 'Fallo de conexión.';
+                msj.textContent = err.message || 'Fallo de conexión.';
             } finally {
                 btn.disabled = false;
                 setTimeout(() => { msj.textContent = ''; }, 3000);
@@ -662,41 +856,341 @@
                     msj.textContent = 'Producción registrada. Ingredientes descontados y stock actualizado.';
                     e.target.reset();
                 } else {
-                    const err = await res.json();
                     msj.style.color = '#e74c3c';
-                    msj.textContent = err.error || 'Error en la producción. Verificá si tenés los ingredientes suficientes.';
+                    msj.textContent = await leerMensajeError(res);
                 }
             } catch(err) {
                 msj.style.color = '#e74c3c';
-                msj.textContent = 'Fallo de conexión.';
+                msj.textContent = err.message || 'Fallo de conexión.';
             } finally {
                 btn.disabled = false;
                 setTimeout(() => { msj.textContent = ''; }, 3000);
             }
         }
 
-        // Loop de polling ligero para Notificaciones de fondo
-        setInterval(() => {
-            if(!document.getElementById('tab-notificaciones').classList.contains('active')) {
-                // Hacemos un mini-fetch solo para actualizar la burbuja roja
-                fetch(`${BASE_URL}/cocina/notificaciones`)
-                .then(r => r.json())
-                .then(d => {
-                    const badge = document.getElementById('badge-noti-global');
-                    if(d.resumen && d.resumen.total > 0) {
-                        badge.textContent = d.resumen.total;
-                        badge.style.display = 'inline-block';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                }).catch(()=>{});
+        async function iniciarCocina() {
+            const token = sessionStorage.getItem('savage_token');
+            if (!token) {
+                window.location.replace('login.html');
+                return;
             }
-        }, 12000); // 12 segundos
+            try {
+                const perfil = await fetchAutenticado(`${BASE_URL}/me`);
+                if (!perfil.ok) throw new Error(await leerMensajeError(perfil));
+                const usuario = await perfil.json();
+                const rol = usuario.rol ?? usuario.empleado?.rol;
+                if (!['Cocina', 'Admin', 'Gerente'].includes(rol)) {
+                    indicarConexion('Sin permiso para acceder a Cocina', false);
+                    return;
+                }
+                await sincronizarComandas();
+                setInterval(sincronizarComandas, INTERVALO_POLLING);
+                // Actualizamos notificaciones con la misma frecuencia documentada (~10 segundos).
+                setInterval(() => {
+                    if (document.hidden) return;
+                    const activa = document.getElementById('tab-notificaciones').classList.contains('active');
+                    cargarNotificaciones({ soloBadge: !activa });
+                }, 10000);
+                cambiarTab('tab-comandas', document.querySelector('.tab-btn.active'));
+            } catch (error) {
+                indicarConexion(error.message || 'No se pudo validar el perfil', false);
+                console.error('No se pudo iniciar Cocina:', error);
+            }
+        }
 
-        // Iniciar tablero principal
-        setInterval(sincronizarComandas, INTERVALO_POLLING);
-        sincronizarComandas();
-        cambiarTab('tab-comandas', document.querySelector('.tab-btn.active'));
+        iniciarCocina();
+    </script>
+
+    <script>
+    /* Mismo motor de desplegables que Administración P8; funciona con opciones cargadas por Django. */
+    (() => {
+
+
+    /* =============================================================
+       SAVAGE SELECT — Desplegables con estética del sistema
+       Mantiene el <select> original como fuente de valores, por lo
+       tanto no cambia los formularios ni los datos enviados a Django.
+       Se aplica también a selectores agregados dinámicamente.
+       ============================================================= */
+    const sgSelect = (() => {
+        const controles = new WeakMap();
+        let actual = null;
+        let menu = null;
+        let opcionesAbiertas = [];
+        let indiceResaltado = -1;
+        let prefijoBusqueda = '';
+        let relojBusqueda;
+
+        function crearMenu() {
+            if (menu) return menu;
+            menu = document.createElement('div');
+            menu.id = 'sg-select-listado';
+            menu.className = 'sg-select-list';
+            menu.setAttribute('role', 'listbox');
+            menu.setAttribute('aria-label', 'Opciones de selección');
+            menu.hidden = true;
+            document.body.appendChild(menu);
+            return menu;
+        }
+
+        function etiquetaDe(select) {
+            const etiquetas = select.labels ? Array.from(select.labels) : [];
+            const etiqueta = etiquetas[0];
+            if (etiqueta) return (etiqueta.textContent || '').replace(/\*/g, '').trim();
+            return select.getAttribute('aria-label') || 'Seleccionar una opción';
+        }
+
+        function actualizarBoton(select) {
+            const ref = controles.get(select);
+            if (!ref) return;
+            const opcion = select.options[select.selectedIndex];
+            ref.valor.textContent = opcion?.textContent || 'Seleccioná una opción';
+            ref.boton.classList.toggle('sg-select-placeholder', !select.value);
+            ref.boton.disabled = select.disabled;
+            ref.boton.setAttribute('aria-label', `${etiquetaDe(select)}: ${ref.valor.textContent}`);
+            if (actual?.select === select && !menu.hidden) {
+                actual = ref;
+                mostrarOpciones();
+            }
+        }
+
+        function cerrar({ devolverFoco = false } = {}) {
+            if (!actual) return;
+            const ref = actual;
+            actual = null;
+            if (menu) {
+                menu.hidden = true;
+                menu.replaceChildren();
+            }
+            opcionesAbiertas = [];
+            indiceResaltado = -1;
+            ref.boton.setAttribute('aria-expanded', 'false');
+            ref.boton.removeAttribute('aria-activedescendant');
+            if (devolverFoco && ref.boton.isConnected) ref.boton.focus();
+        }
+
+        function ubicarMenu() {
+            if (!actual || !menu || menu.hidden) return;
+            const r = actual.boton.getBoundingClientRect();
+            if (!r.width || !r.height) { cerrar(); return; }
+            const margen = 8;
+            const ancho = Math.max(160, Math.min(r.width, window.innerWidth - margen * 2));
+            menu.style.width = `${ancho}px`;
+            const izquierdo = Math.max(margen, Math.min(r.left, window.innerWidth - ancho - margen));
+            menu.style.left = `${izquierdo}px`;
+            menu.style.top = `${r.bottom + 6}px`;
+            menu.style.maxHeight = `${Math.min(300, Math.max(100, window.innerHeight - 24))}px`;
+            const alto = menu.getBoundingClientRect().height;
+            const debajo = window.innerHeight - r.bottom - 8;
+            const arriba = r.top - 8;
+            if (debajo < Math.min(alto, 190) && arriba > debajo) {
+                menu.style.top = `${Math.max(margen, r.top - alto - 6)}px`;
+            } else if (debajo < alto) {
+                menu.style.maxHeight = `${Math.max(90, debajo - 6)}px`;
+            }
+        }
+
+        function resaltar(indice) {
+            const habilitadas = opcionesAbiertas
+                .map((registro, idx) => ({ registro, idx }))
+                .filter(({ registro }) => !registro.option.disabled);
+            if (!habilitadas.length) return;
+            const encontrada = habilitadas.find(x => x.idx === indice);
+            if (!encontrada) return;
+            indiceResaltado = indice;
+            opcionesAbiertas.forEach(({ nodo }, idx) => {
+                nodo.classList.toggle('sg-select-highlight', idx === indice);
+            });
+            actual.boton.setAttribute('aria-activedescendant', encontrada.registro.nodo.id);
+            encontrada.registro.nodo.scrollIntoView({ block: 'nearest' });
+        }
+
+        function mostrarOpciones() {
+            if (!actual) return;
+            const lista = crearMenu();
+            lista.replaceChildren();
+            opcionesAbiertas = [];
+            const opciones = Array.from(actual.select.options);
+            opciones.forEach((option, index) => {
+                const fila = document.createElement('div');
+                fila.className = 'sg-select-option';
+                fila.id = `sg-select-opcion-${index}`;
+                fila.setAttribute('role', 'option');
+                fila.setAttribute('aria-selected', String(option.selected));
+                fila.setAttribute('aria-disabled', String(option.disabled));
+                fila.textContent = option.textContent;
+                fila.addEventListener('pointerdown', e => e.preventDefault());
+                fila.addEventListener('click', () => elegir(index));
+                lista.appendChild(fila);
+                opcionesAbiertas.push({ option, nodo: fila, index });
+            });
+            lista.hidden = false;
+            ubicarMenu();
+            const seleccionado = opciones.findIndex(o => o.selected && !o.disabled);
+            const primeroHabilitado = opciones.findIndex(o => !o.disabled);
+            resaltar(seleccionado >= 0 ? seleccionado : primeroHabilitado);
+        }
+
+        function abrir(ref) {
+            if (ref.select.disabled) return;
+            if (actual === ref) { cerrar({ devolverFoco: true }); return; }
+            cerrar();
+            actual = ref;
+            ref.boton.setAttribute('aria-expanded', 'true');
+            mostrarOpciones();
+        }
+
+        function elegir(indice) {
+            if (!actual) return;
+            const registro = opcionesAbiertas[indice];
+            if (!registro || registro.option.disabled) return;
+            const { select } = actual;
+            const antes = select.value;
+            select.selectedIndex = indice;
+            actualizarBoton(select);
+            cerrar({ devolverFoco: true });
+            if (select.value !== antes) {
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function recorrer(direccion) {
+            if (!actual) return;
+            const habilitadas = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+            if (!habilitadas.length) return;
+            let pos = habilitadas.indexOf(indiceResaltado);
+            if (pos < 0) pos = 0;
+            resaltar(habilitadas[(pos + direccion + habilitadas.length) % habilitadas.length]);
+        }
+
+        function manejarTeclado(evento, ref) {
+            const abierto = actual === ref;
+            if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+                evento.preventDefault();
+                if (!abierto) abrir(ref);
+                else recorrer(evento.key === 'ArrowDown' ? 1 : -1);
+                return;
+            }
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                if (abierto && indiceResaltado >= 0) elegir(indiceResaltado);
+                else abrir(ref);
+                return;
+            }
+            if (evento.key === 'Escape' && abierto) {
+                evento.preventDefault();
+                cerrar({ devolverFoco: true });
+                return;
+            }
+            if (evento.key === 'Tab' && abierto) { cerrar(); return; }
+            if (!abierto) return;
+            if (evento.key === 'Home' || evento.key === 'End') {
+                evento.preventDefault();
+                const lista = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+                resaltar(evento.key === 'Home' ? lista[0] : lista.at(-1));
+                return;
+            }
+            if (evento.key.length === 1 && !evento.ctrlKey && !evento.altKey && !evento.metaKey) {
+                clearTimeout(relojBusqueda);
+                prefijoBusqueda += evento.key.toLocaleLowerCase('es');
+                const posicion = opcionesAbiertas.findIndex(x => !x.option.disabled &&
+                    (x.option.textContent || '').trim().toLocaleLowerCase('es').startsWith(prefijoBusqueda));
+                if (posicion >= 0) resaltar(posicion);
+                relojBusqueda = setTimeout(() => { prefijoBusqueda = ''; }, 700);
+            }
+        }
+
+        function mejorar(select) {
+            if (!select || controles.has(select) || select.multiple || select.size > 1) return;
+            const padre = select.parentNode;
+            if (!padre) return;
+            const wrapper = document.createElement('span');
+            wrapper.className = 'sg-select-shell';
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.className = 'sg-select-button';
+            boton.setAttribute('aria-haspopup', 'listbox');
+            boton.setAttribute('aria-controls', 'sg-select-listado');
+            boton.setAttribute('aria-expanded', 'false');
+            const valor = document.createElement('span');
+            valor.className = 'sg-select-value';
+            const flecha = document.createElement('span');
+            flecha.className = 'sg-select-arrow';
+            flecha.setAttribute('aria-hidden', 'true');
+            boton.append(valor, flecha);
+            padre.insertBefore(wrapper, select);
+            wrapper.append(select, boton);
+            select.classList.add('sg-select-native');
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+            const ref = { select, boton, valor };
+            controles.set(select, ref);
+            boton.addEventListener('click', () => abrir(ref));
+            boton.addEventListener('keydown', evento => manejarTeclado(evento, ref));
+            select.addEventListener('change', () => actualizarBoton(select));
+            select.addEventListener('invalid', evento => {
+                evento.preventDefault();
+                boton.focus();
+                boton.setAttribute('aria-invalid', 'true');
+            });
+            boton.addEventListener('focus', () => {
+                boton.removeAttribute('aria-invalid');
+                actualizarBoton(select);
+            });
+            const observarOpciones = new MutationObserver(() => actualizarBoton(select));
+            observarOpciones.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label', 'value'] });
+            actualizarBoton(select);
+        }
+
+        function mejorarTodos(raiz = document) {
+            if (raiz instanceof HTMLSelectElement) mejorar(raiz);
+            if (typeof raiz.querySelectorAll === 'function') {
+                raiz.querySelectorAll('select').forEach(mejorar);
+            }
+        }
+
+        function iniciar() {
+            mejorarTodos();
+            crearMenu();
+            const observador = new MutationObserver(cambios => {
+                for (const cambio of cambios) {
+                    for (const nodo of cambio.addedNodes) {
+                        if (nodo.nodeType === Node.ELEMENT_NODE) mejorarTodos(nodo);
+                    }
+                }
+            });
+            observador.observe(document.body, { childList: true, subtree: true });
+            document.addEventListener('pointerdown', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            }, true);
+            document.addEventListener('click', evento => {
+                const etiqueta = evento.target.closest?.('label[for]');
+                if (!etiqueta) return;
+                const select = document.getElementById(etiqueta.htmlFor);
+                const ref = select ? controles.get(select) : null;
+                if (!ref) return;
+                evento.preventDefault();
+                ref.boton.focus();
+                abrir(ref);
+            });
+            document.addEventListener('reset', () => setTimeout(() => {
+                document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton);
+            }, 0), true);
+            window.addEventListener('resize', ubicarMenu);
+            window.addEventListener('scroll', ubicarMenu, true);
+            document.addEventListener('focusin', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            });
+        }
+
+        return { iniciar, actualizar: () => document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton) };
+    })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            sgSelect.iniciar();
+        });
+    })();
     </script>
 </body>
 </html>
