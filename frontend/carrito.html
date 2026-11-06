@@ -106,17 +106,20 @@
             <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
-                    <span>Subtotal Seleccionado</span>
+                    <span>Consumos enviados (según servidor)</span>
                     <span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
                 </div>
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span>Costo de Servicio (Cubierto)</span>
                     <span id="lbl-cubierto" style="color: var(--text-main); font-weight: 600;">$0.00</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total Acumulado</span>
+                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa (sin selección nueva)</span>
                     <span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
                 </div>
+                <p id="estado-consulta-historial" style="margin:0;font-size:12px;line-height:1.5;color:var(--text-muted)" aria-live="polite">Consultando los consumos de la mesa...</p>
+                <p id="estimado-seleccion" style="margin:0;font-size:12px;color:var(--text-muted);display:none"></p>
             </div>
 
             <div id="zona-metodo-pago" class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
@@ -179,6 +182,18 @@
         let catalogoCarritoDisponible = false;
         let consultaProductos = null;
         let consultaHistorialEnCurso = false;
+        // El backend es la única fuente de comandas y precios ya enviados.
+        let historialServidor = null;
+        let historialConsultaOK = false;
+        let ultimoErrorHistorial = null;
+        let cuentaSolicitadaServidor = false;
+        const monedaAR = monto => Number(monto || 0).toLocaleString('es-AR',{style:'currency',currency:'ARS'});
+        const comandaValida = c => !['rechazada','cancelada','anulada'].includes(String(c.estado || '').toLowerCase());
+        function totalComandaServidor(c){
+            // Los precios y los subtotales se congelan al registrar la comanda; no tomar el catálogo actual.
+            if(c.total !== undefined && c.total !== null && Number.isFinite(Number(c.total)))return Number(c.total);
+            return (Array.isArray(c.items)?c.items:[]).reduce((s,i)=>s + Number(i.sub_total ?? ((Number(i.precio_unitario ?? i.precio)||0)*(Number(i.cantidad)||1))),0);
+        }
         let enviandoPedido = false;
         function escaparHtmlCarrito(valor) {
             return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -274,27 +289,39 @@
 
         function cargarCarritoStorage() {
             const carrito = obtenerCarrito();
-            const historial = obtenerHistorialGuardado();
+            const historial = Array.isArray(historialServidor) ? historialServidor : [];
             const contenedor = document.getElementById('contenedor-items-carrito');
             const comensales = parseInt(sessionStorage.getItem('savage-comensales'), 10) || 2;
             const btnEnviar = document.getElementById('btn-enviar-cocina');
-            const totalHistorial = historial.reduce((suma, comanda) => suma +
-                (Array.isArray(comanda.items) ? comanda.items.reduce((acc, i) =>
-                    acc + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0) : 0), 0);
-            const totalPendiente = carrito.reduce((suma, i) => suma +
-                (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0);
-            const subtotalGral = totalHistorial + totalPendiente;
-            const noHayConsumos = historial.length === 0 && carrito.length === 0;
-            const cubierto = noHayConsumos ? 0 : comensales * VALOR_CUBIERTO_POR_PERSONA;
+            const totalHistorial = historial.filter(comandaValida).reduce((suma,c)=>suma+totalComandaServidor(c),0);
+            const totalPendiente = carrito.reduce((suma,i)=>suma+(Number(i.precio)||0)*(Number(i.cantidad)||1),0);
+            const noHayConsumos = historialConsultaOK && historial.filter(comandaValida).length === 0 && carrito.length === 0;
+            const cubierto = historialConsultaOK && (historial.some(comandaValida) || carrito.length) ? comensales * VALOR_CUBIERTO_POR_PERSONA : 0;
             const zonaPago = document.getElementById('zona-metodo-pago');
             const btnCerrar = document.getElementById('btn-cerrar-mesa');
-            zonaPago.style.display = noHayConsumos ? 'none' : 'flex';
-            btnCerrar.textContent = noHayConsumos ? 'Cancelar Mesa y Retirarse (Sin consumos)' : 'Solicitar Cierre de Mesa y Pago';
+            // Si no pudimos verificar los pedidos, no mostrar una deuda artificialmente menor.
+            zonaPago.style.display = historialConsultaOK && noHayConsumos ? 'none' : 'flex';
+            btnCerrar.textContent = !historialConsultaOK ? 'Verificando cuenta de la mesa...' :
+                noHayConsumos ? 'Cancelar Mesa y Retirarse (Sin consumos)' : 'Solicitar Cierre de Mesa y Pago';
+            btnCerrar.disabled = !historialConsultaOK || cuentaSolicitadaServidor;
+            btnCerrar.style.opacity = btnCerrar.disabled ? '0.6' : '1';
+            btnCerrar.style.cursor = btnCerrar.disabled ? 'not-allowed' : 'pointer';
             btnCerrar.style.borderColor = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
             btnCerrar.style.color = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
-            document.getElementById('lbl-subtotal').textContent = `$${subtotalGral.toFixed(2)}`;
-            document.getElementById('lbl-cubierto').textContent = `$${cubierto.toFixed(2)} (${comensales} personas)`;
-            document.getElementById('lbl-total').textContent = `$${(subtotalGral + cubierto).toFixed(2)}`;
+            if(cuentaSolicitadaServidor)btnCerrar.textContent='Cuenta solicitada al mozo';
+            document.getElementById('lbl-subtotal').textContent = historialConsultaOK ? monedaAR(totalHistorial) : '—';
+            document.getElementById('lbl-seleccion').textContent = monedaAR(totalPendiente);
+            document.getElementById('lbl-cubierto').textContent = historialConsultaOK ? `${monedaAR(cubierto)} (${comensales} personas)` : '—';
+            document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial+cubierto) : '—';
+            const estado=document.getElementById('estado-consulta-historial');
+            estado.textContent = !historialConsultaOK ?
+                (ultimoErrorHistorial || 'Consultando historial real de la mesa. Los importes se verificarán con el servidor.') :
+                (ultimoErrorHistorial ? 'Conexión interrumpida. Se muestra la última cuenta verificada; puede estar desactualizada.' :
+                'La cuenta incluye las comandas registradas, aunque Cocina ya las haya entregado.');
+            estado.style.color = ultimoErrorHistorial ? '#edab65' : 'var(--text-muted)';
+            const estimado=document.getElementById('estimado-seleccion');
+            estimado.style.display = totalPendiente > 0 && historialConsultaOK ? 'block' : 'none';
+            if(historialConsultaOK)estimado.textContent=`Con los productos aún sin enviar: ${monedaAR(totalHistorial+cubierto+totalPendiente)} (estimado, no es deuda registrada).`;
 
             contenedor.replaceChildren();
             const bloqueados = window.itemsBloqueadosPorStock;
@@ -429,75 +456,63 @@
             guardarCarrito(carrito);
         }
 
-        function obtenerHistorialGuardado() {
-            try {
-                const historial = JSON.parse(sessionStorage.getItem('savage-historial-pedidos'));
-                return Array.isArray(historial) ? historial : [];
-            } catch (_) { return []; }
-        }
-        function mostrarHistorialGuardado() {
-            const cont = document.getElementById('contenedor-historial-pedidos');
-            const historial = obtenerHistorialGuardado();
+        // La información de la mesa no depende de sessionStorage ni del tablero de Cocina.
+        // Este endpoint conserva también las comandas entregadas.
+        function mostrarHistorialGuardado(){
+            const cont=document.getElementById('contenedor-historial-pedidos');
             cont.replaceChildren();
-            if (!historial.length) {
-                cont.innerHTML = '<p class="texto-auxiliar-carrito">Todavía no hay pedidos enviados desde esta sesión.</p>';
+            if(!historialConsultaOK){
+                cont.innerHTML='<p class="texto-auxiliar-carrito">Consultando los pedidos de esta mesa en el servidor...</p>';
                 return;
             }
-            historial.forEach(comanda => {
-                const items = Array.isArray(comanda.items) ? comanda.items : [];
-                const lineas = items.map(i => {
-                    const sin = (Array.isArray(i.sin) && i.sin.length) ? detalleQuitables(i).map(d => `sin ${d.nombre}`).join(', ') : '';
-                    const cant = Number(i.cantidad) || 1;
-                    return `${cant}x ${i.nombre || 'Producto'}${sin ? ` (${sin})` : ''}`;
+            const historial=Array.isArray(historialServidor)?historialServidor:[];
+            if(!historial.length){
+                cont.innerHTML='<p class="texto-auxiliar-carrito">Todavía no se registraron pedidos en esta sesión de mesa.</p>';
+                return;
+            }
+            const etiqueta={pendiente:'Pendiente',proceso:'En preparación',listo:'Listo para servir',entregado:'Entregado',rechazada:'Rechazado'};
+            [...historial].sort((a,b)=>new Date(a.timestamp||0)-new Date(b.timestamp||0)).forEach(comanda=>{
+                const estado=String(comanda.estado||'pendiente').toLowerCase();
+                const clase={pendiente:'badge-pendiente',proceso:'badge-proceso',listo:'badge-listo'}[estado]||'';
+                const fecha=new Date(comanda.timestamp||'');
+                const hora=Number.isNaN(fecha.getTime())?'Sin fecha':fecha.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+                const items=Array.isArray(comanda.items)?comanda.items:[];
+                const lineas=items.map(i=>{
+                    const sin=Array.isArray(i.sin)?i.sin:[];
+                    const importe=i.sub_total!=null?` — ${monedaAR(i.sub_total)}`:'';
+                    return `${Number(i.cantidad)||1}× ${String(i.nombre||'Producto')}${sin.length?' (sin '+sin.join(', ')+')':''}${importe}`;
                 }).join(' · ');
-                const estado = String(comanda.estado || 'pendiente').toLowerCase();
-                let clase = 'badge-pendiente', nombreEstado = 'Pendiente';
-                if (['proceso','en_preparacion','preparacion'].includes(estado)) { clase = 'badge-proceso'; nombreEstado = 'En preparación'; }
-                else if (['listo','listo_para_servir'].includes(estado)) { clase = 'badge-listo'; nombreEstado = 'Listo para servir'; }
-                else if (['entregado','despachado'].includes(estado)) { clase = ''; nombreEstado = 'Entregado'; }
-                const fecha = new Date(comanda.timestamp || Date.now());
-                const hora = Number.isNaN(fecha.getTime()) ? '—' : fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
-                const row = document.createElement('div');
-                row.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid var(--glass-border);border-radius:10px;padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:15px';
-                row.innerHTML = `<div style="flex:1;min-width:0">
-                    <div style="font-size:13px;color:var(--text-muted);line-height:1.6;overflow-wrap:anywhere">${escaparHtmlCarrito(lineas)}</div>
-                    <span style="font-size:11px;color:var(--text-muted);font-weight:bold">Hora: ${escaparHtmlCarrito(hora)}</span>
-                </div><span class="badge-estado ${clase}">${escaparHtmlCarrito(nombreEstado)}</span>`;
-                cont.appendChild(row);
+                const card=document.createElement('div');
+                card.style.cssText='background:rgba(255,255,255,.025);border:1px solid var(--glass-border);border-radius:10px;padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px';
+                card.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text-main);line-height:1.55;overflow-wrap:anywhere">${escaparHtmlCarrito(lineas)}</div><small style="color:var(--text-muted)">${escaparHtmlCarrito(hora)}</small><div style="font-size:12px;color:var(--text-muted);margin-top:4px">${comandaValida(comanda)?`Importe: ${escaparHtmlCarrito(monedaAR(totalComandaServidor(comanda)))}`:'Comanda rechazada: no se suma a la cuenta'}</div></div><span class="badge-estado ${clase}">${escaparHtmlCarrito(etiqueta[estado]||estado)}</span>`;
+                cont.appendChild(card);
             });
         }
-        async function cargarHistorialPedidos() {
-            if (consultaHistorialEnCurso) return;
-            consultaHistorialEnCurso = true;
-            const mesa = Number(sessionStorage.getItem('savage-mesa-numero'));
-            try {
-                const resp = await fetch(urlApiCarrito('cocina/tablero'), {cache:'no-store'});
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const datos = await resp.json();
-                if (!Array.isArray(datos)) throw new Error('Formato de comandas inválido');
-                const activas = datos.filter(c => Number(c.mesa_id) === mesa);
-                const historial = obtenerHistorialGuardado();
-                activas.forEach(c => {
-                    const id = c.id_comanda_uuid;
-                    const i = historial.findIndex(h => h.id_comanda_uuid === id);
-                    if (i >= 0) {
-                        historial[i] = {...historial[i],...c,items: Array.isArray(c.items) && c.items.length ? c.items : historial[i].items};
-                    } else {
-                        historial.push(c);
-                    }
+        async function cargarHistorialPedidos(){
+            if(consultaHistorialEnCurso)return;
+            consultaHistorialEnCurso=true;
+            try{
+                const numero_mesa=Number(sessionStorage.getItem('savage-mesa-numero'));
+                const pin=sessionStorage.getItem('savage-mesa-pin');
+                if(!Number.isInteger(numero_mesa)||!pin)throw new Error('Faltan los datos de acceso de esta mesa. Ingresá nuevamente con el PIN.');
+                const resp=await fetch(urlApiCarrito('mesa/historial'),{
+                    method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({numero_mesa,pin}),cache:'no-store'
                 });
-                // No etiquetar pedidos desaparecidos del tablero como entregados:
-                // el backend podría ocultarlos por otras razones.
-                historial.sort((a,b) => new Date(a.timestamp || 0)-new Date(b.timestamp || 0));
-                sessionStorage.setItem('savage-historial-pedidos', JSON.stringify(historial));
+                if(!resp.ok)throw new Error(resp.status===403?'El PIN ya no permite consultar esta mesa. Consultá al mozo.':`No se pudo verificar el historial (HTTP ${resp.status}).`);
+                const datos=await resp.json();
+                if(Number(datos.numero_mesa)!==numero_mesa||!Array.isArray(datos.comandas))throw new Error('El servidor devolvió un historial inválido.');
+                historialServidor=datos.comandas;
+                historialConsultaOK=true;
+                ultimoErrorHistorial=null;
                 mostrarHistorialGuardado();
-                cargarCarritoStorage();
-            } catch (error) {
-                console.warn('No se pudo actualizar el historial de cocina:', error);
+            }catch(error){
+                ultimoErrorHistorial=String(error.message||'No se pudo consultar la cuenta de esta mesa.');
+                console.warn('Error al sincronizar historial real:',error);
                 mostrarHistorialGuardado();
-            } finally { consultaHistorialEnCurso = false; }
+            }finally{consultaHistorialEnCurso=false;cargarCarritoStorage();}
         }
-        setInterval(cargarHistorialPedidos, 4000);
+        setInterval(cargarHistorialPedidos,4000);
 
         async function enviarPedidoACocina() {
             if (enviandoPedido) return;
@@ -551,16 +566,7 @@
                     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
                 });
                 if ([200,201,202].includes(resp.status)) {
-                    const historial = obtenerHistorialGuardado();
-                    if (!historial.some(h => h.id_comanda_uuid === uuid)) {
-                        historial.push({
-                            id_comanda_uuid:uuid, mesa_id: payload.mesa_id,
-                            estado:'pendiente',timestamp:new Date().toISOString(),
-                            items:carrito.map(i => ({id:i.id,nombre:i.nombre,precio:i.precio,cantidad:i.cantidad,
-                                sin:idsQuitables(i.sin),sin_detalle:normalizarDetalleSeleccion(i,idsQuitables(i.sin))}))
-                        });
-                        sessionStorage.setItem('savage-historial-pedidos',JSON.stringify(historial));
-                    }
+                    // El pedido ya está registrado por el servidor. Nunca lo duplicamos en storage local.
                     sessionStorage.removeItem('savage-carrito');
                     sessionStorage.removeItem('savage-envio-pendiente');
                     window.itemsBloqueadosPorStock = [];
@@ -588,8 +594,12 @@
         }
         function confirmarCierreMesa() {
             const carrito = obtenerCarrito();
-            const historial = obtenerHistorialGuardado();
-            const consumosEnviados = historial.length > 0;
+            if(!historialConsultaOK){
+                mostrarAviso('Cuenta no verificada','No podemos solicitar el cierre hasta consultar el historial real. Revisá la conexión e intentá nuevamente.');
+                return;
+            }
+            const historial = Array.isArray(historialServidor) ? historialServidor : [];
+            const consumosEnviados = historial.some(comandaValida);
             const metodo = consumosEnviados
                 ? (document.querySelector('input[name="metodo_pago"]:checked')?.value || 'efectivo')
                 : 'ninguno';
@@ -602,7 +612,7 @@
             }
             mostrarAviso(titulo, texto, async () => {
                 try {
-                    const resp = await fetch(urlApiCarrito('sesiones-mesa/pedir-cuenta'), {
+                    const resp = await fetch(urlApiCarrito('solicitar-cuenta'), {
                         method:'POST', headers:{'Content-Type':'application/json'},
                         body:JSON.stringify({
                             numero_mesa:Number(sessionStorage.getItem('savage-mesa-numero')),
@@ -615,9 +625,9 @@
                             typeof datos.detail === 'string' ? datos.detail : `El servidor rechazó la solicitud (HTTP ${resp.status}).`;
                         throw new Error(mensaje);
                     }
-                    mostrarAviso('Solicitud enviada', 'Se avisó al mozo que querés cerrar la mesa. Muchas gracias por visitarnos.', () => {
-                        sessionStorage.clear(); location.href = 'pin.html';
-                    });
+                    cuentaSolicitadaServidor=true;
+                    cargarCarritoStorage();
+                    mostrarAviso('Solicitud enviada', 'Se avisó al mozo que querés la cuenta. Podés consultar tus pedidos mientras esperás; la mesa será cerrada por el personal.');
                 } catch (error) {
                     mostrarAviso('No se pudo solicitar la cuenta', String(error.message || 'Revisá la conexión o avisá al mozo.'));
                 }
