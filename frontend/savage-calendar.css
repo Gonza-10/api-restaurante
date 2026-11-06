@@ -1,0 +1,38 @@
+/* Calendario Savage Grill: mismas clases visuales que el selector de especiales P33. */
+.sg-cal-shell{position:relative;display:block;width:100%;min-width:0}
+.sg-cal-shell>.sg-cal-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;border:0!important;opacity:0!important;clip-path:inset(50%);pointer-events:none!important;overflow:hidden}
+.sg-cal-btn{width:100%;min-height:50px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;border-radius:11px;border:1px solid var(--glass-border);background:#0a0a0a;color:var(--text-main);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:border-color .18s,box-shadow .18s}
+.sg-cal-btn:hover{border-color:rgba(255,122,0,.55)}
+.sg-cal-btn:focus-visible,.sg-global-calendar button:focus-visible{outline:2px solid var(--primary-orange);outline-offset:2px}
+.sg-cal-btn:disabled{opacity:.5;cursor:not-allowed}
+.sg-cal-btn.sg-cal-vacio .sg-cal-label{color:var(--text-muted)}
+.sg-cal-btn svg{flex:none;color:var(--primary-orange)}
+.sg-global-calendar[hidden]{display:none!important}
+.sg-global-calendar{position:fixed;z-index:4500;width:min(356px,calc(100vw - 24px));max-height:min(510px,calc(100vh - 24px));overflow:auto;background:#171717;color:#f6f6f6;border:1px solid rgba(255,122,0,.55);border-radius:16px;padding:16px;box-sizing:border-box;box-shadow:0 16px 48px rgba(0,0,0,.68);scrollbar-width:thin;scrollbar-color:#805039 transparent}
+.sg-global-calendar::-webkit-scrollbar{width:6px}
+.sg-global-calendar::-webkit-scrollbar-thumb{background:#805039;border-radius:8px}
+.sg-global-calendar .sg-je-calendar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.sg-global-calendar .sg-je-calendar-title{font-size:16px;font-weight:900;color:inherit;flex:1;text-align:center}
+.sg-global-calendar .sg-je-cal-arrow{width:35px;height:35px;flex-shrink:0;display:grid;place-items:center;background:#222;border:1px solid #383838;border-radius:9px;color:#f5f5f5;font-size:25px;cursor:pointer}
+.sg-global-calendar .sg-je-cal-arrow:hover{border-color:#ff7a00;color:#ff7a00;background:rgba(255,122,0,.08)}
+.sg-global-calendar .sg-je-cal-days,.sg-global-calendar .sg-je-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.sg-global-calendar .sg-je-cal-weekday{text-align:center;font-weight:800;font-size:11px;color:#a7a7a7;padding:7px 0}
+.sg-global-calendar .sg-je-cal-day{aspect-ratio:1/1;min-width:0;background:transparent;color:#ececec;border:1px solid transparent;border-radius:10px;font-size:13px;font-weight:750;cursor:pointer}
+.sg-global-calendar .sg-je-cal-day.otra-mes{color:#767676}
+.sg-global-calendar .sg-je-cal-day:hover:not(:disabled){background:rgba(255,122,0,.14);border-color:rgba(255,122,0,.45)}
+.sg-global-calendar .sg-je-cal-day.hoy:not(.elegido){border-color:#81502c;color:#ffab63}
+.sg-global-calendar .sg-je-cal-day.elegido{color:#fff;background:#ff7a00;box-shadow:0 3px 12px rgba(255,122,0,.25)}
+.sg-global-calendar .sg-je-cal-day:disabled{opacity:.3;cursor:not-allowed}
+.sg-global-calendar .sg-je-cal-actions{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #343434;margin-top:14px;padding-top:13px}
+.sg-global-calendar .sg-je-cal-actions button{background:transparent;border:1px solid #424242;border-radius:9px;color:#efefef;padding:9px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.sg-global-calendar .sg-je-cal-actions button:hover{border-color:#ff7a00;color:#ff9a44}
+body.light-mode .sg-cal-btn{background:#fff;color:#171717;border-color:#d6dce5}
+body.light-mode .sg-global-calendar{background:#fff;color:#1a1a1a;border-color:#f9a15a;box-shadow:0 15px 48px rgba(0,0,0,.2)}
+body.light-mode .sg-global-calendar .sg-je-cal-arrow{background:#f6f7f9;color:#111;border-color:#d4d9e1}
+body.light-mode .sg-global-calendar .sg-je-cal-day{color:#232323}
+body.light-mode .sg-global-calendar .sg-je-cal-day.otra-mes{color:#969696}
+body.light-mode .sg-global-calendar .sg-je-cal-day.elegido{color:#fff}
+body.light-mode .sg-global-calendar .sg-je-cal-weekday{color:#777}
+body.light-mode .sg-global-calendar .sg-je-cal-actions{border-top-color:#e1e1e1}
+body.light-mode .sg-global-calendar .sg-je-cal-actions button{border-color:#d1d1d1;color:#222}
+@media(prefers-reduced-motion:reduce){.sg-cal-btn{transition:none}}

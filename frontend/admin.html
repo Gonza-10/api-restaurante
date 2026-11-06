@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-calendar.css">
+    <script src="savage-calendar.js" defer></script>
     <style>
         /* ESTILOS EXCLUSIVOS PARA EL FORMULARIO ADMIN Y MODAL */
         .admin-form-group {
@@ -559,6 +561,39 @@
         @media(max-width:630px){#vista-reposicion .sg-rp-stats{grid-template-columns:1fr}}
         @media(prefers-reduced-motion:reduce){#vista-reposicion .sg-rp-tab,#vista-reposicion button{transition:none!important}#vista-reposicion .sg-rp-tab:hover,#vista-reposicion button:hover{transform:none!important}}
 
+        /* P33 - Calendario Savage Grill: sin calendario nativo del navegador */
+        #vista-jornada .sg-je-date-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:51px;padding:12px 15px;border-radius:11px;border:1px solid var(--glass-border);background:#0a0a0a;color:var(--text-main);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:border-color .18s,box-shadow .18s}
+        #vista-jornada .sg-je-date-trigger svg{flex-shrink:0;color:var(--primary-orange)}
+        #vista-jornada .sg-je-date-trigger:hover{border-color:rgba(255,122,0,.55)}
+        #vista-jornada .sg-je-date-trigger:focus-visible,#je-calendario button:focus-visible{outline:2px solid var(--primary-orange);outline-offset:2px}
+        #vista-jornada .sg-je-date-trigger.sin-fecha #je-fecha-visual{color:var(--text-muted)}
+        #vista-jornada .sg-je-date-hint{font-size:12px;color:var(--text-muted)}
+        #je-calendario[hidden]{display:none!important}
+        #je-calendario{position:fixed;z-index:4500;width:min(356px,calc(100vw - 24px));max-height:min(510px,calc(100vh - 24px));overflow:auto;background:#171717;color:#f6f6f6;border:1px solid rgba(255,122,0,.48);border-radius:17px;padding:17px;box-shadow:0 22px 65px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.1);scrollbar-width:thin;scrollbar-color:#86502d transparent}
+        #je-calendario .sg-je-calendar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+        #je-calendario .sg-je-calendar-title{font-size:16px;font-weight:900;color:inherit;flex:1;text-align:center}
+        #je-calendario .sg-je-cal-arrow{width:35px;height:35px;flex-shrink:0;display:grid;place-items:center;background:#222;border:1px solid #383838;border-radius:9px;color:#f5f5f5;font-size:22px;cursor:pointer}
+        #je-calendario .sg-je-cal-arrow:hover{border-color:#ff7a00;color:#ff7a00;background:rgba(255,122,0,.08)}
+        #je-calendario .sg-je-cal-days,#je-calendario .sg-je-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+        #je-calendario .sg-je-cal-weekday{text-align:center;font-weight:800;font-size:11px;color:#a7a7a7;padding:7px 0}
+        #je-calendario .sg-je-cal-day{aspect-ratio:1/1;min-width:0;background:transparent;color:#ececec;border:1px solid transparent;border-radius:10px;font-size:13px;font-weight:750;cursor:pointer;position:relative}
+        #je-calendario .sg-je-cal-day.otra-mes{color:#767676}
+        #je-calendario .sg-je-cal-day:hover{background:rgba(255,122,0,.14);border-color:rgba(255,122,0,.45)}
+        #je-calendario .sg-je-cal-day.hoy:not(.elegido){border-color:#81502c;color:#ffab63}
+        #je-calendario .sg-je-cal-day.elegido{color:#fff;background:#ff7a00;box-shadow:0 3px 12px rgba(255,122,0,.25)}
+        #je-calendario .sg-je-cal-actions{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #343434;margin-top:14px;padding-top:13px}
+        #je-calendario .sg-je-cal-actions button{background:transparent;border:1px solid #424242;border-radius:9px;color:#efefef;padding:9px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+        #je-calendario .sg-je-cal-actions button:hover{border-color:#ff7a00;color:#ff9a44}
+        body.light-mode #vista-jornada .sg-je-date-trigger{background:#fff;color:#171717;border-color:#d6dce5}
+        body.light-mode #je-calendario{background:#fff;color:#1a1a1a;border-color:#f9a15a;box-shadow:0 15px 48px rgba(0,0,0,.2)}
+        body.light-mode #je-calendario .sg-je-cal-arrow{background:#f6f7f9;color:#111;border-color:#d4d9e1}
+        body.light-mode #je-calendario .sg-je-cal-day{color:#232323}
+        body.light-mode #je-calendario .sg-je-cal-day.otra-mes{color:#969696}
+        body.light-mode #je-calendario .sg-je-cal-day.elegido{color:#fff}
+        body.light-mode #je-calendario .sg-je-cal-weekday{color:#777}
+        body.light-mode #je-calendario .sg-je-cal-actions{border-top-color:#e1e1e1}
+        body.light-mode #je-calendario .sg-je-cal-actions button{border-color:#d1d1d1;color:#222}
+        @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-date-trigger{transition:none}}
         /* P30 - Jornada y especiales */
         #vista-jornada .sg-je-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
         #vista-jornada .sg-je-tab{border:1px solid var(--glass-border);border-radius:11px;background:rgba(255,255,255,.025);color:var(--text-muted);padding:12px 18px;font:inherit;font-weight:850;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s,color .2s}
@@ -590,6 +625,7 @@
         @media(max-width:650px){#vista-jornada .sg-je-week{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-tab,#vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:none!important}#vista-jornada button:hover{transform:none!important}}
     </style>
+    <link rel="stylesheet" href="savage-logout.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
@@ -618,7 +654,7 @@
             <div class="sg-admin-avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
             <span id="admin-perfil-nombre">Verificando sesión...</span>
           </div>
-          <button type="button" class="sg-admin-side-btn" id="admin-salir"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar Sesión</span></button>
+          <button type="button" class="sg-admin-side-btn sg-logout-unificado sg-logout-lateral" id="admin-salir"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
         </div>
       </aside>
       <main class="sg-admin-main" id="admin-contenido">
@@ -1197,7 +1233,15 @@
                     <div class="sg-admin-field"><label for="je-turno-especial">Turno (opcional)</label><select id="je-turno-especial"><option value="">Todos los turnos</option></select></div>
                     <div class="sg-admin-field sg-admin-span2"><label for="je-modalidad">Frecuencia *</label><select id="je-modalidad"><option value="semanal">Día de la semana</option><option value="fecha">Fecha puntual</option></select></div>
                     <div class="sg-admin-field sg-admin-span2" id="je-caja-dia"><label for="je-dia">Día de la semana *</label><select id="je-dia"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
-                    <div class="sg-admin-field sg-admin-span2" id="je-caja-fecha" hidden><label for="je-fecha">Fecha del especial *</label><input id="je-fecha" type="date"></div>
+                    <div class="sg-admin-field sg-admin-span2" id="je-caja-fecha" hidden>
+                      <label for="je-fecha-trigger">Fecha del especial *</label>
+                      <input id="je-fecha" name="fecha_especial" type="hidden" value="">
+                      <button type="button" class="sg-je-date-trigger" id="je-fecha-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="je-calendario">
+                        <span id="je-fecha-visual">Seleccioná una fecha</span>
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+                      </button>
+                      <span class="sg-je-date-hint">Elegí el día de la promoción en el calendario.</span>
+                    </div>
                   </div>
                   <p class="sg-je-note" id="je-precio-nota">Elegí un producto para consultar su precio de lista.</p>
                   <div class="sg-admin-actions"><button type="submit" id="je-guardar" class="sg-admin-primary">Guardar especial</button><button type="button" id="je-cancelar-edicion" class="sg-admin-secondary" hidden>Cancelar edición</button></div>

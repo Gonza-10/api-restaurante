@@ -1,0 +1,69 @@
+/* Savage Grill · Unificación visual del botón de cierre de sesión (P35).
+   Se conserva la ubicación y el evento original en cada panel.
+   Administración/Gerencia: ancho completo en el panel lateral.
+   Mozo/Cocina: botón compacto en la cabecera. */
+.sg-logout-unificado {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 48px;
+    padding: 12px 17px;
+    border: 1px solid rgba(231,76,60,.30);
+    border-radius: 10px;
+    background: rgba(231,76,60,.10);
+    color: #e74c3c;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+    transform: none;
+    box-shadow: none;
+}
+.sg-logout-unificado:hover {
+    color: #fff;
+    background: #e74c3c;
+    border-color: #e74c3c;
+    transform: none;
+    box-shadow: none;
+}
+.sg-logout-unificado:active {
+    background: #bf342c;
+    border-color: #bf342c;
+    color: #fff;
+    transform: none;
+}
+.sg-logout-unificado:focus-visible {
+    outline: 2px solid var(--primary-orange, #ff7900);
+    outline-offset: 3px;
+}
+.sg-logout-unificado:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+.sg-logout-unificado .sg-logout-icon {
+    display: block;
+    flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+}
+.sg-logout-unificado.sg-logout-lateral {
+    width: 100%;
+}
+.sg-logout-unificado.sg-logout-cabecera {
+    width: auto;
+    flex-shrink: 0;
+}
+@media(max-width: 480px) {
+    .sg-logout-unificado.sg-logout-cabecera { padding: 10px 12px; min-height: 44px; font-size: 12px; }
+}
+@media(prefers-reduced-motion: reduce) {
+    .sg-logout-unificado {transition: none;}
+}

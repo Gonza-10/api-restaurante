@@ -2214,6 +2214,7 @@
         function marca(id, abierto){const o=q(id);if(o)o.hidden=!abierto;}
         function cambiarTab(nombre) {
             datos.subvista=nombre==='especiales'?'especiales':'jornada';
+            calendarioFecha.cerrar();
             ['jornada','especiales'].forEach(k=>{
                 marca(`sg-je-subview-${k}`,k===datos.subvista);
                 const b=document.querySelector(`[data-je-tab="${k}"]`);
@@ -2271,12 +2272,126 @@
                 avisoJe('je-historial-error','');
             }else{avisoJe('je-historial-error',rs[1].reason?.message||'No se pudo consultar el historial.');}
         }
+        // La fecha se conserva como ISO YYYY-MM-DD para mantener intacto el contrato de la API.
+        // El calendario visual no utiliza showPicker() ni input[type=date] del navegador.
+        const calendarioFecha = (() => {
+            let listo=false, popup=null, mesVisible=null;
+            const nombresDias=['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
+            const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const parse=s=>{
+                const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if(!m)return null;
+                const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+                return d.getFullYear()===Number(m[1])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[3])?d:null;
+            };
+            const fechaLarga=d=>d.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+            function sincronizar(){
+                const date=parse(q('je-fecha').value),button=q('je-fecha-trigger');
+                q('je-fecha-visual').textContent=date?fechaLarga(date):'Seleccioná una fecha';
+                button.classList.toggle('sin-fecha',!date);
+                button.setAttribute('aria-label',date?`Fecha seleccionada: ${fechaLarga(date)}. Cambiar fecha`:'Elegir fecha del especial');
+            }
+            function cerrar(devolverFoco=false){
+                if(!popup||popup.hidden)return;
+                popup.hidden=true;
+                q('je-fecha-trigger').setAttribute('aria-expanded','false');
+                if(devolverFoco)q('je-fecha-trigger').focus();
+            }
+            function elegir(fechaElegida){
+                q('je-fecha').value=iso(fechaElegida);
+                q('je-fecha').dispatchEvent(new Event('change',{bubbles:true}));
+                sincronizar();cerrar(true);
+            }
+            function cambiarMes(n){
+                mesVisible=new Date(mesVisible.getFullYear(),mesVisible.getMonth()+n,1);
+                pintar();
+            }
+            function pintar(){
+                popup.replaceChildren();
+                const top=document.createElement('div');top.className='sg-je-calendar-top';
+                const izq=document.createElement('button');izq.type='button';izq.className='sg-je-cal-arrow';izq.textContent='‹';izq.setAttribute('aria-label','Mes anterior');izq.addEventListener('click',()=>cambiarMes(-1));
+                const titulo=document.createElement('div');titulo.className='sg-je-calendar-title';titulo.id='je-calendario-mes';titulo.setAttribute('aria-live','polite');const nombreMes=mesVisible.toLocaleDateString('es-AR',{month:'long',year:'numeric'});titulo.textContent=nombreMes.charAt(0).toUpperCase()+nombreMes.slice(1);
+                const der=document.createElement('button');der.type='button';der.className='sg-je-cal-arrow';der.textContent='›';der.setAttribute('aria-label','Mes siguiente');der.addEventListener('click',()=>cambiarMes(1));
+                top.append(izq,titulo,der);popup.append(top);
+                const cab=document.createElement('div');cab.className='sg-je-cal-days';
+                nombresDias.forEach(d=>{const x=document.createElement('span');x.textContent=d;x.className='sg-je-cal-weekday';cab.append(x)});
+                popup.append(cab);
+                const grid=document.createElement('div');grid.className='sg-je-cal-grid';grid.setAttribute('role','group');grid.setAttribute('aria-label','Elegí un día');
+                const primero=new Date(mesVisible.getFullYear(),mesVisible.getMonth(),1);
+                const corrimiento=(primero.getDay()+6)%7;
+                const diasMes=new Date(mesVisible.getFullYear(),mesVisible.getMonth()+1,0).getDate();
+                const total=Math.ceil((corrimiento+diasMes)/7)*7;
+                const actual=parse(q('je-fecha').value);
+                const hoy=new Date(),claveHoy=iso(hoy),claveAct=actual?iso(actual):'';
+                for(let i=0;i<total;i++){
+                    const fechaCelda=new Date(primero.getFullYear(),primero.getMonth(),i-corrimiento+1);
+                    const clave=iso(fechaCelda);
+                    const b=document.createElement('button');b.type='button';b.className='sg-je-cal-day';
+                    b.textContent=String(fechaCelda.getDate());b.dataset.fecha=clave;
+                    if(fechaCelda.getMonth()!==mesVisible.getMonth())b.classList.add('otra-mes');
+                    if(clave===claveHoy)b.classList.add('hoy');
+                    if(clave===claveAct)b.classList.add('elegido');
+                    b.setAttribute('aria-label',fechaLarga(fechaCelda));b.setAttribute('aria-pressed',String(clave===claveAct));
+                    b.addEventListener('click',()=>elegir(fechaCelda));grid.append(b);
+                }
+                popup.append(grid);
+                const acciones=document.createElement('div');acciones.className='sg-je-cal-actions';
+                const borrar=document.createElement('button');borrar.type='button';borrar.textContent='Borrar fecha';borrar.addEventListener('click',()=>{q('je-fecha').value='';sincronizar();cerrar(true)});
+                const hoyBtn=document.createElement('button');hoyBtn.type='button';hoyBtn.textContent='Ir a hoy';hoyBtn.addEventListener('click',()=>{const d=new Date();mesVisible=new Date(d.getFullYear(),d.getMonth(),1);pintar();colocar();popup.querySelector(`[data-fecha="${iso(d)}"]`)?.focus();});
+                acciones.append(borrar,hoyBtn);popup.append(acciones);
+            }
+            function colocar(){
+                if(!popup||popup.hidden)return;
+                const rect=q('je-fecha-trigger').getBoundingClientRect();
+                const ancho=popup.getBoundingClientRect().width,alto=popup.getBoundingClientRect().height;
+                const izq=Math.max(12,Math.min(rect.left,window.innerWidth-ancho-12));
+                const debajo=window.innerHeight-rect.bottom>=Math.min(alto,410)+12;
+                const arriba=Math.max(12,rect.top-alto-7),abajo=Math.min(window.innerHeight-alto-12,rect.bottom+7);
+                popup.style.left=`${izq}px`;popup.style.top=`${debajo?abajo:arriba}px`;
+            }
+            function abrir(){
+                if(!popup.hidden){cerrar(true);return;}
+                const seleccionado=parse(q('je-fecha').value),d=seleccionado||new Date();
+                mesVisible=new Date(d.getFullYear(),d.getMonth(),1);
+                popup.hidden=false;q('je-fecha-trigger').setAttribute('aria-expanded','true');
+                pintar();colocar();
+                requestAnimationFrame(()=>popup.querySelector(`[data-fecha="${seleccionado?iso(seleccionado):iso(new Date())}"]`)?.focus());
+            }
+            function crear(){
+                if(listo)return;listo=true;
+                popup=document.createElement('div');popup.id='je-calendario';popup.hidden=true;
+                popup.setAttribute('role','dialog');popup.setAttribute('aria-modal','false');popup.setAttribute('aria-label','Calendario para fecha especial');
+                document.body.append(popup);
+                q('je-fecha-trigger').addEventListener('click',abrir);
+                document.addEventListener('pointerdown',e=>{if(!popup.hidden&&!popup.contains(e.target)&&!q('je-fecha-trigger').contains(e.target))cerrar();});
+                document.addEventListener('keydown',e=>{
+                    if(popup.hidden)return;
+                    if(e.key==='Escape'){e.preventDefault();cerrar(true);return;}
+                    if(!popup.contains(document.activeElement))return;
+                    if(e.key==='PageUp'||e.key==='PageDown'){e.preventDefault();cambiarMes(e.key==='PageUp'?-1:1);colocar();popup.querySelector('.sg-je-cal-day')?.focus();return;}
+                    const offset={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];
+                    if(offset===undefined)return;
+                    const foco=document.activeElement,d=parse(foco.dataset?.fecha);if(!d)return;
+                    e.preventDefault();d.setDate(d.getDate()+offset);
+                    if(d.getMonth()!==mesVisible.getMonth()||d.getFullYear()!==mesVisible.getFullYear()){
+                        mesVisible=new Date(d.getFullYear(),d.getMonth(),1);pintar();colocar();
+                    }
+                    popup.querySelector(`[data-fecha="${iso(d)}"]`)?.focus();
+                });
+                window.addEventListener('resize',colocar);
+                window.addEventListener('scroll',e=>{if(!popup.hidden&&e.target!==popup&&!popup.contains(e.target))cerrar();},true);
+                sincronizar();
+            }
+            return {crear,sincronizar,cerrar};
+        })();
         function cambiarModalidad(){
             const porFecha=q('je-modalidad').value==='fecha';
             marca('je-caja-dia',!porFecha);
             marca('je-caja-fecha',porFecha);
             q('je-dia').required=!porFecha;
-            q('je-fecha').required=porFecha;
+            // La fecha ISO se valida en guardarEspecial(), porque el input es oculto.
+            calendarioFecha.cerrar();
+            calendarioFecha.sincronizar();
         }
         function pintarPrecio(){
             const p=pProducto(q('je-producto').value);
@@ -2343,7 +2458,7 @@
             datos.editando=null;q('je-especial-form').reset();
             q('je-form-titulo').textContent='Programar especial del día';
             q('je-guardar').textContent='Guardar especial';q('je-cancelar-edicion').hidden=true;
-            cambiarModalidad();pintarPrecio();sgSelect.actualizar();
+            cambiarModalidad();calendarioFecha.sincronizar();pintarPrecio();sgSelect.actualizar();
         }
         function editarEspecial(e){
             datos.editando=objId(e);q('je-producto').value=texto(productoId(e));
@@ -2352,7 +2467,7 @@
             q('je-fecha').value=texto(fecha(e)).slice(0,10);q('je-dia').value=texto(dia(e)??'1');
             q('je-form-titulo').textContent=`Editar especial #${datos.editando}`;
             q('je-guardar').textContent='Guardar cambios';q('je-cancelar-edicion').hidden=false;
-            q('je-form-mensaje').hidden=true;pintarPrecio();sgSelect.actualizar();
+            q('je-form-mensaje').hidden=true;calendarioFecha.sincronizar();pintarPrecio();sgSelect.actualizar();
             q('je-especial-form').scrollIntoView({behavior:'smooth',block:'start'});
         }
         async function guardarEspecial(event){
@@ -2413,6 +2528,7 @@
         }
         function conectar(){
             if(datos.conectado)return;datos.conectado=true;
+            calendarioFecha.crear();
             document.querySelectorAll('[data-je-tab]').forEach(b=>b.addEventListener('click',()=>cambiarTab(b.dataset.jeTab)));
             q('je-actualizar-jornada').addEventListener('click',actualizarJornada);
             q('je-actualizar-historial').addEventListener('click',actualizarJornada);
