@@ -145,6 +145,7 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
 
     <script>
@@ -158,10 +159,52 @@
         const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
         let filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
 
-        const ingredientesHamburguesa = ['Cebolla', 'Tomate', 'Lechuga', 'Pepinillos', 'Aderezo', 'Panceta'];
+        // Los ingredientes quitables se reciben de la receta asignada en Django.
+        // En desarrollo con páginas file://, la conexión previamente configurada
+        // en app.js es el respaldo cuando config.js usa una ruta relativa.
+        function obtenerBaseCatalogo() {
+            const configurada = window.SAVAGE_CONFIG?.API_BASE_URL || '/api/v1';
+            if (window.location.protocol === 'file:' && !/^https?:\/\//i.test(configurada)) {
+                if (typeof API_URL === 'string' && /\/productos(?:\?.*)?$/.test(API_URL)) {
+                    return API_URL.replace(/\/productos(?:\?.*)?$/, '').replace(/\/+$/, '');
+                }
+                throw new Error('Configurá una URL absoluta para la API en config.js si abrís el HTML como archivo.');
+            }
+            return configurada.replace(/\/+$/, '');
+        }
+        const BASE_CATALOGO = obtenerBaseCatalogo();
+        const rutaApiCatalogo = (recurso) => `${BASE_CATALOGO}/${recurso.replace(/^\/+/, '')}`;
+        const IMAGEN_FALLBACK = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
+
+        function urlImagenCatalogo(valor) {
+            if (typeof valor !== 'string' || !valor.trim()) return IMAGEN_FALLBACK;
+            try {
+                const backend = new URL(rutaApiCatalogo('productos'), window.location.href);
+                const ruta = valor.trim();
+                const url = /^https?:\/\//i.test(ruta)
+                    ? new URL(ruta)
+                    : new URL(ruta.startsWith('/') ? ruta : `/${ruta}`, backend.origin);
+                return ['https:', 'http:'].includes(url.protocol) ? url.href : IMAGEN_FALLBACK;
+            } catch (_) { return IMAGEN_FALLBACK; }
+        }
+
+        function escaparHtml(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[caracter]);
+        }
+
+        let versionCatalogoActual = null;
+        let sincronizadorSSE = null;
+        let intervaloVersionCatalogo = null;
+        let actualizacionCatalogoEnCurso = false;
         let cantidadSeleccionadaModal = 1;
         let precioModalActual = 0;
 
+        // Si el usuario vuelve desde el carrito, refrescamos el contador de la barra.
+        window.addEventListener('pageshow', () => {
+            if (document.getElementById('texto-pedido')) actualizarBarraFlotanteDesdeStorage();
+        });
         document.addEventListener('DOMContentLoaded', () => {
             const mesaNum = sessionStorage.getItem('savage-mesa-numero');
             if (!mesaNum || !pinMesa) { window.location.href = 'pin.html'; return; }
@@ -175,37 +218,44 @@
             iniciarValidacionSesion();
             cargarCategoriasCatalogo();
             aplicarFiltrosAvanzados();
+            iniciarSincronizacionCatalogo();
             actualizarBarraFlotanteDesdeStorage(); 
         });
 
         async function verificarJornadaAbierta() {
             try {
-                const resp = await fetch('http://localhost:8080/api/v1/jornada/actual');
+                const resp = await fetch(rutaApiCatalogo('jornada/actual'));
                 const data = await resp.json();
                 if (!data.abierta) { document.getElementById('overlay-local-cerrado').style.display = 'flex'; }
             } catch(e) { console.error("Error verificando jornada:", e); }
         }
 
         function actualizarBarraFlotanteDesdeStorage() {
-            const c = JSON.parse(sessionStorage.getItem('savage-carrito')) || [];
+            let c = [];
+            try { c = JSON.parse(sessionStorage.getItem('savage-carrito')) || []; }
+            catch (_) { c = []; }
             window.carrito = c; 
             let total = 0;
-            c.forEach(item => total += (item.precio * (item.cantidad || 1)));
+            c.forEach(item => total += (Number(item.precio) * (Number(item.cantidad) || 1)));
             window.totalPedido = total;
             document.getElementById('total-pedido').textContent = `$${total.toFixed(2)}`;
-            document.getElementById('texto-pedido').textContent = `Mi pedido (${c.reduce((sum, i) => sum + i.cantidad, 0)})`;
+            document.getElementById('texto-pedido').textContent = `Mi pedido (${c.reduce((sum, i) => sum + (Number(i.cantidad) || 0), 0)})`;
         }
 
         async function cargarCategoriasCatalogo() {
             try {
-                const resp = await fetch('http://localhost:8080/api/v1/categorias');
+                const resp = await fetch(rutaApiCatalogo('categorias'));
                 if (!resp.ok) return;
                 const categorias = await resp.json();
                 
                 const contenedor = document.getElementById('contenedor-categorias');
                 let html = `<button class="btn-filtro active" onclick="aplicarFiltroCategoria('', this)" style="background: var(--primary-orange); color: white; border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Todos</button>`;
                 
-                categorias.forEach(cat => { html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${cat.id}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${cat.nombre}</button>`; });
+                categorias.forEach(cat => {
+                    const idCat = Number(cat.id);
+                    if (!Number.isSafeInteger(idCat)) return;
+                    html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${idCat}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${escaparHtml(cat.nombre)}</button>`;
+                });
                 
                 html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('vegetariano', this)" style="background: transparent; color: #2ecc71; border: 1px solid #2ecc71; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Vegetariano</button>`;
                 html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('sin_tacc', this)" style="background: transparent; color: #f39c12; border: 1px solid #f39c12; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>`;
@@ -231,7 +281,7 @@
             const max = document.getElementById('filtro-max').value;
             const orden = document.getElementById('filtro-orden').value;
 
-            let url = new URL('http://localhost:8080/api/v1/productos');
+            let url = new URL(rutaApiCatalogo('productos'), window.location.href);
             url.searchParams.append('incluir_inactivos', 'false');
 
             if (filtroActual.categoria) url.searchParams.append('categoria', filtroActual.categoria);
@@ -245,13 +295,107 @@
             try {
                 const respuesta = await fetch(url);
                 if (!respuesta.ok) throw new Error();
-                window.productosGlobal = await respuesta.json(); 
+                const productos = await respuesta.json();
+                if (!Array.isArray(productos)) throw new Error('Formato de productos inválido');
+                window.productosGlobal = productos;
                 document.getElementById('caja-error-conexion').style.display = 'none';
-                renderizarTarjetas(); 
+                renderizarTarjetas();
+                return true; 
             } catch (error) {
                 document.getElementById('caja-error-conexion').style.display = 'block';
                 document.getElementById('listado').innerHTML = '';
+                return false;
             }
+        }
+
+        // Sincronización del catálogo: SSE y respaldo por versión.
+        async function leerVersionCatalogo() {
+            const controller = new AbortController();
+            const temporizador = setTimeout(() => controller.abort(), 7000);
+            try {
+                const resp = await fetch(rutaApiCatalogo('catalogo/version'), {
+                    cache: 'no-store', signal: controller.signal
+                });
+                if (!resp.ok) return null;
+                const dato = await resp.json();
+                const version = dato?.version;
+                return version == null ? null : String(version);
+            } catch (_) { return null; }
+            finally { clearTimeout(temporizador); }
+        }
+
+        async function actualizarCatalogoSiCambio(versionNueva) {
+            if (versionNueva == null) return;
+            const nueva = String(versionNueva);
+            if (versionCatalogoActual === null) {
+                versionCatalogoActual = nueva;
+                sessionStorage.setItem('savage-version-menu', nueva);
+                return;
+            }
+            if (nueva === versionCatalogoActual || actualizacionCatalogoEnCurso) return;
+            actualizacionCatalogoEnCurso = true;
+            try {
+                const modal = document.getElementById('modal-detalle');
+                const abierto = modal.style.display === 'flex';
+                const idAbierto = Number(modal.dataset.productoId);
+                const selecciones = abierto
+                    ? new Set([...document.querySelectorAll('#lista-quitables .chk-quitable:checked')].map(el => Number(el.value)))
+                    : new Set();
+                const recargado = await aplicarFiltrosAvanzados();
+                if (!recargado) return;
+                await cargarCategoriasCatalogo();
+                versionCatalogoActual = nueva;
+                sessionStorage.setItem('savage-version-menu', nueva);
+                if (abierto && Number.isSafeInteger(idAbierto)) {
+                    const productoVigente = window.productosGlobal.find(p => Number(p.id) === idAbierto);
+                    if (!productoVigente) {
+                        cerrarModalDetalle();
+                        mostrarAviso('Menú actualizado', 'Este producto ya no está disponible. Revisá el catálogo antes de continuar.', '📋');
+                    } else {
+                        abrirModalDetalle(idAbierto);
+                        document.querySelectorAll('#lista-quitables .chk-quitable').forEach(chk => {
+                            chk.checked = selecciones.has(Number(chk.value));
+                        });
+                        if (selecciones.size && [...selecciones].some(id =>
+                            !document.querySelector(`#lista-quitables .chk-quitable[value="${id}"]`))) {
+                            mostrarAviso('Receta actualizada', 'Algunos ingredientes ya no se pueden quitar. Revisá la selección antes de agregar el plato.', '📋');
+                        }
+                    }
+                }
+            } finally { actualizacionCatalogoEnCurso = false; }
+        }
+
+        function iniciarSincronizacionCatalogo() {
+            // La comprobación también funciona cuando SSE no está disponible o falla por CORS.
+            leerVersionCatalogo().then(version => {
+                if (version !== null) {
+                    versionCatalogoActual = version;
+                    sessionStorage.setItem('savage-version-menu', version);
+                }
+            });
+            intervaloVersionCatalogo = setInterval(async () => {
+                const version = await leerVersionCatalogo();
+                await actualizarCatalogoSiCambio(version);
+            }, 15000);
+            if (typeof EventSource !== 'function') return;
+            try {
+                sincronizadorSSE = new EventSource(rutaApiCatalogo('catalogo/eventos'));
+                sincronizadorSSE.addEventListener('catalogo', async evento => {
+                    try {
+                        const recibido = JSON.parse(evento.data);
+                        if (recibido?.version != null) {
+                            await actualizarCatalogoSiCambio(recibido.version);
+                        } else {
+                            await actualizarCatalogoSiCambio(await leerVersionCatalogo());
+                        }
+                    } catch (error) { console.warn('Evento de catálogo no procesado:', error); }
+                });
+                sincronizadorSSE.onerror = () => {
+                    // Evitar reconexiones continuas si la página file:// impide SSE.
+                    sincronizadorSSE?.close();
+                    sincronizadorSSE = null;
+                };
+            } catch (_) { sincronizadorSSE = null; }
         }
 
         function mostrarAviso(titulo, mensaje, icono = '📋', callback = null) {
@@ -266,7 +410,7 @@
         async function validarSesionActiva() {
             if(!pinMesa) return; 
             try {
-                const resp = await fetch('http://localhost:8080/api/v1/acceso-mesa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pinMesa }) });
+                const resp = await fetch(rutaApiCatalogo('acceso-mesa'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pinMesa }) });
                 if (!resp.ok) { clearInterval(intervaloValidacion); mostrarAviso("Sesión Finalizada", "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", "👋", cerrarSesionCliente); }
             } catch (error) { console.error("Error validando la sesión:", error); }
         }
@@ -299,13 +443,9 @@
                     : `<span style="font-size: 20px; font-weight: 900; color: var(--text-main);">$${precioNormal.toFixed(2)}</span>`;
                 
                 // CORRECCIÓN IMÁGENES DINÁMICAS (Tomando url de la base de datos)
-                let imagenUrl = item.imagen_url || item.imagen || item.foto || '';
-                if (imagenUrl && imagenUrl.startsWith('/')) { 
-                    imagenUrl = `http://localhost:8080${imagenUrl}`;
-                } else if (!imagenUrl) {
-                    // Si el backend trae vacío, ponemos un placeholder genérico
-                    imagenUrl = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
-                }
+                const imagenUrl = urlImagenCatalogo(item.imagen_url || item.imagen || item.foto);
+                const idProductoSeguro = Number(item.id);
+                if (!Number.isSafeInteger(idProductoSeguro)) return;
                 
                 let badgesExtra = '';
                 if (tieneDescuento) badgesExtra += '<span title="Promoción" style="font-size: 10px; margin-left: 6px; background: var(--primary-orange); color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">PROMO</span>';
@@ -318,7 +458,7 @@
                 tarjeta.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
                 
                 tarjeta.innerHTML = `
-                    <img src="${imagenUrl}" alt="${item.nombre}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${item.id})" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80'">
+                    <img src="${escaparHtml(imagenUrl)}" alt="${escaparHtml(item.nombre)}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${idProductoSeguro})" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80'">
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
@@ -330,11 +470,11 @@
                                 ${tiempoEspera}
                             </div>
                         </div>
-                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${item.id})">${item.nombre}</h3>
-                        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">${item.descripcion || 'Deliciosa preparación exclusiva de nuestro chef.'}</p>
+                        <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${idProductoSeguro})">${escaparHtml(item.nombre)}</h3>
+                        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">${escaparHtml(item.descripcion || 'Deliciosa preparación exclusiva de nuestro chef.')}</p>
                         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto;">
                             ${htmlPrecio}
-                            <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease; height: fit-content;" onclick="abrirModalDetalle(${item.id})">+ Agregar</button>
+                            <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease; height: fit-content;" onclick="abrirModalDetalle(${idProductoSeguro})">+ Agregar</button>
                         </div>
                     </div>
                 `;
@@ -347,15 +487,25 @@
 
         function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement) {
             const productoOriginal = window.productosGlobal.find(p => p.id === idProducto);
-            let imagenUrl = productoOriginal ? (productoOriginal.imagen_url || productoOriginal.imagen || productoOriginal.foto || '') : '';
-            if (imagenUrl.startsWith('/')) imagenUrl = `http://localhost:8080${imagenUrl}`;
+            const imagenUrl = urlImagenCatalogo(productoOriginal?.imagen_url || productoOriginal?.imagen || productoOriginal?.foto);
+            // Canonicalizar IDs facilita agrupar dos personalizaciones equivalentes.
+            arrQuitables = [...new Set(arrQuitables.map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
+            const indexExistente = window.carrito.findIndex(item =>
+                Number(item.id) === Number(idProducto) &&
+                JSON.stringify((item.sin || []).map(Number).sort((a, b) => a - b)) === JSON.stringify(arrQuitables)
+            );
 
-            const indexExistente = window.carrito.findIndex(item => item.id === idProducto && JSON.stringify(item.sin) === JSON.stringify(arrQuitables));
-
+            // Los nombres son solo para mostrar; la API recibe IDs numéricos.
+            const quitablesProducto = Array.isArray(productoOriginal?.quitables) ? productoOriginal.quitables : [];
+            const sinDetalle = arrQuitables.map(id => ({
+                id,
+                nombre: quitablesProducto.find(q => Number(q.id) === id)?.nombre || 'Ingrediente no disponible'
+            }));
             if (indexExistente > -1) {
                 window.carrito[indexExistente].cantidad += cantidadSeleccionadaModal;
+                window.carrito[indexExistente].sin_detalle = sinDetalle;
             } else {
-                window.carrito.push({ id: idProducto, nombre: nombre, precio: precioModalActual, imagen: imagenUrl, sin: arrQuitables, cantidad: cantidadSeleccionadaModal });
+                window.carrito.push({ id: idProducto, nombre: nombre, precio: precioModalActual, imagen: imagenUrl, sin: arrQuitables, sin_detalle: sinDetalle, cantidad: cantidadSeleccionadaModal });
             }
 
             sessionStorage.setItem('savage-carrito', JSON.stringify(window.carrito));
@@ -416,12 +566,7 @@
             cantidadSeleccionadaModal = 1;
             document.getElementById('modal-cantidad').textContent = cantidadSeleccionadaModal;
 
-            let imagen = item.imagen_url || item.imagen || item.foto || '';
-            if (imagen && imagen.startsWith('/')) { 
-                imagen = `http://localhost:8080${imagen}`;
-            } else if (!imagen) {
-                imagen = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
-            }
+            const imagen = urlImagenCatalogo(item.imagen_url || item.imagen || item.foto);
             
             document.getElementById('detalle-img').src = imagen;
             document.getElementById('detalle-nombre').textContent = item.nombre;
@@ -439,37 +584,43 @@
 
             document.getElementById('detalle-porciones').textContent = `${porciones} (Demora aprox: ${tiempoEspera})`;
     
-            // AJUSTE: Si NO es categoría 1 (Bebidas), muestra ingredientes quitables
+            // Solo pueden quitarse ingredientes autorizados para ESTA receta.
+            // Se usan IDs numéricos: el backend rechaza nombres como "Tomate".
             const contQuitables = document.getElementById('contenedor-quitables');
             const listaQuitables = document.getElementById('lista-quitables');
-            listaQuitables.innerHTML = '';
+            listaQuitables.replaceChildren();
+            const quitables = Array.isArray(item.quitables)
+                ? item.quitables.filter(ing => Number.isSafeInteger(Number(ing.id)) && Number(ing.id) > 0 && typeof ing.nombre === 'string')
+                : [];
 
-            // ID 1 es Bebidas según la DB. Si NO es 1, habilitamos que el cliente le saque ingredientes (Hamburguesas, Ensaladas, Pizzas).
-            if (item.categoria !== 1) {
-                ingredientesHamburguesa.forEach(ing => {
-                    listaQuitables.innerHTML += `
-                        <label class="sin-ingrediente-checkbox">
-                            <input type="checkbox" class="chk-quitable" value="${ing}">
-                            <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">Sin ${ing}</span>
-                        </label>
-                    `;
-                });
-                contQuitables.style.display = 'block';
-            } else {
-                contQuitables.style.display = 'none';
-            }
+            quitables.forEach(ing => {
+                const label = document.createElement('label');
+                label.className = 'sin-ingrediente-checkbox';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'chk-quitable';
+                checkbox.value = String(Number(ing.id));
+                checkbox.dataset.nombre = ing.nombre;
+                const texto = document.createElement('span');
+                texto.style.cssText = 'font-size: 14px; font-weight: 500; color: var(--text-main);';
+                texto.textContent = `Sin ${ing.nombre}`;
+                label.append(checkbox, texto);
+                listaQuitables.appendChild(label);
+            });
+            contQuitables.style.display = quitables.length ? 'block' : 'none';
 
             const btnDetalleAgregar = document.getElementById('btn-detalle-agregar');
-            btnDetalleAgregar.onclick = function() { 
-                const arrSin = [];
-                document.querySelectorAll('.chk-quitable:checked').forEach(chk => { arrSin.push(chk.value); });
-                agregarAlCarritoDesdeDetalle(item.id, item.nombre, arrSin, this); 
+            btnDetalleAgregar.onclick = function() {
+                const arrSin = [...listaQuitables.querySelectorAll('.chk-quitable:checked')]
+                    .map(chk => Number(chk.value));
+                agregarAlCarritoDesdeDetalle(item.id, item.nombre, arrSin, this);
             };
-            
+            document.getElementById('modal-detalle').dataset.productoId = String(item.id);
+
             document.getElementById('modal-detalle').style.display = 'flex';
         }
 
-        function abrirModalCarrito() { if (window.carrito.length === 0) return; window.location.href = 'carrito.html'; }
+        function abrirModalCarrito() { window.location.href = 'carrito.html'; }
         function cerrarSesionCliente() { sessionStorage.clear(); window.location.href = 'pin.html'; }
     </script>
 </body>
