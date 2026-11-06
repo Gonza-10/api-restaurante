@@ -20,6 +20,103 @@
         }
         .sin-ingrediente-checkbox:hover { border-color: var(--primary-orange); }
         .sin-ingrediente-checkbox input[type="checkbox"] { accent-color: var(--primary-orange); width: 18px; height: 18px; cursor: pointer; }
+
+        /* ===== Catálogo: controles, movimiento suave y barra Savage Grill ===== */
+        html { scrollbar-width: thin; scrollbar-color: #875138 #100f0f; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar { width: 8px; height: 8px; }
+        html::-webkit-scrollbar-track, body::-webkit-scrollbar-track, *::-webkit-scrollbar-track { background: #100f0f; }
+        html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb, *::-webkit-scrollbar-thumb { background: #79503a; border: 2px solid #141111; border-radius: 10px; }
+        html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, *::-webkit-scrollbar-thumb:hover { background: #ff7a00; }
+        body, #modal-detalle, #modal-aviso { scrollbar-width: thin; scrollbar-color: #875138 #100f0f; }
+        body.light-mode { scrollbar-color: #c17e57 #f1f1f1; }
+
+        .sg-filtros { display: grid; grid-template-columns: minmax(235px,1fr) minmax(145px,165px) minmax(145px,165px) minmax(188px,205px) auto; align-items:end; gap:12px; }
+        .sg-filtro-campo { display:flex; flex-direction:column; gap:6px; min-width:0; }
+        .sg-filtro-campo label { color:var(--text-muted); font-size:12px; font-weight:700; padding-left:3px; }
+        .sg-filtro-input { display:block; width:100%; min-width:0; min-height:48px; padding:12px 14px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,.05); color:var(--text-main); font:inherit; font-size:13px; outline:none; transition:border-color .2s,box-shadow .2s; }
+        .sg-filtro-input:focus { border-color:var(--primary-orange); box-shadow:0 0 0 3px rgba(255,122,0,.13); }
+        .sg-filtro-input::placeholder { color:var(--text-muted); opacity:1; }
+        .sg-filtro-input[type=number] { appearance:textfield; -moz-appearance:textfield; }
+        .sg-filtro-input[type=number]::-webkit-inner-spin-button, .sg-filtro-input[type=number]::-webkit-outer-spin-button { appearance:none; -webkit-appearance:none; margin:0; }
+        .sg-boton-buscar { min-height:48px; padding:12px 24px; border:0; border-radius:10px; cursor:pointer; background:var(--primary-orange); color:#fff; font:inherit; font-size:14px; font-weight:800; transition:transform .22s ease,box-shadow .22s ease,background .22s ease; }
+        .sg-boton-buscar:hover { transform:translateY(-2px); background:var(--primary-hover); box-shadow:0 8px 22px rgba(255,122,0,.28); }
+        .sg-boton-buscar:active { transform:translateY(0) scale(.98); }
+        .sg-boton-buscar:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        #contenedor-categorias { padding:3px 0 9px; }
+        #contenedor-categorias .btn-filtro { background:transparent; color:var(--text-main); border:1px solid var(--glass-border); padding:9px 16px; border-radius:22px; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:transform .23s ease,box-shadow .23s ease,border-color .23s ease,color .23s ease,background .23s ease; }
+        #contenedor-categorias .btn-filtro[data-filtro-tipo="vegetariano"] { color:#2ecc71; border-color:#2ecc71; }
+        #contenedor-categorias .btn-filtro[data-filtro-tipo="sin_tacc"] { color:#f0ad24; border-color:#f0ad24; }
+        #contenedor-categorias .btn-filtro.active { background:var(--primary-orange); color:#fff; border-color:var(--primary-orange); }
+        #contenedor-categorias .btn-filtro.active[data-filtro-tipo="vegetariano"] { background:#208b4e; border-color:#2ecc71; color:#fff; }
+        #contenedor-categorias .btn-filtro.active[data-filtro-tipo="sin_tacc"] { background:#a96c0c; border-color:#f0ad24; color:#fff; }
+        #contenedor-categorias .btn-filtro:hover { transform:translateY(-3px); border-color:var(--primary-orange); box-shadow:0 7px 17px rgba(255,122,0,.23); }
+        #contenedor-categorias .btn-filtro:active { transform:translateY(-1px) scale(.97); }
+        #contenedor-categorias .btn-filtro:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        /* Select decorado siguiendo el patrón visual del panel de Administración */
+        .sg-select-shell { position:relative; display:block; width:100%; min-width:0; }
+        .sg-select-native { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:0 !important; opacity:0 !important; border:0 !important; pointer-events:none; clip-path:inset(50%); }
+        .sg-select-button { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-width:0; min-height:48px; padding:12px 14px; background:#0b0b0b; border:1px solid var(--glass-border); color:var(--text-main); border-radius:10px; font:inherit; font-size:13px; font-weight:600; text-align:left; cursor:pointer; transition:border-color .2s, box-shadow .2s; }
+        .sg-select-button:hover, .sg-select-button[aria-expanded="true"] { border-color:var(--primary-orange); box-shadow:0 0 0 2px rgba(255,122,0,.12); }
+        .sg-select-button:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-select-value { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sg-select-arrow { flex:0 0 9px; width:9px; height:9px; border-right:2px solid var(--primary-orange); border-bottom:2px solid var(--primary-orange); transform:translateY(-2px) rotate(45deg); transition:transform .2s; }
+        .sg-select-button[aria-expanded="true"] .sg-select-arrow { transform:translateY(2px) rotate(225deg); }
+        .sg-select-list { position:fixed; z-index:4200; overflow:auto; max-height:285px; padding:6px; border:1px solid rgba(255,122,0,.6); border-radius:11px; background:#151313; box-shadow:0 16px 40px rgba(0,0,0,.65); scrollbar-width:thin; scrollbar-color:#875138 #151313; }
+        .sg-select-list[hidden] { display:none!important; }
+        .sg-select-option { padding:12px 13px; border-radius:7px; color:#f5f5f5; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+        .sg-select-option:hover,.sg-select-option.sg-highlight { background:rgba(255,122,0,.23); }
+        .sg-select-option[aria-selected="true"] { background:rgba(255,122,0,.13); color:#ffaf6a; }
+        .sg-select-option:focus-visible { outline:1px solid var(--primary-orange); }
+        /* Banner conectado al precio especial vigente */
+        .sg-especial { position:relative; isolation:isolate; display:flex; min-height:320px; border:1px solid var(--primary-orange); border-radius:24px; margin-bottom:40px; padding:48px 50px; overflow:hidden; background:#1a1410; box-shadow:0 15px 35px rgba(255,122,0,.15); }
+        .sg-especial-fondo { position:absolute; z-index:-2; inset:0; background-position:center; background-size:cover; transition:opacity .25s ease; }
+        .sg-especial::before { content:""; position:absolute; z-index:-1; inset:0; background:linear-gradient(90deg,rgba(13,11,11,.98) 0%,rgba(13,11,11,.85) 38%,rgba(13,11,11,.3) 100%); }
+        .sg-especial-contenido { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; width:100%; max-width:650px; }
+        .sg-especial-etiqueta { padding:8px 16px; border-radius:8px; background:var(--primary-orange); color:#fff; font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1.4px; }
+        .sg-especial h2 { color:#fff; font-weight:900; line-height:1.12; font-size:clamp(28px,3.3vw,48px); margin:16px 0; text-shadow:2px 3px 6px #000; }
+        .sg-especial p { max-width:570px; color:#f4f4f4; line-height:1.6; margin:0 0 23px; font-size:16px; font-weight:600; text-shadow:1px 2px 4px #000; }
+        .sg-especial-precios { display:flex; align-items:center; gap:14px; padding:9px 18px; background:rgba(0,0,0,.67); border:1px solid rgba(255,255,255,.1); border-radius:12px; backdrop-filter:blur(6px); }
+        .sg-especial-precios .antes { color:#a6a6a6; font-size:17px; text-decoration:line-through; }
+        .sg-especial-precios .actual { color:var(--primary-orange); font-size:clamp(24px,2.9vw,34px); font-weight:900; }
+        .sg-especial-precios[hidden], .sg-especial-acciones[hidden], .sg-especial-nav[hidden], .sg-especial-contador[hidden] { display:none !important; }
+        .sg-especial-acciones { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:20px; }
+        .sg-especial-ver,.sg-especial-nav { border:1px solid rgba(255,255,255,.25); background:rgba(18,18,18,.78); color:#fff; border-radius:10px; min-height:38px; padding:9px 15px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; transition:transform .2s, border-color .2s,box-shadow .2s; }
+        .sg-especial-ver:hover,.sg-especial-nav:hover { transform:translateY(-2px); border-color:var(--primary-orange); box-shadow:0 5px 18px rgba(255,122,0,.24); }
+        .sg-especial-ver:disabled,.sg-especial-nav:disabled { opacity:.4; cursor:default; }
+        .sg-especial-contador { color:#f4f4f4; font-size:12px; font-weight:700; }
+        body.light-mode .sg-filtro-input,body.light-mode .sg-select-button { color:#181818; background:#f9f9f9; border-color:#d1d1d1; }
+        body.light-mode .sg-select-list { background:#fff; border-color:#ff7a00; }
+        body.light-mode .sg-select-option { color:#111; }
+        body.light-mode #contenedor-categorias .btn-filtro { color:#222; }
+        body.light-mode #contenedor-categorias .btn-filtro.active { color:#fff; }
+        @media (max-width:1100px) { .sg-filtros { grid-template-columns:minmax(0,1fr) minmax(150px,1fr) minmax(150px,1fr); } .sg-filtro-busqueda { grid-column:1/-1; } .sg-filtro-orden { grid-column:1/3; } }
+        @media (max-width:580px) { .sg-filtros { grid-template-columns:repeat(2,minmax(0,1fr)); } .sg-filtro-orden { grid-column:1/-1; } .sg-boton-buscar { grid-column:1/-1; } .sg-especial { min-height:320px; padding:26px 22px; } .sg-especial::before { background:linear-gradient(90deg,rgba(13,11,11,.95),rgba(13,11,11,.72)); } .sg-especial p { font-size:14px; } }
+        @media (prefers-reduced-motion:reduce) { #contenedor-categorias .btn-filtro,.sg-boton-buscar,.sg-especial-ver,.sg-especial-nav { transition:none; } }
+
+        /* P21: precios legibles y acciones compactas sin saltos de línea. */
+        .sg-card-footer { display:grid; grid-template-columns:minmax(0,1fr) max-content; gap:10px; align-items:end; width:100%; }
+        .sg-card-price { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; gap:3px; font-variant-numeric:tabular-nums; }
+        .sg-card-price .sg-precio-actual { font-size:clamp(17px,1.75vw,19px); font-weight:900; color:var(--text-main); white-space:nowrap; line-height:1.15; letter-spacing:-.4px; }
+        .sg-card-price .sg-precio-oferta { color:var(--primary-orange); }
+        .sg-card-price .sg-precio-anterior { font-size:12px; color:var(--text-muted); text-decoration:line-through; white-space:nowrap; }
+        .sg-card-add { display:inline-flex!important; align-items:center; justify-content:center; padding:9px 12px!important; border-radius:10px; font-size:13px!important; font-weight:800; line-height:1.15; white-space:nowrap; min-width:0; max-width:100%; height:auto!important; }
+        .sg-modal-footer { display:grid!important; grid-template-columns:minmax(0,1fr) max-content max-content; align-items:center!important; gap:10px; }
+        .sg-modal-price { min-width:0; font-variant-numeric:tabular-nums; }
+        .sg-modal-price #detalle-precio { display:block; font-size:clamp(20px,2.15vw,25px)!important; white-space:nowrap; letter-spacing:-.5px; }
+        .sg-modal-controls { display:contents!important; }
+        .sg-modal-qty { gap:11px!important; padding:8px 11px!important; }
+        .sg-modal-add { display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; line-height:1!important; padding:12px 14px!important; font-size:13px!important; }
+        @media (max-width:520px) {
+            .sg-modal-footer { grid-template-columns:minmax(0,1fr) max-content; row-gap:12px; }
+            .sg-modal-add { grid-column:1/-1; width:100%; }
+        }
+        /* El banner se reserva para descuentos reales, nunca para precios normales. */
+        .sg-especial[hidden] { display:none!important; }
+        .sg-especial.sg-especial-interactivo { cursor:pointer; transition:transform .2s ease,box-shadow .2s ease; }
+        .sg-especial.sg-especial-interactivo:hover { transform:translateY(-2px); box-shadow:0 19px 40px rgba(255,122,0,.25); }
+        .sg-especial.sg-especial-interactivo:focus-visible { outline:3px solid var(--primary-orange); outline-offset:4px; }
+        .sg-especial-descuento { color:#fff; background:rgba(255,122,0,.9); font-size:12px; font-weight:900; padding:5px 9px; border-radius:8px; margin:10px 0 0; }
+        @media (prefers-reduced-motion:reduce) { .sg-especial.sg-especial-interactivo { transition:none; } }
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
@@ -44,25 +141,48 @@
             <p style="color: var(--text-muted); font-size: 16px; max-width: 400px; line-height: 1.5;">La jornada actual ha finalizado. No estamos tomando pedidos en este momento.</p>
         </div>
 
-        <div style="background: linear-gradient(to right, rgba(18,18,18,0.98) 20%, rgba(18,18,18,0.4)), url('https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80') center/cover; border-radius: 24px; padding: 50px; margin-bottom: 40px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 320px; border: 1px solid var(--primary-orange); box-shadow: 0 15px 35px rgba(255, 122, 0, 0.15); position: relative; overflow: hidden;">
-            <span style="background-color: var(--primary-orange); color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px;">Especial del Día</span>
-            <h2 style="color: #FFFFFF; font-size: 48px; margin: 0 0 16px 0; font-weight: 900; text-shadow: 3px 3px 6px rgba(0,0,0,0.9); line-height: 1.1;">Savage Burger Doble</h2>
-            <p style="color: #F5F5F5; max-width: 550px; line-height: 1.6; margin: 0 0 24px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); font-size: 17px; font-weight: 600;">Doble medallón de carne, cuádruple cheddar, bacon ahumado crujiente, cebolla caramelizada y nuestra salsa en pan brioche.</p>
-            <div style="display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 12px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1);">
-                <span style="color: var(--text-muted); text-decoration: line-through; font-size: 18px;">$18000.00</span><span style="font-size: 34px; font-weight: 900; color: var(--primary-orange); text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">$14500.00</span>
+        <!-- Especiales vigentes desde /productos: sin precios ni platos inventados en el HTML. -->
+        <section class="sg-especial" id="especial-del-dia" aria-label="Especial del día" aria-live="polite" tabindex="0" hidden>
+            <div class="sg-especial-fondo" id="especial-fondo" aria-hidden="true"></div>
+            <div class="sg-especial-contenido">
+                <span class="sg-especial-etiqueta" id="especial-etiqueta">Especial del día</span>
+                <h2 id="especial-nombre">Cargando el menú…</h2>
+                <p id="especial-descripcion">Consultando los productos disponibles.</p>
+                <div class="sg-especial-precios" id="especial-precios" hidden></div>
+                <div class="sg-especial-acciones" id="especial-acciones" hidden>
+                    <span class="sg-especial-descuento" id="especial-descuento" aria-label="Descuento vigente"></span>
+                    <button type="button" class="sg-especial-nav" id="especial-anterior" aria-label="Especial anterior">←</button>
+                    <span class="sg-especial-contador" id="especial-contador"></span>
+                    <button type="button" class="sg-especial-nav" id="especial-siguiente" aria-label="Especial siguiente">→</button>
+                </div>
             </div>
-        </div>
+        </section>
 
         <div style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px;">
             <span style="color: var(--primary-orange); font-weight: bold; letter-spacing: 2px; font-size: 14px;">NUESTRA CARTA</span>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-                <input type="text" id="filtro-texto" placeholder="Buscar plato o ingrediente..." style="flex-grow: 1; padding: 12px 16px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; outline: none;">
-                <input type="number" id="filtro-min" placeholder="Precio Min ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
-                <input type="number" id="filtro-max" placeholder="Precio Max ($)" style="width: 120px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
-                <select id="filtro-orden" style="padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.8); border: 1px solid var(--glass-border); color: white;">
-                    <option value="">Ordenar por defecto</option><option value="precio">Menor Precio</option><option value="-precio">Mayor Precio</option><option value="nombre">Nombre (A-Z)</option>
-                </select>
-                <button onclick="aplicarFiltrosAvanzados()" style="padding: 12px 24px; border-radius: 10px; background: var(--primary-orange); color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s;">Buscar</button>
+            <div class="sg-filtros">
+                <div class="sg-filtro-campo sg-filtro-busqueda">
+                    <label for="filtro-texto">Buscar por nombre o ingrediente</label>
+                    <input class="sg-filtro-input" type="text" id="filtro-texto" placeholder="Buscar plato o ingrediente…" autocomplete="off">
+                </div>
+                <div class="sg-filtro-campo">
+                    <label for="filtro-min">Precio mínimo</label>
+                    <input class="sg-filtro-input" type="number" id="filtro-min" min="0" step="any" inputmode="decimal" placeholder="Desde ($)">
+                </div>
+                <div class="sg-filtro-campo">
+                    <label for="filtro-max">Precio máximo</label>
+                    <input class="sg-filtro-input" type="number" id="filtro-max" min="0" step="any" inputmode="decimal" placeholder="Hasta ($)">
+                </div>
+                <div class="sg-filtro-campo sg-filtro-orden">
+                    <label for="filtro-orden">Ordenar productos</label>
+                    <select id="filtro-orden" aria-label="Ordenar productos">
+                        <option value="">Ordenar por defecto</option>
+                        <option value="precio">Menor precio</option>
+                        <option value="-precio">Mayor precio</option>
+                        <option value="nombre">Nombre (A–Z)</option>
+                    </select>
+                </div>
+                <button type="button" class="sg-boton-buscar" onclick="aplicarFiltrosAvanzados()">Buscar</button>
             </div>
             <div id="contenedor-categorias" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
@@ -87,9 +207,9 @@
             <button onclick="cerrarModalMesa()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
             <h2 id="titulo-modal-mesa" style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">MESA #--</h2>
             <div style="display: flex; flex-direction: column; gap: 16px;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span><span id="span-mozo" style="font-weight: 600;">(Pendiente API)</span></div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span><span id="span-mozo" style="font-weight: 600;">Consultando…</span></div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Comensales</span><span id="span-comensales" style="font-weight: 600;">-- Personas</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Tiempo en mesa</span><span id="span-cronometro" style="font-weight: 600; color: #58d68d; font-family: monospace;">00:00:00</span></div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;" title="Se cuenta desde que el mozo abre la mesa">Tiempo en mesa</span><span id="span-cronometro" style="font-weight: 600; color: #58d68d; font-family: monospace;" title="Desde la apertura de la mesa registrada por el mozo">Consultando…</span></div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;"><span style="color: var(--text-muted); font-size: 14px;">PIN de la Mesa</span><span id="span-pin" style="font-size: 28px; font-weight: 900; letter-spacing: 6px; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 8px 20px; border-radius: 12px; border: 1px solid var(--glass-border);">----</span></div>
             </div>
         </div>
@@ -117,19 +237,19 @@
                     <div id="lista-quitables" style="display: flex; flex-direction: column;"></div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 20px;">
-                    <div style="display: flex; flex-direction: column;">
+                <div class="sg-modal-footer" style="border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                    <div class="sg-modal-price" style="display: flex; flex-direction: column;">
                         <span style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Precio final</span>
                         <span id="detalle-precio" style="font-size: 26px; font-weight: 900; color: var(--primary-orange);"></span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <div class="sg-modal-controls">
+                        <div class="sg-modal-qty" style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
                             <button onclick="cambiarCantidadModal(-1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 20px;">-</button>
                             <span id="modal-cantidad" style="font-weight: 900; font-size: 18px; min-width: 20px; text-align: center;">1</span>
                             <button onclick="cambiarCantidadModal(1)" style="background: transparent; border: none; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 20px;">+</button>
                         </div>
-                        <button id="btn-detalle-agregar" class="btn-orange" style="padding: 12px 24px; font-size: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background-color: var(--primary-orange); color: white; box-shadow: 0 4px 15px rgba(255,122,0,0.3);">
-                            + Agregar
+                        <button id="btn-detalle-agregar" class="btn-orange sg-modal-add" style="padding: 12px 24px; font-size: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; background-color: var(--primary-orange); color: white; box-shadow: 0 4px 15px rgba(255,122,0,0.3);">
+                            Agregar
                         </button>
                     </div>
                 </div>
@@ -145,6 +265,296 @@
         </div>
     </div>
 
+
+    <script>
+    // Desplegable idéntico al del panel administrativo: sin el menú celeste nativo.
+    (() => {
+    const sgSelect = (() => {
+        const controles = new WeakMap();
+        let actual = null;
+        let menu = null;
+        let opcionesAbiertas = [];
+        let indiceResaltado = -1;
+        let prefijoBusqueda = '';
+        let relojBusqueda;
+
+        function crearMenu() {
+            if (menu) return menu;
+            menu = document.createElement('div');
+            menu.id = 'sg-select-listado';
+            menu.className = 'sg-select-list';
+            menu.setAttribute('role', 'listbox');
+            menu.setAttribute('aria-label', 'Opciones de selección');
+            menu.hidden = true;
+            document.body.appendChild(menu);
+            return menu;
+        }
+
+        function etiquetaDe(select) {
+            const etiquetas = select.labels ? Array.from(select.labels) : [];
+            const etiqueta = etiquetas[0];
+            if (etiqueta) return (etiqueta.textContent || '').replace(/\*/g, '').trim();
+            return select.getAttribute('aria-label') || 'Seleccionar una opción';
+        }
+
+        function actualizarBoton(select) {
+            const ref = controles.get(select);
+            if (!ref) return;
+            const opcion = select.options[select.selectedIndex];
+            ref.valor.textContent = opcion?.textContent || 'Seleccioná una opción';
+            ref.boton.classList.toggle('sg-select-placeholder', !select.value);
+            ref.boton.disabled = select.disabled;
+            ref.boton.setAttribute('aria-label', `${etiquetaDe(select)}: ${ref.valor.textContent}`);
+            if (actual?.select === select && !menu.hidden) {
+                actual = ref;
+                mostrarOpciones();
+            }
+        }
+
+        function cerrar({ devolverFoco = false } = {}) {
+            if (!actual) return;
+            const ref = actual;
+            actual = null;
+            if (menu) {
+                menu.hidden = true;
+                menu.replaceChildren();
+            }
+            opcionesAbiertas = [];
+            indiceResaltado = -1;
+            ref.boton.setAttribute('aria-expanded', 'false');
+            ref.boton.removeAttribute('aria-activedescendant');
+            if (devolverFoco && ref.boton.isConnected) ref.boton.focus();
+        }
+
+        function ubicarMenu() {
+            if (!actual || !menu || menu.hidden) return;
+            const r = actual.boton.getBoundingClientRect();
+            if (!r.width || !r.height) { cerrar(); return; }
+            const margen = 8;
+            const ancho = Math.max(160, Math.min(r.width, window.innerWidth - margen * 2));
+            menu.style.width = `${ancho}px`;
+            const izquierdo = Math.max(margen, Math.min(r.left, window.innerWidth - ancho - margen));
+            menu.style.left = `${izquierdo}px`;
+            menu.style.top = `${r.bottom + 6}px`;
+            menu.style.maxHeight = `${Math.min(300, Math.max(100, window.innerHeight - 24))}px`;
+            const alto = menu.getBoundingClientRect().height;
+            const debajo = window.innerHeight - r.bottom - 8;
+            const arriba = r.top - 8;
+            if (debajo < Math.min(alto, 190) && arriba > debajo) {
+                menu.style.top = `${Math.max(margen, r.top - alto - 6)}px`;
+            } else if (debajo < alto) {
+                menu.style.maxHeight = `${Math.max(90, debajo - 6)}px`;
+            }
+        }
+
+        function resaltar(indice) {
+            const habilitadas = opcionesAbiertas
+                .map((registro, idx) => ({ registro, idx }))
+                .filter(({ registro }) => !registro.option.disabled);
+            if (!habilitadas.length) return;
+            const encontrada = habilitadas.find(x => x.idx === indice);
+            if (!encontrada) return;
+            indiceResaltado = indice;
+            opcionesAbiertas.forEach(({ nodo }, idx) => {
+                nodo.classList.toggle('sg-select-highlight', idx === indice);
+            });
+            actual.boton.setAttribute('aria-activedescendant', encontrada.registro.nodo.id);
+            encontrada.registro.nodo.scrollIntoView({ block: 'nearest' });
+        }
+
+        function mostrarOpciones() {
+            if (!actual) return;
+            const lista = crearMenu();
+            lista.replaceChildren();
+            opcionesAbiertas = [];
+            const opciones = Array.from(actual.select.options);
+            opciones.forEach((option, index) => {
+                const fila = document.createElement('div');
+                fila.className = 'sg-select-option';
+                fila.id = `sg-select-opcion-${index}`;
+                fila.setAttribute('role', 'option');
+                fila.setAttribute('aria-selected', String(option.selected));
+                fila.setAttribute('aria-disabled', String(option.disabled));
+                fila.textContent = option.textContent;
+                fila.addEventListener('pointerdown', e => e.preventDefault());
+                fila.addEventListener('click', () => elegir(index));
+                lista.appendChild(fila);
+                opcionesAbiertas.push({ option, nodo: fila, index });
+            });
+            lista.hidden = false;
+            ubicarMenu();
+            const seleccionado = opciones.findIndex(o => o.selected && !o.disabled);
+            const primeroHabilitado = opciones.findIndex(o => !o.disabled);
+            resaltar(seleccionado >= 0 ? seleccionado : primeroHabilitado);
+        }
+
+        function abrir(ref) {
+            if (ref.select.disabled) return;
+            if (actual === ref) { cerrar({ devolverFoco: true }); return; }
+            cerrar();
+            actual = ref;
+            ref.boton.setAttribute('aria-expanded', 'true');
+            mostrarOpciones();
+        }
+
+        function elegir(indice) {
+            if (!actual) return;
+            const registro = opcionesAbiertas[indice];
+            if (!registro || registro.option.disabled) return;
+            const { select } = actual;
+            const antes = select.value;
+            select.selectedIndex = indice;
+            actualizarBoton(select);
+            cerrar({ devolverFoco: true });
+            if (select.value !== antes) {
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function recorrer(direccion) {
+            if (!actual) return;
+            const habilitadas = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+            if (!habilitadas.length) return;
+            let pos = habilitadas.indexOf(indiceResaltado);
+            if (pos < 0) pos = 0;
+            resaltar(habilitadas[(pos + direccion + habilitadas.length) % habilitadas.length]);
+        }
+
+        function manejarTeclado(evento, ref) {
+            const abierto = actual === ref;
+            if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+                evento.preventDefault();
+                if (!abierto) abrir(ref);
+                else recorrer(evento.key === 'ArrowDown' ? 1 : -1);
+                return;
+            }
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                if (abierto && indiceResaltado >= 0) elegir(indiceResaltado);
+                else abrir(ref);
+                return;
+            }
+            if (evento.key === 'Escape' && abierto) {
+                evento.preventDefault();
+                cerrar({ devolverFoco: true });
+                return;
+            }
+            if (evento.key === 'Tab' && abierto) { cerrar(); return; }
+            if (!abierto) return;
+            if (evento.key === 'Home' || evento.key === 'End') {
+                evento.preventDefault();
+                const lista = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+                resaltar(evento.key === 'Home' ? lista[0] : lista.at(-1));
+                return;
+            }
+            if (evento.key.length === 1 && !evento.ctrlKey && !evento.altKey && !evento.metaKey) {
+                clearTimeout(relojBusqueda);
+                prefijoBusqueda += evento.key.toLocaleLowerCase('es');
+                const posicion = opcionesAbiertas.findIndex(x => !x.option.disabled &&
+                    (x.option.textContent || '').trim().toLocaleLowerCase('es').startsWith(prefijoBusqueda));
+                if (posicion >= 0) resaltar(posicion);
+                relojBusqueda = setTimeout(() => { prefijoBusqueda = ''; }, 700);
+            }
+        }
+
+        function mejorar(select) {
+            if (!select || controles.has(select) || select.multiple || select.size > 1) return;
+            const padre = select.parentNode;
+            if (!padre) return;
+            const wrapper = document.createElement('span');
+            wrapper.className = 'sg-select-shell';
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.className = 'sg-select-button';
+            boton.setAttribute('aria-haspopup', 'listbox');
+            boton.setAttribute('aria-controls', 'sg-select-listado');
+            boton.setAttribute('aria-expanded', 'false');
+            const valor = document.createElement('span');
+            valor.className = 'sg-select-value';
+            const flecha = document.createElement('span');
+            flecha.className = 'sg-select-arrow';
+            flecha.setAttribute('aria-hidden', 'true');
+            boton.append(valor, flecha);
+            padre.insertBefore(wrapper, select);
+            wrapper.append(select, boton);
+            select.classList.add('sg-select-native');
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+            const ref = { select, boton, valor };
+            controles.set(select, ref);
+            boton.addEventListener('click', () => abrir(ref));
+            boton.addEventListener('keydown', evento => manejarTeclado(evento, ref));
+            select.addEventListener('change', () => actualizarBoton(select));
+            select.addEventListener('invalid', evento => {
+                evento.preventDefault();
+                boton.focus();
+                boton.setAttribute('aria-invalid', 'true');
+            });
+            boton.addEventListener('focus', () => {
+                boton.removeAttribute('aria-invalid');
+                actualizarBoton(select);
+            });
+            const observarOpciones = new MutationObserver(() => actualizarBoton(select));
+            observarOpciones.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label', 'value'] });
+            actualizarBoton(select);
+        }
+
+        function mejorarTodos(raiz = document) {
+            if (raiz instanceof HTMLSelectElement) mejorar(raiz);
+            if (typeof raiz.querySelectorAll === 'function') {
+                raiz.querySelectorAll('select').forEach(mejorar);
+            }
+        }
+
+        function iniciar() {
+            mejorarTodos();
+            crearMenu();
+            const observador = new MutationObserver(cambios => {
+                for (const cambio of cambios) {
+                    for (const nodo of cambio.addedNodes) {
+                        if (nodo.nodeType === Node.ELEMENT_NODE) mejorarTodos(nodo);
+                    }
+                }
+            });
+            observador.observe(document.body, { childList: true, subtree: true });
+            document.addEventListener('pointerdown', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            }, true);
+            document.addEventListener('click', evento => {
+                const etiqueta = evento.target.closest?.('label[for]');
+                if (!etiqueta) return;
+                const select = document.getElementById(etiqueta.htmlFor);
+                const ref = select ? controles.get(select) : null;
+                if (!ref) return;
+                evento.preventDefault();
+                ref.boton.focus();
+                abrir(ref);
+            });
+            document.addEventListener('reset', () => setTimeout(() => {
+                document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton);
+            }, 0), true);
+            window.addEventListener('resize', ubicarMenu);
+            window.addEventListener('scroll', ubicarMenu, true);
+            document.addEventListener('focusin', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            });
+        }
+
+        return { iniciar, actualizar: () => document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton) };
+    })();
+        document.addEventListener('DOMContentLoaded', () => {
+            sgSelect.iniciar();
+            document.getElementById('filtro-orden').addEventListener('change', aplicarFiltrosAvanzados);
+            ['filtro-texto','filtro-min','filtro-max'].forEach(id => {
+                document.getElementById(id).addEventListener('keydown', e => {
+                    if (e.key === 'Enter') aplicarFiltrosAvanzados();
+                });
+            });
+        });
+    })();
+    </script>
+
     <script src="config.js"></script>
     <script src="app.js"></script>
 
@@ -154,7 +564,7 @@
         window.productosGlobal = []; 
         let intervaloCronometro = null;
         let intervaloValidacion = null;
-        let timestampInicio = Date.now();
+        let timestampInicio = null; // Hora real registrada por Django al abrir la mesa
         let callbackAviso = null;
         const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
         let filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
@@ -174,7 +584,16 @@
         }
         const BASE_CATALOGO = obtenerBaseCatalogo();
         const rutaApiCatalogo = (recurso) => `${BASE_CATALOGO}/${recurso.replace(/^\/+/, '')}`;
-        const IMAGEN_FALLBACK = 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
+        // No mostrar una hamburguesa ajena si la foto de un producto falta o no se puede cargar.
+        const IMAGEN_FALLBACK = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360"><rect width="600" height="360" fill="#171514"/><rect x="16" y="16" width="568" height="328" rx="20" fill="none" stroke="#403028" stroke-width="2"/><g stroke="#ff7a00" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(264 91)"><rect width="72" height="65" rx="8"/><circle cx="20" cy="20" r="6"/><path d="m7 54 20-18 16 12 10-10 12 16"/></g><text x="300" y="207" font-family="Arial,sans-serif" font-size="21" font-weight="bold" text-anchor="middle" fill="#e7e3e1">Imagen no disponible</text><text x="300" y="240" font-family="Arial,sans-serif" font-size="14" text-anchor="middle" fill="#aa9d96">Savage Grill</text></svg>'
+        );
+        function manejarImagenRota(elemento) {
+            if (elemento.dataset.imagenError) return;
+            console.warn('[Savage Grill] No se pudo cargar una imagen:', elemento.currentSrc || elemento.src);
+            elemento.dataset.imagenError = '1';
+            elemento.src = IMAGEN_FALLBACK;
+        }
 
         function urlImagenCatalogo(valor) {
             if (typeof valor !== 'string' || !valor.trim()) return IMAGEN_FALLBACK;
@@ -210,14 +629,36 @@
             if (!mesaNum || !pinMesa) { window.location.href = 'pin.html'; return; }
             document.getElementById('txt-nro-mesa').textContent = mesaNum;
             
-            if (!sessionStorage.getItem('savage-tiempo-inicio')) { sessionStorage.setItem('savage-tiempo-inicio', Date.now().toString()); }
-            timestampInicio = parseInt(sessionStorage.getItem('savage-tiempo-inicio'));
-            intervaloCronometro = setInterval(actualizarCronometro, 1000);
+            // El cronómetro NO comienza cuando el cliente abre el catálogo.
+            // Leemos la apertura de esta sesión directamente desde Django.
+            document.getElementById('span-cronometro').textContent = 'Consultando…';
 
             verificarJornadaAbierta();
             iniciarValidacionSesion();
             cargarCategoriasCatalogo();
             aplicarFiltrosAvanzados();
+            cargarEspecialDelDia();
+            document.getElementById('especial-anterior').addEventListener('click', () => cambiarEspecial(-1));
+            document.getElementById('especial-siguiente').addEventListener('click', () => cambiarEspecial(1));
+            const bannerEspecial = document.getElementById('especial-del-dia');
+            bannerEspecial.addEventListener('click', (evento) => {
+                if (evento.target.closest('button')) return;
+                const actual = productosEspeciales[indiceEspecial];
+                if (actual) abrirModalDetalle(Number(actual.id));
+            });
+            bannerEspecial.addEventListener('keydown', (evento) => {
+                if (evento.target !== bannerEspecial) return;
+                if (evento.key === 'Enter' || evento.key === ' ') {
+                    evento.preventDefault();
+                    const actual = productosEspeciales[indiceEspecial];
+                    if (actual) abrirModalDetalle(Number(actual.id));
+                }
+            });
+            // Los especiales pueden cambiar al empezar otro turno sin cambios en el catálogo.
+            setInterval(cargarEspecialDelDia, 120000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) cargarEspecialDelDia();
+            });
             iniciarSincronizacionCatalogo();
             actualizarBarraFlotanteDesdeStorage(); 
         });
@@ -242,6 +683,85 @@
             document.getElementById('texto-pedido').textContent = `Mi pedido (${c.reduce((sum, i) => sum + (Number(i.cantidad) || 0), 0)})`;
         }
 
+
+        // Destacado del día: utiliza los mismos especiales y precios vigentes que entrega Django.
+        // Nunca se publica un precio promocional escrito a mano.
+        let productosEspeciales = [];
+        let indiceEspecial = 0;
+        let versionEspeciales = 0;
+        const monedaEspecial = valor => '$' + Number(valor).toLocaleString('es-AR', {minimumFractionDigits:2,maximumFractionDigits:2});
+
+        function productoPorId(id) {
+            return window.productosGlobal.find(p => Number(p.id) === Number(id))
+                || productosEspeciales.find(p => Number(p.id) === Number(id));
+        }
+
+        function pintarEspecial() {
+            const p = productosEspeciales[indiceEspecial];
+            const banner = document.getElementById('especial-del-dia');
+            if (!p) { banner.hidden = true; return; }
+            const normal = Number(p.precio);
+            const oferta = Number(p.precio_especial);
+            if (!(p.es_especial_hoy === true && Number.isFinite(normal) && normal > 0 && Number.isFinite(oferta) && oferta > 0 && oferta < normal)) {
+                banner.hidden = true; return;
+            }
+            banner.hidden = false;
+            banner.classList.add('sg-especial-interactivo');
+            banner.setAttribute('aria-label', `Especial del día: ${p.nombre}. Abrir para personalizarlo.`);
+            document.getElementById('especial-fondo').style.backgroundImage = `url("${urlImagenCatalogo(p.imagen_url || p.imagen || p.foto).replaceAll('"','%22')}")`;
+            document.getElementById('especial-etiqueta').textContent = 'Especial del día';
+            document.getElementById('especial-nombre').textContent = p.nombre;
+            document.getElementById('especial-descripcion').textContent = p.descripcion || 'Oferta vigente por tiempo limitado.';
+            const precios = document.getElementById('especial-precios');
+            precios.replaceChildren();
+            const anterior = document.createElement('span');
+            anterior.className = 'antes';
+            anterior.textContent = monedaEspecial(normal);
+            const actual = document.createElement('span');
+            actual.className = 'actual';
+            actual.textContent = monedaEspecial(oferta);
+            precios.append(anterior, actual);
+            precios.hidden = false;
+            document.getElementById('especial-acciones').hidden = false;
+            const porcentaje = Math.round(100 * (normal - oferta) / normal);
+            document.getElementById('especial-descuento').textContent = `${porcentaje}% DE DESCUENTO · Tocá para elegir`;
+            const hayVarios = productosEspeciales.length > 1;
+            for (const btn of ['especial-anterior','especial-siguiente']) document.getElementById(btn).hidden = !hayVarios;
+            const contador = document.getElementById('especial-contador');
+            contador.hidden = !hayVarios;
+            contador.textContent = hayVarios ? `${indiceEspecial + 1} de ${productosEspeciales.length}` : '';
+        }
+
+        function cambiarEspecial(delta) {
+            if (!productosEspeciales.length) return;
+            indiceEspecial = (indiceEspecial + delta + productosEspeciales.length) % productosEspeciales.length;
+            pintarEspecial();
+        }
+
+        async function cargarEspecialDelDia() {
+            const peticion = ++versionEspeciales;
+            try {
+                const respuesta = await fetch(rutaApiCatalogo('productos'), { cache:'no-store' });
+                if (!respuesta.ok) throw new Error('No se pudo consultar las promociones');
+                const disponibles = await respuesta.json();
+                if (!Array.isArray(disponibles)) throw new Error('Respuesta inesperada');
+                if (peticion !== versionEspeciales) return;
+                // Solo ofertas efectivas configuradas en el calendario de David.
+                productosEspeciales = disponibles.filter(p => {
+                    const base = Number(p.precio);
+                    const oferta = Number(p.precio_especial);
+                    return p.es_especial_hoy === true && p.precio_especial !== null && p.precio_especial !== '' &&
+                        Number.isFinite(base) && Number.isFinite(oferta) && oferta > 0 && oferta < base;
+                });
+                indiceEspecial = Math.min(indiceEspecial, Math.max(0, productosEspeciales.length - 1));
+                pintarEspecial();
+            } catch (error) {
+                if (peticion !== versionEspeciales) return;
+                console.warn('[Savage Grill] No se pudieron consultar los especiales vigentes:', error);
+                if (!productosEspeciales.length) document.getElementById('especial-del-dia').hidden = true;
+            }
+        }
+
         async function cargarCategoriasCatalogo() {
             try {
                 const resp = await fetch(rutaApiCatalogo('categorias'));
@@ -249,30 +769,31 @@
                 const categorias = await resp.json();
                 
                 const contenedor = document.getElementById('contenedor-categorias');
-                let html = `<button class="btn-filtro active" onclick="aplicarFiltroCategoria('', this)" style="background: var(--primary-orange); color: white; border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Todos</button>`;
-                
+                let html = `<button type="button" class="btn-filtro" data-filtro-tipo="categoria" data-filtro-valor="" onclick="aplicarFiltroCategoria('', this)">Todos</button>`;
                 categorias.forEach(cat => {
                     const idCat = Number(cat.id);
                     if (!Number.isSafeInteger(idCat)) return;
-                    html += `<button class="btn-filtro" onclick="aplicarFiltroCategoria(${idCat}, this)" style="background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">${escaparHtml(cat.nombre)}</button>`;
+                    html += `<button type="button" class="btn-filtro" data-filtro-tipo="categoria" data-filtro-valor="${idCat}" onclick="aplicarFiltroCategoria(${idCat}, this)">${escaparHtml(cat.nombre)}</button>`;
                 });
-                
-                html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('vegetariano', this)" style="background: transparent; color: #2ecc71; border: 1px solid #2ecc71; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Vegetariano</button>`;
-                html += `<button class="btn-filtro" onclick="aplicarFiltroDietario('sin_tacc', this)" style="background: transparent; color: #f39c12; border: 1px solid #f39c12; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s;">Sin TACC</button>`;
-                
+                html += `<button type="button" class="btn-filtro" data-filtro-tipo="vegetariano" onclick="aplicarFiltroDietario('vegetariano', this)">Vegetariano</button>`;
+                html += `<button type="button" class="btn-filtro" data-filtro-tipo="sin_tacc" onclick="aplicarFiltroDietario('sin_tacc', this)">Sin TACC</button>`;
                 contenedor.innerHTML = html;
+                actualizarBotonesFiltro();
             } catch (e) { console.error("Error cargando categorías"); }
         }
 
         function aplicarFiltroCategoria(idCat, btnElement) { filtroActual = { categoria: idCat, vegetariano: '', sin_tacc: '' }; actualizarBotonesFiltro(btnElement); aplicarFiltrosAvanzados(); }
         function aplicarFiltroDietario(tipo, btnElement) { filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' }; filtroActual[tipo] = 'true'; actualizarBotonesFiltro(btnElement); aplicarFiltrosAvanzados(); }
 
-        function actualizarBotonesFiltro(btnActivo) {
-            document.querySelectorAll('.btn-filtro').forEach(btn => { btn.style.background = 'transparent'; btn.style.color = 'var(--text-main)'; btn.style.borderColor = 'var(--glass-border)'; });
-            btnActivo.style.color = 'white';
-            if(btnActivo.textContent === 'Vegetariano') { btnActivo.style.background = '#2ecc71'; btnActivo.style.borderColor = '#2ecc71'; } 
-            else if (btnActivo.textContent === 'Sin TACC') { btnActivo.style.background = '#f39c12'; btnActivo.style.borderColor = '#f39c12'; } 
-            else { btnActivo.style.background = 'var(--primary-orange)'; btnActivo.style.borderColor = 'var(--primary-orange)'; }
+        function actualizarBotonesFiltro() {
+            document.querySelectorAll('#contenedor-categorias .btn-filtro').forEach(btn => {
+                const tipo = btn.dataset.filtroTipo;
+                const seleccionado = tipo === 'categoria'
+                    ? !filtroActual.vegetariano && !filtroActual.sin_tacc && String(filtroActual.categoria) === (btn.dataset.filtroValor || '')
+                    : filtroActual[tipo] === 'true';
+                btn.classList.toggle('active', seleccionado);
+                btn.setAttribute('aria-pressed', String(seleccionado));
+            });
         }
 
         async function aplicarFiltrosAvanzados() {
@@ -344,10 +865,11 @@
                 const recargado = await aplicarFiltrosAvanzados();
                 if (!recargado) return;
                 await cargarCategoriasCatalogo();
+                await cargarEspecialDelDia();
                 versionCatalogoActual = nueva;
                 sessionStorage.setItem('savage-version-menu', nueva);
                 if (abierto && Number.isSafeInteger(idAbierto)) {
-                    const productoVigente = window.productosGlobal.find(p => Number(p.id) === idAbierto);
+                    const productoVigente = productoPorId(idAbierto);
                     if (!productoVigente) {
                         cerrarModalDetalle();
                         mostrarAviso('Menú actualizado', 'Este producto ya no está disponible. Revisá el catálogo antes de continuar.', '📋');
@@ -408,14 +930,72 @@
         function cerrarModalAviso() { document.getElementById('modal-aviso').style.display = 'none'; if (callbackAviso) { callbackAviso(); callbackAviso = null; } }
 
         async function validarSesionActiva() {
-            if(!pinMesa) return; 
+            if (!pinMesa) return;
             try {
-                const resp = await fetch(rutaApiCatalogo('acceso-mesa'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pinMesa }) });
-                if (!resp.ok) { clearInterval(intervaloValidacion); mostrarAviso("Sesión Finalizada", "El mozo ha cerrado tu mesa. ¡Muchas gracias por elegir Savage Grill!", "👋", cerrarSesionCliente); }
-            } catch (error) { console.error("Error validando la sesión:", error); }
+                const resp = await fetch(rutaApiCatalogo('acceso-mesa'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pinMesa }),
+                    cache: 'no-store'
+                });
+                if (resp.ok) {
+                    const datos = await resp.json();
+                    // Identidad y cantidad se obtienen de la sesión abierta en SQL Server.
+                    if (typeof datos.mozo_nombre === 'string' && datos.mozo_nombre.trim()) {
+                        document.getElementById('span-mozo').textContent = datos.mozo_nombre.trim();
+                    } else {
+                        document.getElementById('span-mozo').textContent = 'Sin asignar';
+                    }
+                    if (Number.isInteger(Number(datos.cantidad_comensales)) && Number(datos.cantidad_comensales) > 0) {
+                        sessionStorage.setItem('savage-comensales', String(datos.cantidad_comensales));
+                        document.getElementById('span-comensales').textContent = `${datos.cantidad_comensales} Persona(s)`;
+                    }
+                    // Esta fecha se guarda cuando el MOZO abre la mesa, no cuando el cliente entra.
+                    // Sin fecha válida NO inventamos una hora de inicio en el navegador.
+                    const apertura = typeof datos.fecha_hora_inicio === 'string'
+                        ? Date.parse(datos.fecha_hora_inicio)
+                        : NaN;
+                    if (Number.isFinite(apertura) && apertura > 0) {
+                        timestampInicio = apertura;
+                        if (intervaloCronometro === null) {
+                            intervaloCronometro = setInterval(actualizarCronometro, 1000);
+                        }
+                        actualizarCronometro();
+                    } else {
+                        timestampInicio = null;
+                        if (intervaloCronometro !== null) {
+                            clearInterval(intervaloCronometro);
+                            intervaloCronometro = null;
+                        }
+                        document.getElementById('span-cronometro').textContent = 'No disponible';
+                    }
+                    return;
+                }
+                // Solo un PIN no válido o una sesión cerrada finaliza el acceso. Otros errores
+                // (429, 500, etc.) NO significan que el mozo haya cerrado la mesa.
+                if ([401, 403, 404].includes(resp.status)) {
+                    clearInterval(intervaloValidacion);
+                    if (intervaloCronometro !== null) clearInterval(intervaloCronometro);
+                    mostrarAviso('Sesión finalizada', 'Esta mesa ya no tiene una sesión abierta. Solicitá un nuevo PIN al mozo.', '', cerrarSesionCliente);
+                } else {
+                    console.warn('[Savage Grill] No se pudo actualizar el estado de la mesa:', resp.status);
+                }
+            } catch (error) {
+                console.warn('[Savage Grill] No se pudo consultar el inicio de la mesa:', error);
+            }
         }
 
-        function iniciarValidacionSesion() { intervaloValidacion = setInterval(validarSesionActiva, 10000); }
+        function iniciarValidacionSesion() {
+            validarSesionActiva(); // Primera lectura inmediata: incluye hora de apertura y mozo.
+            intervaloValidacion = setInterval(validarSesionActiva, 10000);
+        }
+
+        function textoDemora(item) {
+            const minutos = Number(item.tiempo_estimado ?? item.tiempo_espera);
+            if (Number.isFinite(minutos) && minutos > 0) return `${minutos} min aprox.`;
+            if (Number(item.categoria) === 1) return 'Bebida';
+            return 'A consultar';
+        }
 
         function renderizarTarjetas() {
             const contenedorLista = document.getElementById('listado');
@@ -431,17 +1011,17 @@
                 const porcionesSegura = item.porciones ? `${item.porciones}` : ((item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona');
                 
                 // AJUSTE: Si la categoria es 1 (Bebidas), el tiempo es inmediato
-                let tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
-                if (item.categoria === 1) { tiempoEspera = 'Inmediato (Barra)'; }
+                const tiempoEspera = textoDemora(item);
 
                 const precioNormal = parseFloat(item.precio);
                 const precioEsp = item.precio_especial ? parseFloat(item.precio_especial) : null;
                 const tieneDescuento = precioEsp && precioEsp < precioNormal;
                 
-                let htmlPrecio = tieneDescuento 
-                    ? `<div style="display: flex; flex-direction: column; align-items: flex-end;"><span style="font-size: 12px; color: var(--text-muted); text-decoration: line-through;">$${precioNormal.toFixed(2)}</span><span style="font-size: 20px; font-weight: 900; color: var(--primary-orange);">$${precioEsp.toFixed(2)}</span></div>`
-                    : `<span style="font-size: 20px; font-weight: 900; color: var(--text-main);">$${precioNormal.toFixed(2)}</span>`;
-                
+                const dineroTarjeta = valor => '$' + Number(valor).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                const htmlPrecio = tieneDescuento
+                    ? `<div class="sg-card-price"><span class="sg-precio-anterior">${dineroTarjeta(precioNormal)}</span><span class="sg-precio-actual sg-precio-oferta">${dineroTarjeta(precioEsp)}</span></div>`
+                    : `<div class="sg-card-price"><span class="sg-precio-actual">${dineroTarjeta(precioNormal)}</span></div>`;
+
                 // CORRECCIÓN IMÁGENES DINÁMICAS (Tomando url de la base de datos)
                 const imagenUrl = urlImagenCatalogo(item.imagen_url || item.imagen || item.foto);
                 const idProductoSeguro = Number(item.id);
@@ -458,7 +1038,7 @@
                 tarjeta.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
                 
                 tarjeta.innerHTML = `
-                    <img src="${escaparHtml(imagenUrl)}" alt="${escaparHtml(item.nombre)}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${idProductoSeguro})" onerror="this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80'">
+                    <img src="${escaparHtml(imagenUrl)}" alt="${escaparHtml(item.nombre)}" style="width: 100%; height: 180px; border-radius: 16px; object-fit: cover; margin-bottom: 12px; cursor: pointer;" onclick="abrirModalDetalle(${idProductoSeguro})" onerror="manejarImagenRota(this)">
                     <div style="display: flex; flex-direction: column; flex-grow: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
@@ -472,9 +1052,9 @@
                         </div>
                         <h3 style="color: var(--text-main); font-size: 18px; margin: 0 0 6px 0; cursor: pointer;" onclick="abrirModalDetalle(${idProductoSeguro})">${escaparHtml(item.nombre)}</h3>
                         <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">${escaparHtml(item.descripcion || 'Deliciosa preparación exclusiva de nuestro chef.')}</p>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto;">
+                        <div class="sg-card-footer" style="margin-top: auto;">
                             ${htmlPrecio}
-                            <button class="btn-orange" style="padding: 8px 16px; font-size: 14px; transition: all 0.3s ease; height: fit-content;" onclick="abrirModalDetalle(${idProductoSeguro})">+ Agregar</button>
+                            <button class="btn-orange sg-card-add" onclick="abrirModalDetalle(${idProductoSeguro})" aria-label="Agregar ${escaparHtml(item.nombre)}">Agregar</button>
                         </div>
                     </div>
                 `;
@@ -486,7 +1066,7 @@
         }
 
         function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement) {
-            const productoOriginal = window.productosGlobal.find(p => p.id === idProducto);
+            const productoOriginal = productoPorId(idProducto);
             const imagenUrl = urlImagenCatalogo(productoOriginal?.imagen_url || productoOriginal?.imagen || productoOriginal?.foto);
             // Canonicalizar IDs facilita agrupar dos personalizaciones equivalentes.
             arrQuitables = [...new Set(arrQuitables.map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
@@ -537,7 +1117,11 @@
         function cerrarModalMesa() { document.getElementById('modal-mesa').style.display = 'none'; }
         
         function actualizarCronometro() {
-            const segundosTotales = Math.floor((Date.now() - timestampInicio) / 1000);
+            if (!Number.isFinite(timestampInicio)) {
+                document.getElementById('span-cronometro').textContent = 'Consultando…';
+                return;
+            }
+            const segundosTotales = Math.max(0, Math.floor((Date.now() - timestampInicio) / 1000));
             const horas = Math.floor(segundosTotales / 3600).toString().padStart(2, '0');
             const minutos = Math.floor((segundosTotales % 3600) / 60).toString().padStart(2, '0');
             const segundos = (segundosTotales % 60).toString().padStart(2, '0');
@@ -560,7 +1144,7 @@
         }
 
         function abrirModalDetalle(idProducto) {
-            const item = window.productosGlobal.find(p => p.id === idProducto);
+            const item = productoPorId(idProducto);
             if(!item) return;
 
             cantidadSeleccionadaModal = 1;
@@ -568,7 +1152,10 @@
 
             const imagen = urlImagenCatalogo(item.imagen_url || item.imagen || item.foto);
             
-            document.getElementById('detalle-img').src = imagen;
+            const imgDetalle = document.getElementById('detalle-img');
+            imgDetalle.removeAttribute('data-imagen-error');
+            imgDetalle.onerror = () => manejarImagenRota(imgDetalle);
+            imgDetalle.src = imagen;
             document.getElementById('detalle-nombre').textContent = item.nombre;
             document.getElementById('detalle-desc').textContent = item.descripcion || '';
             
@@ -579,10 +1166,10 @@
             actualizarPrecioModal();
             
             const porciones = item.porciones ? `${item.porciones}` : ((item.categoria === 1 || item.categoria === 4) ? 'Individual' : '1 Persona');
-            let tiempoEspera = item.tiempo_espera ? `${item.tiempo_espera} min` : '15-20 min';
-            if (item.categoria === 1) { tiempoEspera = 'Inmediato (Barra)'; }
-
-            document.getElementById('detalle-porciones').textContent = `${porciones} (Demora aprox: ${tiempoEspera})`;
+            const demora = textoDemora(item);
+            document.getElementById('detalle-porciones').textContent = demora === 'A consultar'
+                ? `${porciones} · Demora a consultar`
+                : `${porciones} · ${demora}`;
     
             // Solo pueden quitarse ingredientes autorizados para ESTA receta.
             // Se usan IDs numéricos: el backend rechaza nombres como "Tomate".
