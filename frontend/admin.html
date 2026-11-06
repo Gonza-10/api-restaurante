@@ -526,6 +526,69 @@
         @media(max-width:620px) { .sg-receta-ing-grid { grid-template-columns:1fr; } .sg-receta-subnav { display:grid; grid-template-columns:1fr; } .sg-receta-tab { text-align:left; } }
         @media(prefers-reduced-motion:reduce) { .sg-receta-subview button,.sg-receta-tab { transition:none !important; } .sg-receta-subview button:hover,.sg-receta-tab:hover { transform:none !important; } }
 
+
+        /* P28 — Reposición y pérdidas. Estética consistente con Administración. */
+        #vista-reposicion .sg-rp-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+        #vista-reposicion .sg-rp-tab{border:1px solid var(--glass-border);border-radius:11px;background:rgba(255,255,255,.025);color:var(--text-muted);padding:12px 18px;font:inherit;font-weight:850;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s,color .2s,border-color .2s}
+        #vista-reposicion .sg-rp-tab:hover,#vista-reposicion .sg-admin-primary:hover:not(:disabled),#vista-reposicion .sg-admin-secondary:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(255,122,0,.55);box-shadow:0 5px 15px rgba(255,122,0,.14)}
+        #vista-reposicion .sg-rp-tab[aria-selected="true"]{background:rgba(255,122,0,.12);color:var(--primary-orange);border-color:rgba(255,122,0,.5)}
+        #vista-reposicion .sg-rp-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:22px;align-items:start}
+        #vista-reposicion .sg-rp-cards{display:grid;gap:12px}
+        #vista-reposicion .sg-rp-card{border:1px solid var(--glass-border);border-radius:13px;padding:16px 18px;background:rgba(255,255,255,.018)}
+        #vista-reposicion .sg-rp-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        #vista-reposicion .sg-rp-card-head h3{color:var(--text-main);font-size:16px;margin:0}
+        #vista-reposicion .sg-rp-card p{font-size:13px;color:var(--text-muted);line-height:1.55;margin:8px 0 0}
+        #vista-reposicion .sg-rp-badge{font-size:11px;font-weight:800;border:1px solid rgba(255,122,0,.4);border-radius:9px;padding:4px 9px;color:var(--primary-orange)}
+        #vista-reposicion .sg-rp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+        #vista-reposicion .sg-rp-stat{border:1px solid var(--glass-border);background:rgba(255,255,255,.025);border-radius:12px;padding:14px;min-width:0}
+        #vista-reposicion .sg-rp-stat span{display:block;font-size:12px;color:var(--text-muted);margin-bottom:8px}
+        #vista-reposicion .sg-rp-stat strong{display:block;color:var(--text-main);font-weight:850;font-size:19px;overflow-wrap:anywhere}
+        #vista-reposicion .sg-rp-note{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 18px}
+        #vista-reposicion .sg-rp-history{display:grid;gap:12px;max-height:680px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#55423a transparent}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar{width:6px}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar-thumb{background:#55423a;border-radius:12px}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar-thumb:hover{background:var(--primary-orange)}
+        #vista-reposicion .sg-rp-filter{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
+        #vista-reposicion .sg-rp-filter input{flex:1 1 180px;min-width:0;background:rgba(0,0,0,.45);border:1px solid var(--glass-border);padding:12px;color:var(--text-main);border-radius:10px;font:inherit}
+        #vista-reposicion .sg-admin-primary,#vista-reposicion .sg-admin-secondary{transition:transform .2s,box-shadow .2s,border-color .2s,background .2s}
+        #vista-reposicion .sg-rp-tab:focus-visible,#vista-reposicion input:focus-visible{outline:2px solid var(--primary-orange);outline-offset:2px}
+        #vista-reposicion .sg-rp-subview[hidden],#vista-reposicion .sg-admin-field[hidden]{display:none!important}
+        body.light-mode #vista-reposicion .sg-rp-card,body.light-mode #vista-reposicion .sg-rp-stat,body.light-mode #vista-reposicion .sg-rp-tab{background:#fff;border-color:#e2e8f0}
+        body.light-mode #vista-reposicion .sg-rp-filter input{background:#f8fafc;color:#181818}
+        @media(max-width:1100px){#vista-reposicion .sg-rp-grid{grid-template-columns:1fr}}
+        @media(max-width:630px){#vista-reposicion .sg-rp-stats{grid-template-columns:1fr}}
+        @media(prefers-reduced-motion:reduce){#vista-reposicion .sg-rp-tab,#vista-reposicion button{transition:none!important}#vista-reposicion .sg-rp-tab:hover,#vista-reposicion button:hover{transform:none!important}}
+
+        /* P30 - Jornada y especiales */
+        #vista-jornada .sg-je-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+        #vista-jornada .sg-je-tab{border:1px solid var(--glass-border);border-radius:11px;background:rgba(255,255,255,.025);color:var(--text-muted);padding:12px 18px;font:inherit;font-weight:850;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s,color .2s}
+        #vista-jornada .sg-je-tab[aria-selected="true"]{background:rgba(255,122,0,.12);color:var(--primary-orange);border-color:rgba(255,122,0,.5)}
+        #vista-jornada .sg-je-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+        #vista-jornada .sg-je-grid .sg-admin-box{min-width:0}
+        #vista-jornada .sg-je-note{color:var(--text-muted);font-size:13px;line-height:1.65;margin:0 0 16px}
+        #vista-jornada .sg-je-subview[hidden],#vista-jornada [hidden]{display:none!important}
+        #vista-jornada .sg-je-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+        #vista-jornada .sg-je-between h2{margin:0}
+        #vista-jornada .sg-je-summary,#vista-jornada .sg-je-card{border:1px solid var(--glass-border);background:rgba(255,255,255,.022);border-radius:12px;padding:15px 17px}
+        #vista-jornada .sg-je-card h3{font-size:15px;margin:0;color:var(--text-main);line-height:1.4}
+        #vista-jornada .sg-je-card p,#vista-jornada .sg-je-summary p{color:var(--text-muted);font-size:13px;margin:7px 0 0;line-height:1.55}
+        #vista-jornada .sg-je-list{display:grid;gap:12px;max-height:600px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#6d4934 transparent}
+        #vista-jornada .sg-je-list::-webkit-scrollbar{width:6px}
+        #vista-jornada .sg-je-list::-webkit-scrollbar-thumb{background:#6d4934;border-radius:10px}
+        #vista-jornada .sg-je-list::-webkit-scrollbar-thumb:hover{background:var(--primary-orange)}
+        #vista-jornada .sg-je-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+        #vista-jornada .sg-je-day{border:1px solid var(--glass-border);border-radius:12px;padding:12px;min-height:100px;min-width:0;background:rgba(255,255,255,.015)}
+        #vista-jornada .sg-je-day h3{margin:0 0 12px;color:var(--primary-orange);font-size:13px}
+        #vista-jornada .sg-je-day p{font-size:12px;color:var(--text-muted);line-height:1.45;margin:0 0 9px;overflow-wrap:anywhere}
+        #vista-jornada .sg-je-card .sg-admin-actions{margin-top:12px}
+        #vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:transform .2s,box-shadow .2s,border-color .2s}
+        #vista-jornada .sg-admin-primary:hover:not(:disabled),#vista-jornada .sg-admin-secondary:hover:not(:disabled),#vista-jornada .sg-je-tab:hover{transform:translateY(-2px);border-color:rgba(255,122,0,.5);box-shadow:0 7px 17px rgba(255,122,0,.16)}
+        #vista-jornada .sg-je-danger{border-color:rgba(239,83,80,.4);color:#ff8b87}
+        body.light-mode #vista-jornada .sg-je-card,body.light-mode #vista-jornada .sg-je-day,body.light-mode #vista-jornada .sg-je-summary{background:#fff;border-color:#e2e8f0}
+        @media(max-width:1180px){#vista-jornada .sg-je-week{grid-template-columns:repeat(4,minmax(0,1fr))}}
+        @media(max-width:1000px){#vista-jornada .sg-je-grid{grid-template-columns:1fr}}
+        @media(max-width:650px){#vista-jornada .sg-je-week{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-tab,#vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:none!important}#vista-jornada button:hover{transform:none!important}}
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
@@ -545,8 +608,8 @@
         <button type="button" class="sg-admin-nav" data-admin-tab="ajustes"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 4v6M4 17h16M16 14v6"/><circle cx="7" cy="7" r="2" fill="var(--bg-dark)"/><circle cx="16" cy="17" r="2" fill="var(--bg-dark)"/></svg><span class="sg-nav-label">Ajustes y verificación</span></button>
         <div class="sg-admin-group">PRODUCCIÓN Y CONTROL</div>
         <button type="button" class="sg-admin-nav" data-admin-tab="recetas"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13a4 4 0 0 1-.5-8 5 5 0 0 1 9-1 4.5 4.5 0 0 1 4 8.5"/><path d="M6 13v7h12v-7"/></svg><span class="sg-nav-label">Recetas y elaboraciones</span></button>
-        <button type="button" class="sg-admin-nav" disabled title="Próximo módulo"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 16h4"/></svg><span class="sg-nav-label">Reposición y pérdidas</span></button>
-        <button type="button" class="sg-admin-nav" disabled title="Próximo módulo"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg><span class="sg-nav-label">Jornada y especiales</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="reposicion"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 16h4"/></svg><span class="sg-nav-label">Reposición y pérdidas</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="jornada"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg><span class="sg-nav-label">Jornada y especiales</span></button>
         <button type="button" class="sg-admin-nav" id="admin-ir-gerente" hidden>← Volver a Gerencia</button>
         </nav>
         <div class="sg-admin-sidebar-footer">
@@ -567,7 +630,7 @@
             <!-- PANEL IZQUIERDO: Hero -->
             <div class="hero-panel" style="position: relative;">
 
-                <div class="brand" style="margin-top: 50px;">
+                <div class="brand" style="margin-top: 20px;">
                     <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
                 </div>
                 
@@ -1027,6 +1090,134 @@
                 <div class="sg-receta-lista" id="sin-receta-lista"></div>
               </section>
             </div>
+          </div>
+        </section>
+
+        <!-- P28: Reposición y pérdidas; consultas reales y registro confirmado. -->
+        <section id="vista-reposicion" class="sg-admin-view" aria-label="Reposición y pérdidas" hidden>
+          <h1 class="sg-admin-page-title">Reposición y Pérdidas</h1>
+          <p class="sg-admin-help">Consultá qué mercadería necesita reponerse, revisá las pérdidas registradas y registrá una baja justificada. Las pérdidas modifican el inventario y quedan en el historial.</p>
+          <div class="sg-rp-tabs" role="tablist" aria-label="Secciones de reposición y pérdidas">
+            <button type="button" class="sg-rp-tab" data-rp-tab="reposicion" role="tab" aria-selected="true" aria-controls="sg-rp-subview-reposicion">Reposición sugerida</button>
+            <button type="button" class="sg-rp-tab" data-rp-tab="perdidas" role="tab" aria-selected="false" aria-controls="sg-rp-subview-perdidas">Registro de pérdidas</button>
+          </div>
+          <div id="sg-rp-subview-reposicion" class="sg-rp-subview" role="tabpanel">
+            <div class="sg-rp-grid">
+              <section class="sg-admin-box">
+                <h2>Necesidades de reposición</h2>
+                <p class="sg-rp-note">Se consulta la sugerencia que calcula el servidor; esta pantalla no agrega mercadería ni realiza compras automáticamente.</p>
+                <div class="sg-admin-actions" style="margin-bottom:17px"><button type="button" class="sg-admin-secondary" id="rp-actualizar">Actualizar sugerencias</button></div>
+                <p class="sg-admin-msg" id="rp-mensaje" role="status" aria-live="polite" hidden></p>
+                <div class="sg-rp-cards" id="rp-lista" aria-live="polite"></div>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Cómo reponer existencias</h2>
+                <p class="sg-rp-note">La reposición muestra necesidades. El ingreso real de mercadería se hace en «Compras y lotes», indicando proveedor, insumo, cantidad y costo. Así se generan los lotes y movimientos correspondientes.</p>
+                <button type="button" class="sg-admin-primary" id="rp-ir-compras">Ir a Compras y lotes</button>
+                <p class="sg-rp-note" style="margin-top:22px">Si lo que necesitás es corregir una diferencia de un conteo físico, utilizá «Ajustes y verificación»; no registres una compra ficticia.</p>
+              </section>
+            </div>
+          </div>
+          <div id="sg-rp-subview-perdidas" class="sg-rp-subview" role="tabpanel" hidden>
+            <div class="sg-rp-grid">
+              <section class="sg-admin-box">
+                <h2>Registrar pérdida</h2>
+                <p class="sg-rp-note">Esta operación descuenta existencias y deja trazabilidad del responsable y del motivo. Usá una base de datos de desarrollo para la prueba.</p>
+                <form id="rp-perdida-form">
+                  <div class="sg-admin-form" style="margin-bottom:18px">
+                    <div class="sg-admin-field"><label for="rp-tipo">Tipo de elemento *</label><select id="rp-tipo" required><option value="insumo">Insumo</option><option value="plato">Plato preparado</option></select></div>
+                    <div class="sg-admin-field"><label for="rp-motivo">Motivo *</label><select id="rp-motivo" required><option value="">Cargando motivos...</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-caja-insumo"><label for="rp-insumo">Insumo afectado *</label><select id="rp-insumo"><option value="">Seleccioná un insumo</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-caja-plato" hidden><label for="rp-plato">Producto afectado *</label><select id="rp-plato"><option value="">Seleccioná un producto</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2"><label for="rp-cantidad">Cantidad *</label><input id="rp-cantidad" type="text" inputmode="decimal" placeholder="Ej.: 200" required><span id="rp-unidad" class="sg-admin-muted-note">Se expresa en la unidad base del insumo seleccionado.</span></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-nota-contenedor"><label for="rp-nota">Observaciones <span id="rp-nota-requerida"></span></label><textarea id="rp-nota" maxlength="300" placeholder="Detalle la pérdida cuando corresponda"></textarea></div>
+                  </div>
+                  <div class="sg-admin-actions"><button type="submit" class="sg-admin-primary" id="rp-guardar">Registrar pérdida</button><button type="reset" class="sg-admin-secondary">Limpiar formulario</button></div>
+                  <p id="rp-form-mensaje" class="sg-admin-msg" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Historial de pérdidas</h2>
+                <div class="sg-rp-stats">
+                  <div class="sg-rp-stat"><span>Registros visibles</span><strong id="rp-total-registros">—</strong></div>
+                  <div class="sg-rp-stat"><span>Costo informado por API</span><strong id="rp-total-costo">—</strong></div>
+                  <div class="sg-rp-stat"><span>Última actualización</span><strong id="rp-ultima-actualizacion">—</strong></div>
+                </div>
+                <div class="sg-rp-filter"><input type="search" id="rp-buscar" placeholder="Buscar insumo, plato o motivo..." aria-label="Buscar pérdidas"><button type="button" class="sg-admin-secondary" id="rp-recargar-perdidas">Actualizar historial</button></div>
+                <p id="rp-historial-mensaje" class="sg-admin-msg" role="status" aria-live="polite" hidden></p>
+                <div class="sg-rp-history" id="rp-historial" aria-live="polite"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- P30: Jornada y Especiales. Calendario conectado a la API. -->
+        <section id="vista-jornada" class="sg-admin-view" aria-label="Jornada y especiales" hidden>
+          <h1 class="sg-admin-page-title">Jornada y Especiales</h1>
+          <p class="sg-admin-help">Gestioná el funcionamiento del salón y programá ofertas reales por día de la semana o para una fecha determinada. El catálogo mostrará solamente promociones que estén vigentes según el servidor.</p>
+          <div class="sg-je-tabs" role="tablist" aria-label="Secciones de jornada y especiales">
+            <button type="button" class="sg-je-tab" data-je-tab="jornada" role="tab" aria-selected="true" aria-controls="sg-je-subview-jornada">Jornada actual</button>
+            <button type="button" class="sg-je-tab" data-je-tab="especiales" role="tab" aria-selected="false" aria-controls="sg-je-subview-especiales">Especiales del día</button>
+          </div>
+          <div id="sg-je-subview-jornada" class="sg-je-subview" role="tabpanel">
+            <div class="sg-je-grid">
+              <section class="sg-admin-box">
+                <h2>Estado de la jornada</h2>
+                <p class="sg-je-note">Se consulta el estado real del servidor. Abrir o cerrar una jornada es una operación operativa y requiere confirmación.</p>
+                <p class="sg-admin-msg" id="je-estado-error" role="status" aria-live="polite" hidden></p>
+                <div class="sg-je-summary" id="je-estado" aria-live="polite">Consultando jornada actual...</div>
+                <div class="sg-admin-actions" style="margin-top:16px">
+                  <button type="button" class="sg-admin-secondary" id="je-actualizar-jornada">Actualizar estado</button>
+                </div>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Abrir o cerrar una jornada</h2>
+                <p class="sg-je-note">Las acciones se envían a los endpoints de jornada del backend. No crean registros ficticios en el navegador.</p>
+                <div class="sg-admin-field" style="margin-bottom:16px"><label for="je-turno-jornada">Turno de apertura</label><select id="je-turno-jornada"><option value="">Turno no seleccionado</option></select></div>
+                <div class="sg-admin-actions"><button type="button" id="je-abrir-jornada" class="sg-admin-primary">Abrir jornada</button><button type="button" id="je-cerrar-jornada" class="sg-admin-secondary sg-je-danger">Cerrar jornada</button></div>
+                <p class="sg-admin-msg" id="je-accion-mensaje" role="status" aria-live="polite" hidden></p>
+                <p class="sg-je-note" style="margin-top:16px">Si hay mesas, pedidos o cuentas pendientes, respetá las validaciones del servidor antes de cerrar.</p>
+              </section>
+            </div>
+            <section class="sg-admin-box">
+              <div class="sg-je-between"><h2>Historial de jornadas</h2><button type="button" class="sg-admin-secondary" id="je-actualizar-historial">Actualizar historial</button></div>
+              <p class="sg-admin-msg" id="je-historial-error" role="status" aria-live="polite" hidden></p>
+              <div class="sg-je-list" id="je-historial" aria-live="polite"></div>
+            </section>
+          </div>
+          <div id="sg-je-subview-especiales" class="sg-je-subview" role="tabpanel" hidden>
+            <div class="sg-je-grid">
+              <section class="sg-admin-box">
+                <h2 id="je-form-titulo">Programar especial del día</h2>
+                <p class="sg-je-note">Seleccioná un producto del menú y asignale un precio de oferta. Podés elegir un día semanal o una fecha específica, y limitarlo a un turno.</p>
+                <form id="je-especial-form">
+                  <div class="sg-admin-form" style="margin-bottom:18px">
+                    <div class="sg-admin-field sg-admin-span2"><label for="je-producto">Producto del menú *</label><select id="je-producto" required><option value="">Seleccioná un producto</option></select></div>
+                    <div class="sg-admin-field"><label for="je-precio">Precio especial ($) *</label><input type="text" id="je-precio" inputmode="decimal" placeholder="Ej.: 12500" required></div>
+                    <div class="sg-admin-field"><label for="je-turno-especial">Turno (opcional)</label><select id="je-turno-especial"><option value="">Todos los turnos</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2"><label for="je-modalidad">Frecuencia *</label><select id="je-modalidad"><option value="semanal">Día de la semana</option><option value="fecha">Fecha puntual</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="je-caja-dia"><label for="je-dia">Día de la semana *</label><select id="je-dia"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="je-caja-fecha" hidden><label for="je-fecha">Fecha del especial *</label><input id="je-fecha" type="date"></div>
+                  </div>
+                  <p class="sg-je-note" id="je-precio-nota">Elegí un producto para consultar su precio de lista.</p>
+                  <div class="sg-admin-actions"><button type="submit" id="je-guardar" class="sg-admin-primary">Guardar especial</button><button type="button" id="je-cancelar-edicion" class="sg-admin-secondary" hidden>Cancelar edición</button></div>
+                  <p class="sg-admin-msg" id="je-form-mensaje" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box">
+                <div class="sg-je-between"><h2>Ofertas programadas</h2><button type="button" id="je-actualizar-especiales" class="sg-admin-secondary">Actualizar</button></div>
+                <p class="sg-je-note">Se muestran los registros guardados en la API, no promociones inventadas por el frontend.</p>
+                <p class="sg-admin-msg" id="je-lista-error" role="status" aria-live="polite" hidden></p>
+                <div class="sg-je-list" id="je-lista" aria-live="polite"></div>
+              </section>
+            </div>
+            <section class="sg-admin-box">
+              <h2>Calendario semanal</h2>
+              <p class="sg-je-note">Las promociones por fecha puntual se presentan por separado: no se mezclan con la programación habitual.</p>
+              <div class="sg-je-week" id="je-semana" aria-live="polite"></div>
+              <h2 style="margin-top:24px">Fechas especiales</h2>
+              <div class="sg-je-list" id="je-fechas" aria-live="polite"></div>
+            </section>
           </div>
         </section>
       </main>

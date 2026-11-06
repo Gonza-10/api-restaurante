@@ -292,7 +292,7 @@
 
     // Mantiene la última sección abierta durante esta sesión de navegación.
     const CLAVE_VISTA_ADMIN = 'savage-admin-ultima-vista';
-    const VISTAS_HABILITADAS = ['menu', 'proveedores', 'insumos', 'compras', 'movimientos', 'ajustes', 'recetas'];
+    const VISTAS_HABILITADAS = ['menu', 'proveedores', 'insumos', 'compras', 'movimientos', 'ajustes', 'recetas', 'reposicion', 'jornada'];
 
     const modalConfirmacion = {
         activa: false,
@@ -473,6 +473,8 @@
         if (vista === 'movimientos') iniciarMovimientos();
         if (vista === 'ajustes') iniciarAjustes();
         if (vista === 'recetas') moduloRecetas.iniciar();
+        if (vista === 'reposicion') moduloReposicion.iniciar();
+        if (vista === 'jornada') moduloJornadaEspeciales.iniciar();
     }
 
     function campo(nombre) {
@@ -1959,6 +1961,476 @@
             el('receta-asignacion-actualizar').addEventListener('click',cargarAsignaciones);
         }
         return { iniciar, conectar };
+    })();
+
+
+    /* ============================================================
+       P28 — Reposición y pérdidas. Sin alterar Cocina ni stock.
+       La API es fuente de verdad: jamás se modifica stock desde JS.
+       ============================================================ */
+    const moduloReposicion = (() => {
+        const d = { subvista: 'reposicion', motivos: [], insumos: [], productos: [], perdidas: [], cargando: false, guardando: false };
+        const $rp = id => document.getElementById(id);
+        const extraer = x => Array.isArray(x) ? x : Array.isArray(x?.results) ? x.results : [];
+        const numero = x => Number(String(x ?? '').replace(',', '.'));
+        const dinero = x => Number.isFinite(numero(x)) ? numero(x).toLocaleString('es-AR', {style:'currency',currency:'ARS'}) : '—';
+        const cantidadFmt = x => Number.isFinite(numero(x)) ? numero(x).toLocaleString('es-AR',{maximumFractionDigits:3}) : '—';
+        const txt = x => String(x ?? '');
+        function mensaje(id, valor, ok=false) { aviso(id, valor, ok?'success':'error'); }
+        function crear(tag, texto='', clase='') { const node=document.createElement(tag); if(clase)node.className=clase; node.textContent=txt(texto); return node; }
+        function par(contenedor, etiqueta, valor) { const p=crear('p'); const b=crear('strong', `${etiqueta}: `); p.append(b, document.createTextNode(txt(valor))); contenedor.append(p); }
+        function opciones(id, listado, etiqueta, valor, mostrar) {
+            const select=$rp(id);if(!select)return;
+            select.replaceChildren(new Option(etiqueta, ''));
+            for(const item of listado)select.add(new Option(txt(mostrar(item)),txt(valor(item))));
+            sgSelect.actualizar();
+        }
+        function setSubvista(nombre) {
+            d.subvista = nombre === 'perdidas' ? 'perdidas' : 'reposicion';
+            ['reposicion','perdidas'].forEach(t => {
+                $rp(`sg-rp-subview-${t}`).hidden=t!==d.subvista;
+                const b=document.querySelector(`[data-rp-tab="${t}"]`);
+                b.setAttribute('aria-selected',String(t===d.subvista));b.tabIndex=t===d.subvista?0:-1;
+            });
+            sessionStorage.setItem('savage-admin-rp-subvista',d.subvista);
+            if(d.subvista==='perdidas') cargarPerdidas(); else cargarReposicion();
+        }
+        // El reporte real del backend (hito 6) separa las recomendaciones
+        // entre "comprar" (agrupadas por proveedor) y "producir" (elaboraciones).
+        // Se conserva compatibilidad con listados planos de otras versiones.
+        function columnasReposicion(datos) {
+            if(Array.isArray(datos))return datos;
+            if(!datos || typeof datos !== 'object')return null;
+            const nombres=['insumos','reposicion','sugerencias','items','productos','faltantes','alertas','results'];
+            for(const n of nombres)if(Array.isArray(datos[n]))return datos[n];
+            if(!Array.isArray(datos.comprar) && !Array.isArray(datos.producir))return null;
+
+            const registros=[];
+            function sumar(lista,tipo,proveedor='') {
+                for(const it of lista) {
+                    if(!it || typeof it!=='object')continue;
+                    const subitems=Array.isArray(it.items)?it.items:[it];
+                    const nombreProveedor=tipo==='Compra' ? (
+                        typeof it.proveedor==='string'?it.proveedor:
+                        it.proveedor?.nombre ?? it.proveedor_nombre ?? proveedor
+                    ) : '';
+                    for(const item of subitems) {
+                        if(!item || typeof item!=='object')continue;
+                        registros.push({...item,
+                            _tipo_reposicion:tipo,
+                            _proveedor_reposicion:nombreProveedor || proveedor || ''
+                        });
+                    }
+                }
+            }
+            sumar(datos.comprar||[],'Compra');
+            sumar(datos.producir||[],'Elaboración');
+            return registros;
+        }
+        async function cargarReposicion() {
+            mensaje('rp-mensaje','');const cont=$rp('rp-lista');cont.replaceChildren(crear('p','Consultando sugerencias...','sg-rp-note'));
+            $rp('rp-actualizar').disabled=true;
+            try {
+                const datos=await llamarApi('/stock/reposicion');
+                const registros=columnasReposicion(datos);
+                cont.replaceChildren();
+                if(registros===null){
+                    mensaje('rp-mensaje','La API respondió con un formato de reposición no reconocido. No se modificó inventario.');
+                    return;
+                }
+                if(!registros.length){
+                    cont.append(crear('p','No hay necesidades de reposición informadas por el servidor.','sg-rp-note'));
+                    return;
+                }
+                for(const item of registros){
+                    const div=crear('article','','sg-rp-card');
+                    const insumo=item.insumo && typeof item.insumo==='object'?item.insumo:null;
+                    const titulo=txt(item.nombre ?? item.insumo_nombre ?? insumo?.nombre ?? item.producto_nombre ?? 'Insumo');
+                    const head=crear('div','','sg-rp-card-head');head.append(crear('h3',titulo));
+                    const est=txt(item._tipo_reposicion ?? item.estado ?? item.semaforo ?? item.prioridad ?? 'Sugerencia');
+                    head.append(crear('span',est,'sg-rp-badge'));div.append(head);
+                    const proveedor=item._proveedor_reposicion || item.proveedor_principal || item.proveedor_nombre || item.proveedor;
+                    const proveedorTxt=typeof proveedor==='object'?proveedor?.nombre:proveedor;
+                    const campos=[
+                        ['Stock actual',item.stock_texto ?? item.stock_actual ?? item.cantidad_actual ?? item.stock ?? item.actual],
+                        ['Objetivo',item.objetivo_texto ?? item.stock_objetivo ?? item.objetivo],
+                        ['Faltante',item.faltante_texto ?? item.faltante ?? item.cantidad_a_reponer ?? item.reponer ?? item.cantidad_sugerida],
+                        ['Proveedor',proveedorTxt],
+                        ['Tandas sugeridas',item.tandas ?? item.tandas_necesarias ?? item.plan?.tandas],
+                        ['Costo estimado',item.costo_estimado ?? item.costo_reposicion ?? item.costo_total]
+                    ];
+                    let visibles=0;
+                    for(const [et,valor] of campos)if(valor !== undefined && valor !== null && valor !== ''){
+                        par(div,et,valor);visibles++;
+                    }
+                    if(!visibles)par(div,'Detalle',item.mensaje ?? 'Consultá el inventario para validar esta sugerencia.');
+                    cont.append(div);
+                }
+            }catch(err){cont.replaceChildren();mensaje('rp-mensaje',err.message);}
+            finally{$rp('rp-actualizar').disabled=false;}
+        }
+        function actualizarNota() {
+            const motivo=d.motivos.find(m=>txt(m.codigo) === $rp('rp-motivo').value);
+            $rp('rp-nota').required=Boolean(motivo?.requiere_nota);
+            $rp('rp-nota-requerida').textContent=motivo?.requiere_nota?'*':'';
+        }
+        function cambiarTipo() {
+            const plato=$rp('rp-tipo').value==='plato';
+            $rp('rp-caja-insumo').hidden=plato;
+            $rp('rp-caja-plato').hidden=!plato;
+            $rp('rp-unidad').textContent=plato?'Cantidad de platos preparados (número entero).':'Cantidad en la unidad base del insumo seleccionado.';
+        }
+        async function cargarSelectores() {
+            // Motivos, insumos y productos se consultan de forma independiente.
+            const fuentes=[
+                ['/perdidas/motivos',r=>{d.motivos=extraer(r);opciones('rp-motivo',d.motivos,'Seleccioná un motivo',x=>x.codigo,x=>x.etiqueta ?? x.codigo);actualizarNota();}],
+                ['/insumos',r=>{d.insumos=extraer(r).filter(x=>x.activo!==false);opciones('rp-insumo',d.insumos,'Seleccioná un insumo',x=>x.id,x=>x.nombre);}],
+                ['/productos',r=>{d.productos=extraer(r);opciones('rp-plato',d.productos,'Seleccioná un producto',x=>x.id,x=>x.nombre);}]
+            ];
+            const res=await Promise.allSettled(fuentes.map(async ([ruta,fn])=>fn(await llamarApi(ruta))));
+            const errores=res.filter(r=>r.status==='rejected').map(r=>r.reason?.message).filter(Boolean);
+            mensaje('rp-form-mensaje',errores.length?`Algunos campos no pudieron cargarse: ${errores.join(' | ')}`:'');
+        }
+        function pintarPerdidas() {
+            const cont=$rp('rp-historial');cont.replaceChildren();
+            const filtro=$rp('rp-buscar').value.toLocaleLowerCase('es-AR').trim();
+            const registros=d.perdidas.filter(item=>[item.insumo_nombre,item.producto_nombre,item.motivo_etiqueta,item.motivo,item.nota,item.insumo?.nombre,item.producto?.nombre].map(txt).join(' ').toLocaleLowerCase('es-AR').includes(filtro));
+            $rp('rp-total-registros').textContent=String(registros.length);
+            if(!registros.length){cont.append(crear('p',filtro?'No hay coincidencias con tu búsqueda.':'No hay pérdidas registradas en la consulta actual.','sg-rp-note'));return;}
+            registros.forEach(item=>{
+                const div=crear('article','','sg-rp-card');const head=crear('div','','sg-rp-card-head');
+                head.append(crear('h3',item.insumo_nombre ?? item.producto_nombre ?? item.insumo?.nombre ?? item.producto?.nombre ?? `Pérdida #${item.id ?? '—'}`));
+                head.append(crear('span',item.motivo_etiqueta ?? item.motivo ?? 'Pérdida','sg-rp-badge'));div.append(head);
+                if(item.cantidad!=null)par(div,'Cantidad',cantidadFmt(item.cantidad));
+                if(item.fecha_hora ?? item.fecha) {
+                    const fecha=new Date(item.fecha_hora ?? item.fecha);
+                    par(div,'Fecha',Number.isFinite(fecha.getTime())?fecha.toLocaleString('es-AR'):item.fecha_hora ?? item.fecha);
+                }
+                if(item.nota)par(div,'Observaciones',item.nota);
+                if(item.empleado_nombre)par(div,'Registró',item.empleado_nombre);
+                div.append(crear('p','Registro histórico de solo lectura.'));
+                cont.append(div);
+            });
+        }
+        async function cargarPerdidas() {
+            mensaje('rp-historial-mensaje','');$rp('rp-recargar-perdidas').disabled=true;
+            try {
+                const [lista, resumen]=await Promise.allSettled([llamarApi('/perdidas'),llamarApi('/perdidas/resumen')]);
+                if(lista.status==='rejected')throw lista.reason;
+                if(!Array.isArray(lista.value) && !Array.isArray(lista.value?.results)) throw new Error('El historial de pérdidas no devolvió una lista reconocible.');
+                d.perdidas=extraer(lista.value);pintarPerdidas();
+                $rp('rp-ultima-actualizacion').textContent=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+                if(resumen.status==='fulfilled') {
+                    const d0=resumen.value;
+                    const costo=d0?.costo_total ?? d0?.total_costo ?? d0?.total_perdidas_costo ?? d0?.total_estimado;
+                    $rp('rp-total-costo').textContent=costo!==undefined&&costo!==null?dinero(costo):'No informado';
+                } else {
+                    $rp('rp-total-costo').textContent='No disponible';
+                    mensaje('rp-historial-mensaje','El historial cargó, pero no se pudo consultar el resumen de costos.');
+                }
+            }catch(err){d.perdidas=[];pintarPerdidas();mensaje('rp-historial-mensaje',err.message);}
+            finally{$rp('rp-recargar-perdidas').disabled=false;}
+        }
+        async function registrar(e) {
+            e.preventDefault();if(d.guardando)return;
+            const tipo=$rp('rp-tipo').value;
+            const motivo=$rp('rp-motivo').value;
+            const valor=$rp('rp-cantidad').value.trim();
+            const cantidad=numero(valor);
+            const id=tipo==='plato'?$rp('rp-plato').value:$rp('rp-insumo').value;
+            const nota=$rp('rp-nota').value.trim();
+            if(!motivo||!d.motivos.some(x=>txt(x.codigo)===motivo)){mensaje('rp-form-mensaje','Seleccioná un motivo válido del servidor.');return;}
+            if(!id||!Number.isInteger(Number(id))||Number(id)<=0){mensaje('rp-form-mensaje','Seleccioná un insumo o producto válido.');return;}
+            if(!valor||!Number.isFinite(cantidad)||cantidad<=0||(tipo==='plato'&&!Number.isInteger(cantidad))||(!/^\d+(?:[.,]\d{1,3})?$/.test(valor))){mensaje('rp-form-mensaje','Ingresá una cantidad positiva válida. Para platos, un entero; para insumos, hasta tres decimales.');return;}
+            const m=d.motivos.find(x=>txt(x.codigo)===motivo);
+            if(m?.requiere_nota&&!nota){mensaje('rp-form-mensaje','Este motivo requiere una observación.');return;}
+            const obj=tipo==='plato'?d.productos.find(x=>String(x.id)===id):d.insumos.find(x=>String(x.id)===id);
+            const nombre=obj?.nombre??`ID ${id}`;
+            const ok=await pedirConfirmacion({titulo:'Confirmar pérdida', texto:`Se descontarán ${cantidadFmt(cantidad)} ${tipo==='plato'?'platos':'unidades base'} de «${nombre}». Esta operación afecta el stock y queda registrada. ¿Confirmás?`,aceptar:'Sí, registrar pérdida',variante:'danger',icono:'!',origen:$rp('rp-guardar')});
+            if(!ok)return;
+            const payload={tipo,motivo,cantidad};
+            payload[tipo==='plato'?'producto':'insumo']=Number(id);
+            if(nota)payload.nota=nota;
+            d.guardando=true;$rp('rp-guardar').disabled=true;mensaje('rp-form-mensaje','');
+            try {
+                await llamarApi('/perdidas',{method:'POST',body:JSON.stringify(payload)});
+                $rp('rp-perdida-form').reset();cambiarTipo();actualizarNota();
+                mensaje('rp-form-mensaje','Pérdida registrada correctamente. El servidor actualizó el inventario. Si necesitás comprobar cantidades, consultá Insumos o Movimientos de stock.',true);
+                await cargarPerdidas();
+            }catch(err){mensaje('rp-form-mensaje',err.message);}
+            finally{d.guardando=false;$rp('rp-guardar').disabled=false;}
+        }
+        let configurado=false;
+        function conectar() {
+            if(configurado)return;configurado=true;
+            document.querySelectorAll('[data-rp-tab]').forEach(b=>b.addEventListener('click',()=>setSubvista(b.dataset.rpTab)));
+            $rp('rp-actualizar').addEventListener('click',cargarReposicion);
+            $rp('rp-ir-compras').addEventListener('click',()=>activarVista('compras'));
+            $rp('rp-tipo').addEventListener('change',cambiarTipo);
+            $rp('rp-motivo').addEventListener('change',actualizarNota);
+            $rp('rp-buscar').addEventListener('input',pintarPerdidas);
+            $rp('rp-recargar-perdidas').addEventListener('click',cargarPerdidas);
+            $rp('rp-perdida-form').addEventListener('submit',registrar);
+            $rp('rp-perdida-form').addEventListener('reset',()=>setTimeout(()=>{cambiarTipo();actualizarNota();},0));
+        }
+        let iniciado=false;
+        async function iniciar() {
+            conectar();
+            if(!iniciado){iniciado=true;await cargarSelectores();}
+            setSubvista(sessionStorage.getItem('savage-admin-rp-subvista')||'reposicion');
+        }
+        return {iniciar, conectar};
+    })();
+
+
+    /* ============================================================
+       P30 - Jornada y Especiales
+       La API es la única fuente de información. Ninguna fecha,
+       oferta o apertura de jornada se inventa en el frontend.
+       ============================================================ */
+    const moduloJornadaEspeciales = (() => {
+        const q = id => document.getElementById(id);
+        const datos = { subvista:'jornada', turnos:[], productos:[], especiales:[], jornadas:[], actual:null, editando:null, conectado:false, cargando:false, guardando:false };
+        const dias = ['','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+        const array = x => Array.isArray(x) ? x : Array.isArray(x?.results) ? x.results : Array.isArray(x?.data) ? x.data : [];
+        const texto = x => String(x ?? '').trim();
+        const num = x => { const raw=String(x??'').trim().replace(/\s/g,''); const val=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw; return Number(val); };
+        const money = x => Number.isFinite(Number(x)) ? Number(x).toLocaleString('es-AR',{style:'currency',currency:'ARS'}) : '—';
+        const el = (tag, content='', classname='') => { const x=document.createElement(tag); x.textContent=texto(content); if(classname)x.className=classname; return x; };
+        const field = (item,...keys) => {for(const k of keys)if(item?.[k]!==undefined&&item[k]!==null)return item[k];return null;};
+        const objId = item => field(item,'id','id_especial','idEspecial','IdEspecial');
+        const productoId = item => { const p=field(item,'producto','id_producto','producto_id','IdProducto'); return (p && typeof p==='object') ? field(p,'id','IdProducto') : p; };
+        const turnoId = item => { const t=field(item,'turno','id_turno','turno_id','IdTurno'); return (t && typeof t==='object') ? field(t,'id','IdTurno') : t; };
+        const precioEspecial = item => field(item,'precio_especial','precioEspecial','PrecioEspecial');
+        const dia = item => field(item,'dia_semana','diaSemana','DiaSemana');
+        const fecha = item => field(item,'fecha','Fecha');
+        function avisoJe(id,text,success=false){aviso(id,text,success?'success':'error');}
+        function opcion(id, items, placeholder, val, label) {
+            const s=q(id); if(!s)return;
+            s.replaceChildren(new Option(placeholder,''));
+            items.forEach(i=>s.add(new Option(texto(label(i)),texto(val(i)))));
+            sgSelect.actualizar();
+        }
+        function marca(id, abierto){const o=q(id);if(o)o.hidden=!abierto;}
+        function cambiarTab(nombre) {
+            datos.subvista=nombre==='especiales'?'especiales':'jornada';
+            ['jornada','especiales'].forEach(k=>{
+                marca(`sg-je-subview-${k}`,k===datos.subvista);
+                const b=document.querySelector(`[data-je-tab="${k}"]`);
+                if(b){b.setAttribute('aria-selected',String(k===datos.subvista));b.tabIndex=k===datos.subvista?0:-1;}
+            });
+            sessionStorage.setItem('sg-admin-je-tab',datos.subvista);
+            if(datos.subvista==='jornada') actualizarJornada(); else actualizarEspeciales();
+        }
+        function formatoFecha(s){
+            if(!s)return '—';
+            const match=texto(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return match?`${match[3]}/${match[2]}/${match[1]}`:texto(s);
+        }
+        function formatoFechaHora(s) {
+            if(!s)return '—';
+            const d=new Date(s);
+            return Number.isNaN(d.getTime())?texto(s):d.toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
+        }
+        function turnoNombre(item){return texto(field(item,'nombre','descripcion','etiqueta','Nombre','Descripcion')) || (objId(item)!=null?`Turno #${objId(item)}`:'Sin turno informado');}
+        function nombreProducto(p) {return texto(field(p,'nombre','Nombre','titulo')) || `Producto #${objId(p)}`;}
+        function pProducto(id){return datos.productos.find(p=>String(objId(p))===String(id));}
+        function pTurno(id){return datos.turnos.find(t=>String(objId(t))===String(id));}
+        function precioLista(p){return field(p,'precio','precio_lista','precio_venta','Precio','PrecioLista');}
+        function pintarResumen() {
+            const panel=q('je-estado'); panel.replaceChildren();
+            const d=datos.actual;
+            if(!d || (d.jornada===null) || d.activa===false || d.estado==='CERRADA'){
+                panel.append(el('h3','No hay una jornada abierta'),el('p','Si corresponde, seleccioná un turno para abrir una nueva jornada.'));
+                return;
+            }
+            const actual=(d?.jornada && typeof d.jornada==='object') ? d.jornada : d;
+            panel.append(el('h3',`Jornada ${field(actual,'numero','id','id_jornada','IdJornada') ? '#'+field(actual,'numero','id','id_jornada','IdJornada') : 'activa'}`));
+            for (const [nombre,valor] of [
+                ['Estado',field(actual,'estado','Estado') ?? (d.activa?'Abierta':'Sin confirmar')],
+                ['Apertura',formatoFechaHora(field(actual,'fecha_hora_apertura','fecha_apertura','inicio','fecha_inicio','FechaHoraApertura'))],
+                ['Turno',turnoNombre(pTurno(turnoId(actual)) || {})]
+            ]) { const p=el('p',`${nombre}: ${valor}`);panel.append(p);}
+        }
+        async function actualizarJornada(){
+            avisoJe('je-estado-error','');
+            const rs=await Promise.allSettled([llamarApi('/jornada/actual'),llamarApi('/jornadas')]);
+            if(rs[0].status==='fulfilled'){datos.actual=rs[0].value; pintarResumen();}
+            else {datos.actual=null; q('je-estado').textContent='Estado no disponible.'; avisoJe('je-estado-error',rs[0].reason?.message||'No se pudo consultar la jornada.');}
+            if(rs[1].status==='fulfilled'){
+                datos.jornadas=array(rs[1].value);
+                const panel=q('je-historial');panel.replaceChildren();
+                if(!datos.jornadas.length)panel.append(el('p','Todavía no hay jornadas en el historial.','sg-je-note'));
+                datos.jornadas.slice().reverse().slice(0,30).forEach(j=>{
+                    const card=el('article','','sg-je-card');
+                    card.append(el('h3',`Jornada #${field(j,'id','id_jornada','IdJornada') ?? '—'}`));
+                    card.append(el('p',`Apertura: ${formatoFechaHora(field(j,'fecha_hora_apertura','fecha_apertura','inicio','fecha_inicio'))}`));
+                    card.append(el('p',`Cierre: ${formatoFechaHora(field(j,'fecha_hora_cierre','fecha_cierre','fin','fecha_fin'))}`));
+                    panel.append(card);
+                });
+                avisoJe('je-historial-error','');
+            }else{avisoJe('je-historial-error',rs[1].reason?.message||'No se pudo consultar el historial.');}
+        }
+        function cambiarModalidad(){
+            const porFecha=q('je-modalidad').value==='fecha';
+            marca('je-caja-dia',!porFecha);
+            marca('je-caja-fecha',porFecha);
+            q('je-dia').required=!porFecha;
+            q('je-fecha').required=porFecha;
+        }
+        function pintarPrecio(){
+            const p=pProducto(q('je-producto').value);
+            const n=p?precioLista(p):null;
+            q('je-precio-nota').textContent=p ? `Precio de lista: ${n!=null?money(n):'no informado por la API'}. El precio de oferta debe ser inferior al precio de lista cuando se publique como descuento.`:'Elegí un producto para consultar su precio de lista.';
+        }
+        function nombreEspecial(e){const p=pProducto(productoId(e));return texto(field(e,'producto_nombre','nombre_producto','ProductoNombre')) || (p?nombreProducto(p):`Producto #${productoId(e) ?? '—'}`);}
+        function periodoEspecial(e){
+            return fecha(e) ? `Fecha: ${formatoFecha(fecha(e))}` : `Día: ${dias[Number(dia(e))] || 'no informado'}`;
+        }
+        function turnoEspecial(e){const t=turnoId(e);return t?` · ${turnoNombre(pTurno(t) || {id:t})}`:' · Todos los turnos';}
+        function cardEspecial(e,detallado=true){
+            const card=el('article','','sg-je-card');
+            card.append(el('h3',nombreEspecial(e)));
+            card.append(el('p',`${periodoEspecial(e)}${turnoEspecial(e)}`));
+            card.append(el('p',`Oferta: ${money(precioEspecial(e))}`));
+            const p=pProducto(productoId(e));
+            if(p && precioLista(p)!=null)card.append(el('p',`Precio habitual: ${money(precioLista(p))}`));
+            if(detallado && objId(e)!=null){
+                const acciones=el('div','','sg-admin-actions');
+                const editar=el('button','Editar','sg-admin-secondary');editar.type='button';editar.addEventListener('click',()=>editarEspecial(e));
+                const quitar=el('button','Eliminar','sg-admin-secondary sg-je-danger');quitar.type='button';quitar.addEventListener('click',()=>eliminarEspecial(e));
+                acciones.append(editar,quitar);card.append(acciones);
+            }
+            return card;
+        }
+        function pintarEspeciales(){
+            const lista=q('je-lista'),semana=q('je-semana'),fechas=q('je-fechas');
+            lista.replaceChildren();semana.replaceChildren();fechas.replaceChildren();
+            if(!datos.especiales.length)lista.append(el('p','Todavía no hay especiales guardados en el servidor.','sg-je-note'));
+            datos.especiales.forEach(e=>lista.append(cardEspecial(e)));
+            for(let n=1;n<=7;n++){
+                const caja=el('section','','sg-je-day');caja.append(el('h3',dias[n]));
+                const regs=datos.especiales.filter(e=>!fecha(e)&&Number(dia(e))===n);
+                if(!regs.length)caja.append(el('p','Sin ofertas programadas.'));
+                regs.forEach(e=>{caja.append(el('p',`${nombreEspecial(e)} · ${money(precioEspecial(e))}`));});
+                semana.append(caja);
+            }
+            const fechasReg=datos.especiales.filter(e=>!!fecha(e)).sort((a,b)=>texto(fecha(a)).localeCompare(texto(fecha(b))));
+            if(!fechasReg.length)fechas.append(el('p','No hay fechas puntuales programadas.','sg-je-note'));
+            fechasReg.forEach(e=>fechas.append(cardEspecial(e,false)));
+        }
+        async function cargarCatalogos(){
+            const rs=await Promise.allSettled([llamarApi('/productos?incluir_inactivos=true'),llamarApi('/turnos')]);
+            if(rs[0].status==='fulfilled'){
+                datos.productos=array(rs[0].value).filter(p=>p.activo!==false);
+                opcion('je-producto',datos.productos,'Seleccioná un producto',objId,nombreProducto);
+            }else{avisoJe('je-form-mensaje',rs[0].reason?.message||'No se pudieron cargar productos.');}
+            if(rs[1].status==='fulfilled'){
+                datos.turnos=array(rs[1].value);
+                opcion('je-turno-especial',datos.turnos,'Todos los turnos',objId,turnoNombre);
+                opcion('je-turno-jornada',datos.turnos,'Turno no seleccionado',objId,turnoNombre);
+            }else{avisoJe('je-accion-mensaje',rs[1].reason?.message||'No se pudieron consultar los turnos.');}
+            pintarPrecio();
+        }
+        async function actualizarEspeciales(){
+            avisoJe('je-lista-error','');
+            try{
+                datos.especiales=array(await llamarApi('/especiales'));
+                pintarEspeciales();
+            }catch(e){avisoJe('je-lista-error',e.message||'No se pudieron consultar las ofertas.');}
+        }
+        function limpiarEspecial(){
+            datos.editando=null;q('je-especial-form').reset();
+            q('je-form-titulo').textContent='Programar especial del día';
+            q('je-guardar').textContent='Guardar especial';q('je-cancelar-edicion').hidden=true;
+            cambiarModalidad();pintarPrecio();sgSelect.actualizar();
+        }
+        function editarEspecial(e){
+            datos.editando=objId(e);q('je-producto').value=texto(productoId(e));
+            q('je-precio').value=texto(precioEspecial(e));q('je-turno-especial').value=texto(turnoId(e));
+            q('je-modalidad').value=fecha(e)?'fecha':'semanal';cambiarModalidad();
+            q('je-fecha').value=texto(fecha(e)).slice(0,10);q('je-dia').value=texto(dia(e)??'1');
+            q('je-form-titulo').textContent=`Editar especial #${datos.editando}`;
+            q('je-guardar').textContent='Guardar cambios';q('je-cancelar-edicion').hidden=false;
+            q('je-form-mensaje').hidden=true;pintarPrecio();sgSelect.actualizar();
+            q('je-especial-form').scrollIntoView({behavior:'smooth',block:'start'});
+        }
+        async function guardarEspecial(event){
+            event.preventDefault();if(datos.guardando)return;
+            const id=Number(q('je-producto').value),p=pProducto(id),precio=num(q('je-precio').value),base=Number(precioLista(p));
+            if(!id||!Number.isFinite(precio)||precio<=0){avisoJe('je-form-mensaje','Seleccioná un producto y un precio especial válido.');return;}
+            if(p&&precioLista(p)!=null&&Number.isFinite(base)&&precio>=base){avisoJe('je-form-mensaje','El precio de oferta debe ser menor que el precio de lista del producto.');return;}
+            const esFecha=q('je-modalidad').value==='fecha';
+            const valorFecha=q('je-fecha').value;
+            if(esFecha&&!/^\d{4}-\d{2}-\d{2}$/.test(valorFecha)){avisoJe('je-form-mensaje','Seleccioná una fecha válida.');return;}
+            // DRF estándar: relaciones por PK, campos del modelo en snake_case.
+            // Si David utiliza otros nombres, el backend debe responder con el error de validación.
+            const payload={producto:id,precio_especial:precio,turno:q('je-turno-especial').value?Number(q('je-turno-especial').value):null,
+                dia_semana:esFecha?null:Number(q('je-dia').value),fecha:esFecha?valorFecha:null};
+            const ok=await pedirConfirmacion({titulo:datos.editando?'Modificar promoción':'Publicar promoción',
+                texto:`${p?nombreProducto(p):'Producto'} · ${money(precio)} · ${esFecha?formatoFecha(valorFecha):dias[payload.dia_semana]}. Los cambios quedarán guardados en la API.`,
+                aceptar:datos.editando?'Guardar cambios':'Guardar especial',variante:'success',icono:'✓'});
+            if(!ok)return;
+            datos.guardando=true;q('je-guardar').disabled=true;avisoJe('je-form-mensaje','');
+            try{
+                const ruta=datos.editando?`/especiales/${encodeURIComponent(datos.editando)}`:'/especiales';
+                await llamarApi(ruta,{method:datos.editando?'PATCH':'POST',body:JSON.stringify(payload)});
+                limpiarEspecial();await actualizarEspeciales();
+                avisoJe('je-form-mensaje','Especial guardado en el servidor. Verificá su vigencia desde el catálogo.',true);
+            }catch(err){avisoJe('je-form-mensaje',err.message||'No se pudo guardar. Revisá el contrato de la API.');}
+            finally{datos.guardando=false;q('je-guardar').disabled=false;}
+        }
+        async function eliminarEspecial(e){
+            if(datos.guardando)return;
+            const id=objId(e);if(id==null)return;
+            const ok=await pedirConfirmacion({titulo:'Eliminar especial',texto:`¿Eliminar la programación de «${nombreEspecial(e)}»? Esta acción afecta las ofertas futuras.`,aceptar:'Eliminar',variante:'danger',icono:'!'});
+            if(!ok)return;
+            datos.guardando=true;
+            try{
+                await llamarApi(`/especiales/${encodeURIComponent(id)}`,{method:'DELETE'});
+                if(String(datos.editando)===String(id))limpiarEspecial();
+                await actualizarEspeciales();
+            }catch(err){avisoJe('je-lista-error',err.message||'El servidor rechazó la operación.');}
+            finally{datos.guardando=false;}
+        }
+        async function accionJornada(accion){
+            if(datos.guardando)return;
+            const turno=q('je-turno-jornada').value;
+            const abrir=accion==='abrir';
+            if(abrir&&datos.turnos.length&&!turno){avisoJe('je-accion-mensaje','Seleccioná un turno antes de abrir la jornada.');return;}
+            const ok=await pedirConfirmacion({titulo:abrir?'Abrir jornada':'Cerrar jornada',
+                texto:abrir?'¿Confirmás la apertura de una nueva jornada operativa?':
+                    '¿Confirmás el cierre de la jornada? Comprobá antes las mesas, cuentas y pedidos pendientes.',
+                aceptar:abrir?'Abrir jornada':'Cerrar jornada',variante:abrir?'success':'danger',icono:abrir?'✓':'!'});
+            if(!ok)return;
+            datos.guardando=true;q('je-abrir-jornada').disabled=true;q('je-cerrar-jornada').disabled=true;
+            try{
+                await llamarApi(abrir?'/jornada/abrir':'/jornada/cerrar',{method:'POST',...(abrir&&turno?{body:JSON.stringify({turno:Number(turno)})}:{})});
+                avisoJe('je-accion-mensaje',abrir?'Jornada abierta correctamente.':'Jornada cerrada correctamente.',true);
+                await actualizarJornada();
+            }catch(err){avisoJe('je-accion-mensaje',err.message||'La API rechazó la operación.');}
+            finally{datos.guardando=false;q('je-abrir-jornada').disabled=false;q('je-cerrar-jornada').disabled=false;}
+        }
+        function conectar(){
+            if(datos.conectado)return;datos.conectado=true;
+            document.querySelectorAll('[data-je-tab]').forEach(b=>b.addEventListener('click',()=>cambiarTab(b.dataset.jeTab)));
+            q('je-actualizar-jornada').addEventListener('click',actualizarJornada);
+            q('je-actualizar-historial').addEventListener('click',actualizarJornada);
+            q('je-actualizar-especiales').addEventListener('click',actualizarEspeciales);
+            q('je-modalidad').addEventListener('change',cambiarModalidad);
+            q('je-producto').addEventListener('change',pintarPrecio);
+            q('je-especial-form').addEventListener('submit',guardarEspecial);
+            q('je-cancelar-edicion').addEventListener('click',limpiarEspecial);
+            q('je-abrir-jornada').addEventListener('click',()=>accionJornada('abrir'));
+            q('je-cerrar-jornada').addEventListener('click',()=>accionJornada('cerrar'));
+        }
+        let iniciado=false;
+        async function iniciar(){
+            conectar();
+            if(!iniciado){iniciado=true;await cargarCatalogos();}
+            cambiarTab(sessionStorage.getItem('sg-admin-je-tab')||'jornada');
+        }
+        return {iniciar,conectar};
     })();
 
     async function verificarAcceso() {
