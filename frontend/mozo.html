@@ -242,6 +242,7 @@
         @media (prefers-reduced-motion:reduce){.mesa-card,.action-btn{transition:none!important;animation:none!important;}}
 
     </style>
+    <link rel="stylesheet" href="savage-logout.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
     <div id="toast-exito">¡Mesa abierta con éxito!</div>
@@ -252,7 +253,7 @@
             <div class="brand"><h1 class="logo-restaurante" style="font-family:'Elemental End',sans-serif;font-size:26px;margin:0;">Savage<span style="color:var(--primary-orange)">Grill.</span></h1><div style="color:var(--text-muted);font-size:11px;letter-spacing:.15em;font-weight:800;margin-top:5px;">GESTIÓN DE SALÓN</div></div>
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                 <span id="nombre-mozo" style="font-size:14px;font-weight:800;">Cargando usuario...</span>
-                <button class="action-btn action-btn-danger" type="button" onclick="cerrarSesion()">Cerrar sesión</button>
+                <button class="action-btn action-btn-danger sg-logout-unificado sg-logout-cabecera" type="button" onclick="cerrarSesion()"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
             </div>
         </div>
         <div class="salon-heading"><div><h2>Mapa de Mesas</h2><p>Seleccioná una mesa libre para abrirla, o una de tus mesas para consultar los pedidos.</p></div><div class="map-legend" aria-label="Referencias de estado"><span class="legend-chip"><i class="legend-dot legend-free"></i>Libre</span><span class="legend-chip"><i class="legend-dot legend-busy"></i>Ocupada</span><span class="legend-chip"><i class="legend-dot legend-bill"></i>Pide cuenta</span></div></div>
