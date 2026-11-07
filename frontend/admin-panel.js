@@ -382,6 +382,9 @@
     }
 
 
+    // Compartimos el modal existente con el ABM de productos de app.js.
+    window.savageAdminConfirmar = (opciones) => pedirConfirmacion(opciones);
+
     function aviso(id, texto, tipo = 'error') {
         const elemento = $(id);
         if (!elemento) return;
