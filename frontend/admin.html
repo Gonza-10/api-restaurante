@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
     <link rel="stylesheet" href="savage-calendar.css">
     <script src="savage-calendar.js" defer></script>
     <style>
@@ -624,15 +625,189 @@
         @media(max-width:1000px){#vista-jornada .sg-je-grid{grid-template-columns:1fr}}
         @media(max-width:650px){#vista-jornada .sg-je-week{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-tab,#vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:none!important}#vista-jornada button:hover{transform:none!important}}
+
+        /* Ajustes finales P45: Gestión de Menú más limpia en celular y tablet */
+        .sg-admin-main #vista-menu .catalogo-section { margin-top: 26px; }
+        .sg-admin-main #vista-menu #listado.products-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 300px));
+            justify-content: center;
+        }
+        .sg-admin-main #vista-menu #listado.products-grid > * {
+            width: 100%;
+            justify-self: center;
+        }
+        .sg-admin-main #vista-menu .admin-inline-fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px;
+            align-items: start;
+        }
+        .sg-admin-main #vista-menu .login-card {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        .sg-admin-main #vista-menu .hero-copy h1 span {
+            display: inline;
+            margin-top: 0;
+        }
+
+        @media (min-width: 761px) and (max-width: 1150px) {
+            .sg-admin-main #vista-menu .login-shell {
+                position: relative;
+                display: block;
+                min-height: 0;
+                overflow: hidden;
+                border-radius: 28px;
+                border: 1px solid var(--glass-border);
+                background: rgba(8, 8, 8, 0.88);
+                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+                isolation: isolate;
+            }
+            .sg-admin-main #vista-menu .login-shell::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1400&q=90");
+                background-position: center 43%;
+                background-size: cover;
+                filter: none;
+                transform: none;
+                opacity: 1;
+                pointer-events: none;
+                z-index: 0;
+            }
+            .sg-admin-main #vista-menu .login-shell::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.76);
+                z-index: 0;
+                pointer-events: none;
+            }
+            .sg-admin-main #vista-menu .login-shell > * {
+                position: relative;
+                z-index: 1;
+            }
+            .sg-admin-main #vista-menu .hero-panel {
+                min-height: 0;
+                padding: 26px 30px 8px;
+                border-bottom: 0;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .hero-panel .brand {
+                margin-top: 0 !important;
+                display: flex;
+                justify-content: center;
+            }
+            .sg-admin-main #vista-menu .hero-panel .logo-restaurante {
+                font-size: clamp(30px, 3.4vw, 38px);
+                text-align: center;
+            }
+            .sg-admin-main #vista-menu .hero-copy {
+                max-width: 560px;
+                margin: 14px auto 0;
+                text-align: center;
+            }
+            .sg-admin-main #vista-menu .hero-copy h1 {
+                font-size: clamp(27px, 4vw, 44px);
+                white-space: nowrap;
+                line-height: 1.12;
+                letter-spacing: -0.03em;
+            }
+            .sg-admin-main #vista-menu .hero-copy p {
+                max-width: 460px;
+                margin: 14px auto 0;
+            }
+            .sg-admin-main #vista-menu .form-panel {
+                overflow: visible !important;
+                padding: 10px 24px 27px;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .login-card {
+                max-width: 560px;
+                margin: 0 auto;
+                padding: 28px;
+                border: 1px solid rgba(255, 255, 255, 0.11);
+                border-radius: 24px;
+                background: rgba(15, 15, 15, 0.93);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+            }
+            .sg-admin-main #vista-menu .catalogo-section { margin-top: 30px; }
+        }
+
+        @media (max-width: 760px) {
+            .sg-admin-main #vista-menu .login-shell {
+                display: block;
+                min-height: 0;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
+                overflow: visible;
+            }
+            .sg-admin-main #vista-menu .login-shell::before,
+            .sg-admin-main #vista-menu .login-shell::after,
+            .sg-admin-main #vista-menu .hero-panel {
+                display: none !important;
+                content: none;
+            }
+            .sg-admin-main #vista-menu .form-panel {
+                padding: 0;
+                overflow: visible !important;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .login-card {
+                max-width: none;
+                margin: 0;
+                padding: 24px 16px 20px;
+                border-radius: 24px;
+                border: 1px solid var(--glass-border);
+                background: rgba(18, 18, 18, 0.9);
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+            }
+            .sg-admin-main #vista-menu .admin-inline-fields {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .sg-admin-main #vista-menu .catalogo-section { margin-top: 24px; }
+            .sg-admin-main #vista-menu #listado.products-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
     </style>
     <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <link rel="stylesheet" href="savage-admin-responsive.css">
+    <script defer src="savage-theme.js"></script>
+    <script defer src="savage-admin-responsive.js"></script>
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
     <div class="sg-admin-layout">
-      <aside class="sg-admin-sidebar" aria-label="Navegación de Administración">
-        <h1 class="logo-restaurante sg-admin-brand">Savage<span style="color:var(--primary-orange)">Grill.</span></h1>
-        <div class="sg-admin-caption">PORTAL DE ADMINISTRACIÓN</div>
+      <header class="sg-admin-mobilebar" aria-label="Barra de administración">
+        <div class="sg-admin-mobilebar-top">
+          <div class="sg-admin-mobile-brand sg-brand-unified" aria-label="Savage Grill Administración">SAVAGE<span>GRILL.</span><small class="sg-role-unified">ADMINISTRACIÓN</small></div>
+          <div class="sg-admin-mobile-actions">
+            <div id="sg-admin-theme-mobile-slot"></div>
+            <button type="button" id="sg-admin-menu-open" class="sg-admin-menu-trigger" aria-controls="sg-admin-nav" aria-expanded="false" aria-label="Abrir menú de Administración">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+              <span>Menú</span>
+            </button>
+          </div>
+        </div>
+        <div class="sg-admin-mobile-current"><span>SECCIÓN ACTUAL</span><strong id="sg-admin-mobile-title">Gestión de Menú</strong></div>
+      </header>
+      <div class="sg-admin-mobile-overlay" id="sg-admin-mobile-overlay" hidden aria-hidden="true"></div>
+      <aside class="sg-admin-sidebar" id="sg-admin-nav" aria-label="Navegación de Administración">
+        <div class="sg-admin-mobile-navhead"><span>Secciones</span><button type="button" id="sg-admin-menu-close" aria-label="Cerrar menú de Administración">✕</button></div>
+        <h1 class="logo-restaurante sg-admin-brand sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+        <div class="sg-admin-caption sg-role-unified">ADMINISTRACIÓN</div>
         <nav class="sg-admin-sidebar-scroll" aria-label="Secciones de Administración">
         <div class="sg-admin-group">MENÚ</div>
         <button type="button" class="sg-admin-nav active" data-admin-tab="menu" aria-current="page"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><path d="M8 4v16"/></svg><span class="sg-nav-label">Gestión de Menú</span></button>
@@ -649,7 +824,8 @@
         <button type="button" class="sg-admin-nav" id="admin-ir-gerente" hidden>← Volver a Gerencia</button>
         </nav>
         <div class="sg-admin-sidebar-footer">
-          <button type="button" class="sg-admin-theme" id="admin-tema" aria-label="Cambiar modo claro u oscuro"><span id="admin-tema-texto">Modo: Oscuro</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
+          <div class="sg-admin-theme-row"><span>Apariencia</span><div id="sg-admin-theme-desktop-slot"><div data-savage-theme="inline"></div></div></div>
+          <button type="button" class="sg-admin-theme" id="admin-tema" hidden aria-hidden="true" aria-label="Cambiar modo claro u oscuro"><span id="admin-tema-texto">Modo: Oscuro</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
           <div class="sg-admin-profile" id="admin-perfil">
             <div class="sg-admin-avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
             <span id="admin-perfil-nombre">Verificando sesión...</span>
@@ -658,6 +834,13 @@
         </div>
       </aside>
       <main class="sg-admin-main" id="admin-contenido">
+        <!-- Acceso directo visible solo para el rol Gerente, sincronizado con el acceso existente. -->
+        <div class="sg-admin-manager-return" id="sg-admin-manager-return" hidden>
+          <button type="button" class="sg-admin-manager-return-btn" id="sg-admin-manager-return-btn" aria-label="Volver al panel de Gerencia">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg>
+            Volver a Gerencia
+          </button>
+        </div>
         <div class="sg-admin-msg error" id="admin-acceso-error" hidden role="alert"></div>
         <section id="vista-menu" class="sg-admin-view" aria-label="Gestión de Menú" hidden>
     <div class="login-page">
@@ -667,12 +850,12 @@
             <div class="hero-panel" style="position: relative;">
 
                 <div class="brand" style="margin-top: 20px;">
-                    <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+                    <h1 class="logo-restaurante sg-brand-unified" style="color: var(--text-main);">SAVAGE<span>GRILL.</span></h1>
                 </div>
                 
                 <div class="hero-copy">
                     <span class="eyebrow">PANEL DE ADMINISTRACIÓN</span>
-                    <h1>Gestión de<br>Menú</h1>
+                    <h1>Gestión de <span>Menú</span></h1>
                     <p>Agregá nuevos platos al catálogo digital y actualiza la carta del restaurante en tiempo real.</p>
                 </div>
             </div>
@@ -680,7 +863,7 @@
             <!-- PANEL DERECHO: Formulario -->
             <div class="form-panel" style="overflow-y: auto; position: relative;">
 
-                <div class="login-card" style="margin-top: 70px; margin-bottom: 50px;">
+                <div class="login-card">
                     <div class="login-header">
                         <h2>Nuevo Producto</h2>
                         <p>Ingresá los datos para enviar al servidor</p>
@@ -693,7 +876,7 @@
                             <input type="text" id="campo-nombre" class="admin-input" placeholder="Ej: Hamburguesa Completa" required>
                         </div>
 
-                        <div style="display: flex; gap: 15px;">
+                        <div class="admin-inline-fields">
                             <div class="admin-form-group" style="flex: 1;">
                                 <label class="admin-label">Precio de Lista ($)</label>
                                 <input type="number" id="campo-precio" class="admin-input" placeholder="0.00" step="0.01" required>

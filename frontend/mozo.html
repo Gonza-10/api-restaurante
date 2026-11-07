@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Salón - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-scrollbars.css">
     <style>
         .salon-grid {
             display: grid;
@@ -241,8 +244,98 @@
         @media (max-width:420px){.salon-grid{grid-template-columns:1fr 1fr;}.mesa-figure{transform:scale(.77); margin:-15px auto}.table-surface .mesa-numero{font-size:30px}.mesa-card{padding:9px 5px}.mesa-instruccion{font-size:10px}}
         @media (prefers-reduced-motion:reduce){.mesa-card,.action-btn{transition:none!important;animation:none!important;}}
 
+
+        /* P40: Mozo adaptable sin alterar API, mapa de mesas ni estados de sesión. */
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { max-width:100%; overflow-x:clip; }
+        .salon-shell, .salon-columns, .salon-column-main, .salon-column-side { min-width:0; }
+        .top-bar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .sg-mozo-acciones { display:flex; align-items:center; justify-content:flex-end; gap:13px; flex-wrap:wrap; min-width:0; }
+        .sg-mozo-acciones #nombre-mozo { overflow-wrap:anywhere; }
+        .sg-mozo-acciones .sg-theme-host { order:0; }
+        .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+        .salon-columns > * { min-width:0; }
+        .map-legend { justify-content:center; }
+        .salon-grid { min-width:0; }
+        .salon-panel, .sesion-card, .mesa-card { min-width:0; }
+        #modal-abrir, #modal-pedidos, #modal-aviso, #modal-confirmar-cierre { padding:12px; overflow-y:auto; }
+        #modal-abrir > div, #modal-pedidos > div, #modal-aviso > div, #modal-confirmar-cierre > div { max-height:calc(100dvh - 24px); max-width:100%; overflow-y:auto; }
+        #modal-pedidos > div { width:min(650px,100%)!important; }
+        #modal-abrir > div { width:min(400px,100%)!important; }
+        @media (max-width:1110px) {
+            .salon-shell { padding-inline:clamp(12px,2.4vw,25px); }
+            .salon-columns { grid-template-columns:minmax(0,1fr); gap:18px; }
+            .salon-column-side { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:15px; }
+            .salon-grid { grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
+        }
+        @media (max-width:760px) {
+            .salon-column-side { grid-template-columns:minmax(0,1fr); }
+            .salon-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+            .salon-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+            .top-bar { gap:12px; align-items:flex-start; }
+            .salon-heading { align-items:flex-start; }
+            .salon-heading h2 { font-size:clamp(22px,5vw,28px); }
+            .salon-panel { padding:16px; }
+            .mesa-card { padding:11px 7px; }
+            .mesa-figure { transform:scale(.83); margin:-9px auto; }
+            .sg-mozo-acciones { gap:9px; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; }
+        }
+        @media (max-width:500px) {
+            .salon-shell { padding-inline:12px; padding-bottom:calc(45px + env(safe-area-inset-bottom)); }
+            .top-bar { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+            .top-bar .brand { min-width:0; }
+            .top-bar .logo-restaurante { font-size:24px!important; }
+            .sg-mozo-acciones { width:100%; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:center; justify-content:stretch; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; text-align:center; }
+            .sg-mozo-acciones .sg-logout-cabecera { min-height:40px; padding:8px 10px!important; font-size:11px!important; }
+            .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+            .salon-heading { gap:12px; }
+            .map-legend { width:100%; justify-content:space-between; gap:4px; padding:9px 7px; }
+            .legend-chip { font-size:10px; gap:4px; }
+            .overview-tile { padding:10px 11px; }
+            .overview-tile b { font-size:21px; }
+            .overview-tile small { font-size:11px; }
+            .mesa-card { padding:10px 5px; gap:7px; }
+            .mesa-figure { transform:scale(.72); margin:-19px auto; }
+            .table-surface .mesa-numero { font-size:30px; }
+            .mesa-instruccion { font-size:10px; }
+            .sesion-detail-grid { grid-template-columns:minmax(0,1fr) auto; gap:6px; }
+            .sesion-opened,.sesion-pin-box { padding:9px 7px; }
+            .sesion-footer button { font-size:11px!important; padding:10px 6px!important; min-height:42px; }
+        }
+        @media (max-width:359px) {
+            .sg-mozo-acciones { grid-template-columns:auto minmax(0,1fr); }
+            .sg-mozo-acciones .sg-logout-cabecera { grid-column:1/-1; justify-self:end; }
+            .salon-grid { grid-template-columns:1fr; }
+            .mesa-figure { transform:scale(.95); margin:-3px auto; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .mesa-card.pidiendo-cuenta { animation:none!important; }
+        }
+
+        /* P40.1: avisos urgentes primero en celular; mapa primero en escritorio.
+           display:contents conserva nodos y eventos sin duplicar contenido. */
+        @media (max-width:720px) {
+            .salon-shell { display:flex; flex-direction:column; }
+            .salon-shell > .top-bar { order:0; }
+            .salon-columns, .salon-column-side { display:contents!important; }
+            .salon-column-side > section[aria-labelledby="avisos-title"] {
+                order:1; width:100%; margin:8px 0 17px;
+            }
+            /* Tareas prioritarias del mozo: avisos, accesos a mesas y luego plano. */
+            .salon-column-side > section[aria-labelledby="sesiones-title"] {
+                order:2; width:100%; margin:0 0 18px;
+            }
+            .salon-shell > .salon-heading { order:3; }
+            .salon-shell > .salon-overview { order:4; }
+            .salon-column-main { order:5; width:100%; }
+        }
     </style>
     <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
     <div id="toast-exito">¡Mesa abierta con éxito!</div>
@@ -250,8 +343,9 @@
 
     <div class="salon-shell">
         <div class="top-bar">
-            <div class="brand"><h1 class="logo-restaurante" style="font-family:'Elemental End',sans-serif;font-size:26px;margin:0;">Savage<span style="color:var(--primary-orange)">Grill.</span></h1><div style="color:var(--text-muted);font-size:11px;letter-spacing:.15em;font-weight:800;margin-top:5px;">GESTIÓN DE SALÓN</div></div>
-            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div class="brand sg-brand-lockup"><h1 class="logo-restaurante sg-brand-unified">SAVAGE<span>GRILL.</span></h1><div class="sg-role-unified">GESTIÓN DE SALÓN</div></div>
+            <div class="sg-mozo-acciones">
+                <div data-savage-theme="inline"></div>
                 <span id="nombre-mozo" style="font-size:14px;font-weight:800;">Cargando usuario...</span>
                 <button class="action-btn action-btn-danger sg-logout-unificado sg-logout-cabecera" type="button" onclick="cerrarSesion()"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
             </div>

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú Digital - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
     <style>
         .sin-ingrediente-checkbox {
             display: flex;
@@ -117,23 +120,245 @@
         .sg-especial.sg-especial-interactivo:focus-visible { outline:3px solid var(--primary-orange); outline-offset:4px; }
         .sg-especial-descuento { color:#fff; background:rgba(255,122,0,.9); font-size:12px; font-weight:900; padding:5px 9px; border-radius:8px; margin:10px 0 0; }
         @media (prefers-reduced-motion:reduce) { .sg-especial.sg-especial-interactivo { transition:none; } }
+
+        /* ===== P37 · RESPONSIVE REAL — CATÁLOGO =====
+           Ancho fluido y breakpoints por contenido (móviles, plegables, tablets y escritorio).
+           Solo presentación: los datos, endpoints y pedidos no se alteran.
+        */
+        html { width:100%; overflow-x:clip; }
+        body { min-width:0; width:100%; overflow-x:clip; }
+        .sg-header {
+            width:100%; min-width:0; gap:12px;
+        }
+        .sg-header .logo-restaurante {
+            min-width:0; overflow-wrap:normal;
+        }
+        .sg-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-shrink:0; }
+        .sg-mesa-badge, .sg-salir-cliente { white-space:nowrap; flex-shrink:0; }
+        .sg-main { min-width:0; width:100%; }
+        .sg-toggle-avanzados { display:none; }
+        .sg-filtros { min-width:0; }
+        .sg-filtros > * { min-width:0; }
+        #contenedor-categorias { max-width:100%; }
+        #listado {
+            display:grid !important;
+            grid-template-columns:repeat(3,minmax(0,300px));
+            justify-content:center !important;
+            align-items:stretch;
+            gap:20px !important;
+            min-width:0; width:100%;
+        }
+        #listado > .product-card { width:100% !important; max-width:100%; min-width:0; margin:0; }
+        #listado .product-card > div { min-width:0; }
+        #listado .product-card h3 { overflow-wrap:anywhere; }
+        #listado .sg-card-footer { min-width:0; }
+        #listado .sg-card-price .sg-precio-actual { font-size:clamp(15px,1.75vw,19px); }
+        /* Solo resaltamos hover en dispositivos donde hay cursor real. */
+        @media (hover:none) {
+            #listado > .product-card:hover { transform:none !important; }
+            #contenedor-categorias .btn-filtro:hover { transform:none; }
+        }
+        @media (max-width:1199px) {
+            .sg-header { padding:18px 28px !important; }
+            .sg-main { padding:32px 28px 104px !important; }
+            #listado { grid-template-columns:repeat(2,minmax(0,360px)); }
+            .sg-filtros { grid-template-columns:repeat(3,minmax(0,1fr)); }
+            .sg-filtro-busqueda { grid-column:1/-1; }
+            .sg-filtro-orden { grid-column:1/3; }
+            .sg-boton-buscar { grid-column:3/4; }
+        }
+        @media (max-width:750px) {
+            .sg-header { padding:14px 20px !important; }
+            .sg-header .logo-restaurante { font-size:clamp(19px,4.5vw,27px) !important; letter-spacing:0 !important; }
+            .sg-header-actions { gap:8px; }
+            .sg-mesa-badge { padding:6px 10px !important; font-size:12px; }
+            .sg-salir-cliente { padding:8px 10px !important; font-size:12px !important; }
+            .sg-main { padding:25px 20px 108px !important; }
+            #listado { grid-template-columns:minmax(0,440px); gap:16px !important; }
+            #listado > .product-card { padding:16px; }
+            #listado .product-card img { max-width:100%; }
+            #contenedor-categorias {
+                display:flex !important;
+                flex-wrap:nowrap !important;
+                width:100%; max-width:100%;
+                gap:9px !important;
+                overflow-x:auto; overflow-y:hidden;
+                overscroll-behavior-x:contain;
+                scroll-snap-type:x proximity;
+                padding:4px 0 12px !important;
+                -webkit-overflow-scrolling:touch;
+                scrollbar-width:thin;
+            }
+            #contenedor-categorias .btn-filtro {
+                flex:0 0 auto; scroll-snap-align:start;
+                min-height:42px; padding:9px 15px !important;
+            }
+            .sg-especial { margin-bottom:25px; }
+            #modal-aviso, #modal-mesa, #modal-detalle {
+                padding:12px; box-sizing:border-box;
+            }
+            #modal-aviso > .product-card,
+            #modal-mesa > .product-card,
+            #modal-detalle > .product-card {
+                width:min(450px,100%) !important;
+                max-width:100% !important;
+                min-width:0;
+                max-height:calc(100dvh - 24px);
+                overflow-y:auto;
+            }
+            #modal-mesa > .product-card > div > div { flex-wrap:wrap; gap:8px; }
+            #modal-mesa #span-pin { letter-spacing:3px !important; padding:8px 12px !important; }
+            .sg-modal-footer { grid-template-columns:minmax(0,1fr) max-content !important; }
+            .sg-modal-add { grid-column:1/-1; min-height:46px; width:100%; }
+        }
+        @media (max-width:600px) {
+            .sg-filtros {
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:10px;
+            }
+            .sg-filtro-busqueda { grid-column:1/-1; order:0; }
+            .sg-toggle-avanzados {
+                display:flex; grid-column:1/-1; align-items:center;
+                justify-content:space-between; min-height:43px;
+                padding:9px 14px; cursor:pointer;
+                background:rgba(255,122,0,.07); color:var(--text-main);
+                border:1px solid rgba(255,122,0,.4); border-radius:10px;
+                font:inherit; font-size:13px; font-weight:800;
+            }
+            .sg-toggle-avanzados::after {
+                content:'+'; font-size:20px; line-height:1; color:var(--primary-orange);
+            }
+            .sg-toggle-avanzados[aria-expanded='true']::after { content:'−'; }
+            .sg-toggle-avanzados:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+            .sg-filtros:not(.sg-filtros-open) .sg-filtro-avanzado { display:none !important; }
+            .sg-filtro-avanzado { order:2; }
+            .sg-toggle-avanzados { order:1; }
+            .sg-filtro-orden { grid-column:1/-1; }
+            .sg-boton-buscar { grid-column:1/-1; order:3; }
+            #listado .sg-card-add { min-height:42px; }
+            #boton-carrito {
+                width:100% !important; max-width:380px !important;
+                padding:14px 18px !important; gap:12px;
+                min-height:52px;
+            }
+            .sg-carrito-flotante { padding:0 12px max(12px,env(safe-area-inset-bottom)) !important; }
+        }
+        @media (max-width:400px) {
+            .sg-header { padding:12px 14px !important; }
+            .sg-header .logo-restaurante { font-size:clamp(18px,5.4vw,21px) !important; }
+            .sg-header-actions { gap:5px; }
+            .sg-mesa-badge { padding:5px 7px !important; font-size:11px !important; }
+            .sg-salir-cliente { padding:7px 7px !important; font-size:11px !important; }
+            .sg-main { padding:22px 14px 104px !important; }
+            #listado .sg-card-footer { grid-template-columns:minmax(0,1fr) max-content; gap:7px; }
+            #listado .sg-card-add { padding:9px 9px !important; }
+            #listado .sg-card-price .sg-precio-actual { font-size:16px; }
+            #modal-mesa > .product-card { padding:20px !important; }
+        }
+        @media (max-width:340px) {
+            .sg-header { display:grid !important; grid-template-columns:1fr; gap:10px; }
+            .sg-header-actions { justify-content:space-between; }
+            .sg-header .logo-restaurante { font-size:22px !important; }
+            .sg-main { padding-inline:12px !important; }
+            #listado .sg-card-footer { grid-template-columns:1fr; }
+            #listado .sg-card-add { width:100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #listado > .product-card, #contenedor-categorias .btn-filtro { transition:none !important; }
+        }
+
+        /* P37.1 · Centrado de filtros y categorías en tablet, sin ocultar extremos del scroll móvil. */
+        @media (min-width:751px) and (max-width:1199px) {
+            .sg-filtros { grid-template-columns:repeat(12,minmax(0,1fr)); column-gap:12px; }
+            .sg-filtro-busqueda { grid-column:1/-1; }
+            .sg-filtro-campo:has(#filtro-min) { grid-column:4/7; }
+            .sg-filtro-campo:has(#filtro-max) { grid-column:7/10; }
+            .sg-filtro-orden { grid-column:4/8; }
+            .sg-boton-buscar { grid-column:8/10; }
+            #contenedor-categorias {
+                justify-content:safe center !important;
+                flex-wrap:nowrap !important; overflow-x:auto;
+                gap:8px !important; scrollbar-width:thin;
+            }
+            #contenedor-categorias .btn-filtro {
+                flex:0 0 auto; font-size:12px; padding:8px 10px !important;
+            }
+        }
+        @media (min-width:1200px) {
+            #contenedor-categorias { justify-content:center !important; }
+        }
+        @media (max-width:750px) {
+            /* safe center evita perder las primeras categorías si hay desbordamiento horizontal. */
+            #contenedor-categorias { justify-content:safe center !important; }
+        }
+        @media (min-width:601px) and (max-width:750px) {
+            /* Anchos intermedios: agrupación equilibrada en vez de controles pegados al borde. */
+            .sg-filtros { grid-template-columns:repeat(6,minmax(0,1fr)); }
+            .sg-filtro-busqueda { grid-column:1/-1; }
+            .sg-filtro-campo:has(#filtro-min) { grid-column:2/4; }
+            .sg-filtro-campo:has(#filtro-max) { grid-column:4/6; }
+            .sg-filtro-orden { grid-column:2/5; }
+            .sg-boton-buscar { grid-column:5/6; min-width:0; padding-inline:8px; }
+        }
+        @media (max-width:600px) {
+            .sg-filtro-campo:has(#filtro-min) label, .sg-filtro-campo:has(#filtro-max) label { text-align:center; }
+        }
+
+        /* P37.2 · Buscador compacto y centrado en tablets, sin alterar el escritorio. */
+        @media (min-width:751px) and (max-width:1199px) {
+            .sg-filtro-busqueda {
+                grid-column:3/11;
+                width:100%;
+                max-width:560px;
+                justify-self:center;
+            }
+        }
+        /* Encabezado de dos filas en teléfonos estrechos: nunca superponer logo y tema. */
+        @media (max-width:420px) {
+            .sg-header {
+                display:grid !important;
+                grid-template-columns:minmax(0,1fr);
+                justify-items:stretch;
+                gap:7px;
+            }
+            .sg-header .logo-restaurante {
+                font-size:clamp(20px,5.7vw,24px) !important;
+                white-space:nowrap;
+                overflow:visible;
+            }
+            .sg-header-actions {
+                display:flex !important;
+                justify-content:flex-end !important;
+                width:100%;
+                gap:9px !important;
+                min-width:0;
+            }
+        }
+        /* P37.3 · Ocultar solamente el indicador de scroll en la tira de categorías.
+           Se conserva el deslizamiento horizontal táctil y con el mouse/trackpad. */
+        #contenedor-categorias { scrollbar-width:none!important; -ms-overflow-style:none; }
+        #contenedor-categorias::-webkit-scrollbar { display:none!important; width:0!important; height:0!important; }
     </style>
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
-        <h1 class="logo-restaurante" style="margin: 0; font-family: 'Elemental End', sans-serif;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span onclick="abrirModalMesa()" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--primary-orange)';">
+    <header class="sg-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
+        <h1 class="logo-restaurante sg-brand-unified" style="margin: 0;">SAVAGE<span>GRILL.</span></h1>
+        <div class="sg-header-actions" style="display: flex; align-items: center; gap: 15px;">
+            <div class="sg-theme-host" data-savage-theme="inline"></div>
+            <span class="sg-mesa-badge" role="button" tabindex="0" aria-label="Ver información de la mesa" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModalMesa();}" onclick="abrirModalMesa()" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--primary-orange)';">
                 Mesa #<span id="txt-nro-mesa">--</span>
             </span>
-            <button onclick="cerrarSesionCliente()" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 6px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
+            <button class="sg-salir-cliente" type="button" onclick="cerrarSesionCliente()" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 6px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
                 Salir
             </button>
         </div>
     </header>
 
-    <main style="padding: 40px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; position: relative;">
+    <main class="sg-main" style="padding: 40px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; position: relative;">
         <!-- Overlay Local Cerrado -->
         <div id="overlay-local-cerrado" style="display: none; position: absolute; inset: 0; background: rgba(18,18,18,0.9); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 16px;">
             <span style="font-size: 60px; margin-bottom: 20px;">🌙</span>
@@ -165,15 +390,15 @@
                     <label for="filtro-texto">Buscar por nombre o ingrediente</label>
                     <input class="sg-filtro-input" type="text" id="filtro-texto" placeholder="Buscar plato o ingrediente…" autocomplete="off">
                 </div>
-                <div class="sg-filtro-campo">
+                <div class="sg-filtro-campo sg-filtro-avanzado">
                     <label for="filtro-min">Precio mínimo</label>
                     <input class="sg-filtro-input" type="number" id="filtro-min" min="0" step="any" inputmode="decimal" placeholder="Desde ($)">
                 </div>
-                <div class="sg-filtro-campo">
+                <div class="sg-filtro-campo sg-filtro-avanzado">
                     <label for="filtro-max">Precio máximo</label>
                     <input class="sg-filtro-input" type="number" id="filtro-max" min="0" step="any" inputmode="decimal" placeholder="Hasta ($)">
                 </div>
-                <div class="sg-filtro-campo sg-filtro-orden">
+                <div class="sg-filtro-campo sg-filtro-orden sg-filtro-avanzado">
                     <label for="filtro-orden">Ordenar productos</label>
                     <select id="filtro-orden" aria-label="Ordenar productos">
                         <option value="">Ordenar por defecto</option>
@@ -182,9 +407,10 @@
                         <option value="nombre">Nombre (A–Z)</option>
                     </select>
                 </div>
+                <button type="button" id="sg-toggle-avanzados" class="sg-toggle-avanzados" aria-expanded="false" aria-controls="filtro-min filtro-max filtro-orden" onclick="alternarFiltrosMoviles()">Filtros de precio y orden</button>
                 <button type="button" class="sg-boton-buscar" onclick="aplicarFiltrosAvanzados()">Buscar</button>
             </div>
-            <div id="contenedor-categorias" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+            <div id="contenedor-categorias" role="group" aria-label="Categorías: deslizá horizontalmente para ver todas" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
 
         <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">Fallo al cargar el menú digital. Verifique si el servidor backend está encendido.</div>
@@ -258,8 +484,8 @@
     </div>
 
     <!-- CALL TO ACTION -->
-    <div style="position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; padding-bottom: 20px; pointer-events: none; z-index: 1000;">
-        <div id="boton-carrito" onclick="abrirModalCarrito()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
+    <div class="sg-carrito-flotante" style="position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; padding-bottom: 20px; pointer-events: none; z-index: 1000;">
+        <div id="boton-carrito" role="button" tabindex="0" aria-label="Ver mi pedido" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModalCarrito();}" onclick="abrirModalCarrito()" style="background-color: var(--primary-orange); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-radius: 12px; width: 300px; font-weight: bold; pointer-events: auto; cursor: pointer; box-shadow: 0 10px 20px rgba(255,122,0,0.3); transition: transform 0.2s ease;">
             <span id="texto-pedido">Mi pedido (0)</span>
             <span id="total-pedido">$0.00</span>
         </div>
@@ -267,6 +493,13 @@
 
 
     <script>
+    function alternarFiltrosMoviles() {
+        const filtros = document.querySelector('.sg-filtros');
+        const boton = document.getElementById('sg-toggle-avanzados');
+        if (!filtros || !boton) return;
+        const abierto = filtros.classList.toggle('sg-filtros-open');
+        boton.setAttribute('aria-expanded', String(abierto));
+    }
     // Desplegable idéntico al del panel administrativo: sin el menú celeste nativo.
     (() => {
     const sgSelect = (() => {

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Pedido - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
     <style>
         .carrito-container {
             display: grid;
@@ -86,17 +89,210 @@
         body.light-mode {
             scrollbar-color: #c17e57 #f1f1f1;
         }
+
+        /* P38.1: volver desde el fondo de un historial extenso, sin controles flotantes. */
+        .carrito-navegacion-final { max-width:1200px; margin:-68px auto 45px; padding:0 40px; position:relative; display:flex; justify-content:flex-start; }
+        .carrito-continuar-menu { display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 18px; min-height:48px; font-size:14px; font-weight:800; color:var(--primary-orange); background:rgba(255,122,0,.075); border:1px solid rgba(255,122,0,.42); text-decoration:none; border-radius:12px; transition:background-color .2s; }
+        .carrito-continuar-menu:hover { background:rgba(255,122,0,.18); }
+        .carrito-continuar-menu:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        @media (max-width:1100px) { .carrito-navegacion-final { padding:0 24px; } }
+        @media (max-width:680px) { .carrito-navegacion-final { padding:0 16px; margin:-45px auto 30px; } .carrito-continuar-menu { width:100%; } }
+        @media (max-width:380px) { .carrito-navegacion-final { padding:0 10px; } }
+
+        /* P38 - Carrito adaptable: misma lógica de pedidos, presentación apta para pantallas táctiles. */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { min-width: 0; overflow-x: clip; }
+        body { min-width: 0; overflow-x: clip; }
+        .carrito-header {
+            position: relative; z-index: 1800;
+            gap: 18px; min-width: 0;
+        }
+        .carrito-header .logo-restaurante {
+            flex: 0 0 auto; min-width: 0;
+            font-size: clamp(21px, 2.5vw, 29px);
+            white-space: nowrap;
+        }
+        .carrito-header-acciones { justify-content: flex-end; flex: 0 0 auto; min-width:0; }
+        .carrito-badge-mesa { white-space: nowrap; font-size:13px; }
+        .carrito-volver { white-space: nowrap; min-height:38px; }
+        .carrito-container { width:100%; box-sizing:border-box; min-width:0; }
+        .carrito-container > div { min-width: 0; }
+        #contenedor-items-carrito, #contenedor-historial-pedidos { min-width:0; }
+        .item-carrito-card { min-width:0; }
+        .item-carrito-card button { touch-action:manipulation; }
+        .carrito-item-descripcion { overflow-wrap:anywhere; }
+        .carrito-item-importe { white-space:nowrap; }
+        .carrito-item-cantidad { flex-shrink:0; }
+        .carrito-item-cantidad button { min-width:25px; min-height:32px; padding:0; font-size:19px; }
+        .carrito-item-acciones { justify-content:flex-end; }
+        .carrito-item-acciones button, .btn-edit-carrito { min-width:38px!important; min-height:38px!important; }
+        .carrito-historial-card { min-width:0; }
+        .carrito-historial-card > span { flex:0 0 auto; align-self:flex-start; }
+        .carrito-resumen-fila { min-width:0; gap:12px; align-items:flex-start; }
+        .carrito-resumen-fila > span:first-child { min-width:0; overflow-wrap:anywhere; }
+        .carrito-resumen-fila > span:last-child { flex:0 0 auto; text-align:right; white-space:nowrap; }
+        .carrito-resumen-total { gap:14px; min-width:0; }
+        .carrito-resumen-total > span:first-child { min-width:0; line-height:1.4; overflow-wrap:anywhere; }
+        #lbl-total { white-space:nowrap; font-size:clamp(20px, 2.8vw, 28px)!important; }
+        #btn-enviar-cocina, #btn-cerrar-mesa { min-height:52px; touch-action:manipulation; }
+        .metodo-pago-label { min-height:50px; touch-action:manipulation; }
+        .metodo-pago-label input { min-width:18px; min-height:18px; }
+        #modal-editar-plato, #modal-aviso { padding:16px; overflow:auto; }
+        .carrito-modal-edicion, .carrito-modal-aviso { max-width:100%; box-sizing:border-box; }
+        .carrito-modal-edicion { max-height:min(85dvh, 780px)!important; }
+        .carrito-modal-aviso { max-height:calc(100dvh - 32px); overflow-y:auto; }
+        .carrito-modal-edicion .quitable-editar { min-height:46px; }
+        .carrito-header .sg-theme-popup { z-index:5500; }
+        body.light-mode .carrito-header { background:#fff; }
+        body.light-mode .carrito-volver { color:#525252!important; }
+        body.light-mode .carrito-historial-card { background:rgba(0,0,0,.025)!important; }
+        @media (max-width: 1100px) {
+            .carrito-container { padding:26px 24px 80px; gap:24px; }
+            .carrito-header { padding:16px 24px!important; }
+            .item-carrito-card { gap:12px; padding:12px; }
+        }
+        @media (max-width: 900px) {
+            .carrito-container { grid-template-columns:minmax(0, 1fr); max-width:740px; gap:28px; }
+            .carrito-columna-seleccion { gap:20px!important; }
+            .carrito-columna-cuenta { gap:16px!important; }
+            .carrito-resumen, .carrito-zona-pago { padding:22px!important; }
+        }
+        @media (max-width: 680px) {
+            .carrito-container { padding:24px 16px 70px; gap:26px; }
+            .carrito-header { padding:14px 16px!important; }
+            .carrito-header .logo-restaurante { font-size:clamp(20px,3.9vw,26px)!important; letter-spacing:0!important; }
+            .carrito-header-acciones { gap:8px!important; }
+            .carrito-badge-mesa { padding:6px 9px!important; font-size:12px; }
+            .carrito-volver { padding:7px 10px!important; font-size:12px!important; }
+            .carrito-resumen, .carrito-zona-pago { padding:20px!important; }
+            .item-carrito-card {
+                display:grid; grid-template-columns:minmax(96px,1fr) auto auto;
+                grid-template-areas:'foto descripcion descripcion' 'cantidad importe acciones';
+                gap:12px 8px; padding:12px;
+            }
+            .carrito-item-foto { grid-area:foto; width:58px!important; height:58px!important; }
+            .carrito-item-descripcion { grid-area:descripcion; }
+            .carrito-item-cantidad { grid-area:cantidad; width:max-content; }
+            .carrito-item-importe { grid-area:importe; font-size:13px!important; min-width:0!important; justify-self:end; }
+            .carrito-item-acciones { grid-area:acciones; margin-left:0!important; }
+            .carrito-historial-card { flex-wrap:wrap; }
+            .carrito-historial-card > span { margin-left:auto; }
+            .carrito-modal-edicion > div { padding:24px!important; }
+            .carrito-modal-aviso { padding:25px 19px!important; }
+        }
+        @media (max-width: 560px) {
+            .carrito-header { display:grid!important; grid-template-columns:minmax(0,1fr); gap:10px; }
+            .carrito-header .logo-restaurante { font-size:23px!important; }
+            .carrito-header-acciones { justify-content:space-between; width:100%; }
+            .carrito-header-acciones .sg-theme-host { margin-right:auto; }
+            /* En celulares el menú debe abrir hacia la derecha; si se abre hacia
+               la izquierda queda fuera del viewport y no se puede seleccionar. */
+            .carrito-header .sg-theme-popup { left:0; right:auto; max-width:calc(100vw - 24px); }
+            .carrito-container { padding:20px 13px 65px; }
+            .carrito-resumen-total { align-items:flex-start!important; }
+            .carrito-resumen-total > span:first-child { font-size:14px!important; }
+            .carrito-resumen-fila { font-size:13px!important; }
+            .carrito-resumen, .carrito-zona-pago { border-radius:17px!important; padding:17px!important; }
+            .carrito-columna-seleccion h2 { font-size:22px!important; }
+            #contenedor-historial-pedidos { gap:9px!important; }
+        }
+        @media (max-width: 380px) {
+            .carrito-container { padding:16px 10px 60px; }
+            .carrito-header { padding:11px 12px!important; }
+            .carrito-header .logo-restaurante { font-size:21px!important; }
+            .carrito-volver { font-size:11px!important; padding:6px 9px!important; }
+            .item-carrito-card { padding:10px; gap:9px 5px; grid-template-columns:minmax(91px,1fr) auto auto; }
+            .carrito-item-importe { font-size:12px!important; }
+            .carrito-item-cantidad { gap:3px!important; padding:2px 4px!important; }
+            .carrito-item-cantidad button { min-width:23px; }
+            .carrito-item-acciones { gap:4px!important; }
+            .carrito-item-acciones button { min-width:34px!important; min-height:36px!important; width:34px!important; height:36px!important; }
+            .carrito-resumen-total { flex-direction:column; gap:5px; }
+            #lbl-total { align-self:flex-end; }
+            #modal-botones { flex-wrap:wrap; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .item-carrito-card, .metodo-pago-label { transition:none!important; }
+        }
+
+        /* P38.2: Total de la selección como franja de ancho completo en celulares.
+           Diferenciado de la cuenta real de la mesa y del botón de enviar. */
+        .carrito-total-movil { display:none; }
+        @media (max-width:680px) {
+            .carrito-total-movil {
+                display:flex; align-items:center; justify-content:space-between; gap:18px;
+                position:fixed; left:0; right:0; bottom:0; width:100%;
+                z-index:1850; margin:0; min-height:66px;
+                padding:11px max(16px,env(safe-area-inset-right))
+                        calc(10px + env(safe-area-inset-bottom))
+                        max(16px,env(safe-area-inset-left));
+                border:0; border-top:2px solid #ff7a00; border-radius:0;
+                background:#141211; box-shadow:0 -8px 20px rgba(0,0,0,.22);
+                color:#fff; pointer-events:none;
+            }
+            .carrito-total-movil-etiqueta { display:flex; flex-direction:column; gap:2px; font-size:14px; font-weight:850; min-width:0; }
+            .carrito-total-movil-etiqueta small { font-size:11px; font-weight:500; color:#b6aaa5; }
+            #carrito-total-movil-importe { color:#ff820e; font-size:clamp(18px,5vw,23px); font-weight:900; white-space:nowrap; font-variant-numeric:tabular-nums; }
+            /* Espacio libre real: ningún control queda debajo del dock fijo. */
+            body { padding-bottom:calc(92px + env(safe-area-inset-bottom))!important; }
+            .carrito-navegacion-final { margin-bottom:12px!important; }
+        }
+        @media (max-width:380px) {
+            .carrito-total-movil { gap:7px; padding-left:12px; padding-right:12px; }
+            #carrito-total-movil-importe { font-size:19px; }
+        }
+        body.light-mode .carrito-total-movil { background:#fff; color:#222; border-top-color:#ff7a00; box-shadow:0 -6px 18px rgba(0,0,0,.12); }
+        body.light-mode .carrito-total-movil-etiqueta small { color:#636363; }
+
+        /* P38.3: franja completa con dos importes, borde naranja y extremos suaves. */
+        @media (max-width: 680px) {
+            .carrito-total-movil {
+                flex-direction:column;
+                align-items:stretch;
+                justify-content:center;
+                gap:7px;
+                border-top:2px solid #ff7a00;
+                border-radius:15px 15px 0 0;
+                padding:11px max(14px,env(safe-area-inset-right))
+                        calc(9px + env(safe-area-inset-bottom))
+                        max(14px,env(safe-area-inset-left));
+                box-shadow:0 -7px 25px rgba(0,0,0,.24);
+            }
+            .carrito-total-movil-fila {
+                display:flex; align-items:center; justify-content:space-between;
+                min-width:0; gap:12px;
+            }
+            .carrito-total-movil-fila-principal {
+                border-top:1px solid rgba(255,122,0,.25);
+                padding-top:7px;
+            }
+            .carrito-total-movil-etiqueta { font-size:12px; line-height:1.15; }
+            .carrito-total-movil-etiqueta small { font-size:10px; line-height:1.2; }
+            #carrito-total-movil-importe { color:#f3eee9; font-size:15px; }
+            #carrito-total-movil-mesa { color:#ff820e; font-size:clamp(17px,4.7vw,21px); font-weight:950; white-space:nowrap; font-variant-numeric:tabular-nums; }
+            body {padding-bottom:calc(133px + env(safe-area-inset-bottom))!important;}
+            .carrito-navegacion-final {margin-bottom:16px!important;}
+        }
+        @media (max-width:380px) {
+            .carrito-total-movil-fila { gap:7px; }
+            #carrito-total-movil-mesa {font-size:18px;}
+        }
+        body.light-mode #carrito-total-movil-importe {color:#28221e;}
     </style>
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
-        <h1 class="logo-restaurante" style="margin: 0; font-family: 'Elemental End', sans-serif; cursor: pointer;" onclick="window.location.href='catalogo.html'">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+    <header class="sg-header carrito-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
+        <h1 class="logo-restaurante sg-brand-unified" style="margin: 0; cursor: pointer;" onclick="window.location.href='catalogo.html'">SAVAGE<span>GRILL.</span></h1>
+        <div class="carrito-header-acciones" style="display: flex; align-items: center; gap: 15px;">
+            <div data-savage-theme="inline"></div>
+            <span class="carrito-badge-mesa" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                 Mesa #<span id="txt-nro-mesa">--</span>
             </span>
-            <button onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
+            <button class="carrito-volver" onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
                 ← Volver al Menú
             </button>
         </div>
@@ -104,7 +300,7 @@
 
     <div class="carrito-container">
         <!-- ZONA 1: Selección y Enviar a Cocina -->
-        <div style="display: flex; flex-direction: column; gap: 25px;">
+        <div class="carrito-columna-seleccion" style="display: flex; flex-direction: column; gap: 25px;">
             <div>
                 <h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
                 <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos listos para enviar a cocina en este nuevo pedido.</p>
@@ -125,19 +321,19 @@
         </div>
 
         <!-- ZONA 2 y 3: Resumen y Pago -->
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="carrito-columna-cuenta" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="product-card carrito-resumen" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
-                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
+                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
                     <span>Consumos enviados (según servidor)</span>
                     <span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
-                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
+                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
+                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
                     <span>Costo de Servicio (Cubierto)</span>
                     <span id="lbl-cubierto" style="color: var(--text-main); font-weight: 600;">$0.00</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+                <div class="carrito-resumen-total" style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
                     <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa (sin selección nueva)</span>
                     <span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
                 </div>
@@ -145,7 +341,7 @@
                 <p id="estimado-seleccion" style="margin:0;font-size:12px;color:var(--text-muted);display:none"></p>
             </div>
 
-            <div id="zona-metodo-pago" class="product-card" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
+            <div id="zona-metodo-pago" class="product-card carrito-zona-pago" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-main); font-weight: 800;">Método de Pago</h3>
                 <p style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px;">Seleccioná cómo vas a abonar al finalizar tu estadía.</p>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -161,9 +357,29 @@
         </div>
     </div>
 
+    <!-- Resumen fijo en celular: subtotal de esta selección y total real registrado. -->
+    <aside class="carrito-total-movil" aria-label="Subtotal de tu selección y total registrado de la mesa">
+        <div class="carrito-total-movil-fila">
+            <span class="carrito-total-movil-etiqueta">Subtotal <small>Selección sin enviar</small></span>
+            <strong id="carrito-total-movil-importe" aria-live="polite">$ 0,00</strong>
+        </div>
+        <div class="carrito-total-movil-fila carrito-total-movil-fila-principal">
+            <span class="carrito-total-movil-etiqueta">Total de la mesa <small>Consumos ya registrados + cubierto</small></span>
+            <strong id="carrito-total-movil-mesa" aria-live="polite">—</strong>
+        </div>
+    </aside>
+
+    <!-- Retorno adicional para clientes que llegaron al final del historial y la cuenta. -->
+    <nav class="carrito-navegacion-final" aria-label="Navegación de la carta">
+        <a class="carrito-continuar-menu" href="catalogo.html" aria-label="Volver al menú digital y seguir viendo productos">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Volver al Menú
+        </a>
+    </nav>
+
     <!-- Modal Editar Plato desde Carrito -->
     <div id="modal-editar-plato" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
-        <div class="product-card" style="width: min(400px, 90%); max-height: 85vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--glass-border); border-radius: 20px; position: relative;">
+        <div class="product-card carrito-modal-edicion" style="width: min(400px, 90%); max-height: 85vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--glass-border); border-radius: 20px; position: relative;">
             <button onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 18px; cursor: pointer; z-index: 10;">✕</button>
             <div style="padding: 30px;">
                 <h2 id="edit-nombre" style="margin: 0 0 5px 0; font-size: 20px;"></h2>
@@ -179,7 +395,7 @@
 
     <!-- Modal Custom -->
     <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
-        <div class="product-card" style="width: min(425px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+        <div class="product-card carrito-modal-aviso" style="width: min(425px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
             <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
             <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
             <div id="modal-botones" style="display: flex; gap: 10px;"></div>
@@ -275,8 +491,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const temaGuardado = localStorage.getItem('savage-tema');
-            if (temaGuardado === 'light') document.body.classList.add('light-mode');
             const mesaNum = sessionStorage.getItem('savage-mesa-numero');
             if (!mesaNum) { window.location.href = 'pin.html'; return; }
             document.getElementById('txt-nro-mesa').textContent = mesaNum;
@@ -334,6 +548,11 @@
             if(cuentaSolicitadaServidor)btnCerrar.textContent='Cuenta solicitada al mozo';
             document.getElementById('lbl-subtotal').textContent = historialConsultaOK ? monedaAR(totalHistorial) : '—';
             document.getElementById('lbl-seleccion').textContent = monedaAR(totalPendiente);
+            const totalMovil = document.getElementById('carrito-total-movil-importe');
+            if (totalMovil) totalMovil.textContent = monedaAR(totalPendiente);
+            const totalMesaMovil = document.getElementById('carrito-total-movil-mesa');
+            if (totalMesaMovil) totalMesaMovil.textContent = historialConsultaOK
+                ? monedaAR(totalHistorial + cubierto) : '—';
             document.getElementById('lbl-cubierto').textContent = historialConsultaOK ? `${monedaAR(cubierto)} (${comensales} personas)` : '—';
             document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial+cubierto) : '—';
             const estado=document.getElementById('estado-consulta-historial');
@@ -369,19 +588,19 @@
                     const div = document.createElement('div');
                     div.className = `item-carrito-card ${tieneError ? 'item-error' : ''}`;
                     div.innerHTML = `
-                        <img src="${escaparHtmlCarrito(imagenUrl)}" alt="${escaparHtmlCarrito(item.nombre)}" style="width:55px;height:55px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'">
-                        <div style="flex-grow:1;min-width:0">
+                        <img class="carrito-item-foto" src="${escaparHtmlCarrito(imagenUrl)}" alt="${escaparHtmlCarrito(item.nombre)}" style="width:55px;height:55px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'">
+                        <div class="carrito-item-descripcion" style="flex-grow:1;min-width:0">
                             <h4 style="margin:0 0 3px;color:var(--text-main);font-size:14px;overflow-wrap:anywhere">${escaparHtmlCarrito(item.nombre)}</h4>
                             ${textoPersonalizacion}
                             <span style="display:block;color:var(--primary-orange);font-weight:bold;font-size:13px">$${precio.toFixed(2)} c/u</span>${advertencia}
                         </div>
-                        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:8px;border:1px solid var(--glass-border)">
+                        <div class="carrito-item-cantidad" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:8px;border:1px solid var(--glass-border)">
                             <button type="button" onclick="cambiarCantidad(${index},-1)" aria-label="Disminuir cantidad" style="background:transparent;border:none;color:var(--text-main);font-weight:bold;cursor:pointer">−</button>
                             <span style="font-weight:bold;font-size:13px;min-width:16px;text-align:center">${cantidad}</span>
                             <button type="button" onclick="cambiarCantidad(${index},1)" aria-label="Aumentar cantidad" style="background:transparent;border:none;color:var(--text-main);font-weight:bold;cursor:pointer">+</button>
                         </div>
-                        <div style="text-align:right;min-width:70px;font-weight:900;font-size:15px;color:var(--text-main)">$${(precio*cantidad).toFixed(2)}</div>
-                        <div style="display:flex;gap:8px;flex-shrink:0;margin-left:5px">${botonEditar}
+                        <div class="carrito-item-importe" style="text-align:right;min-width:70px;font-weight:900;font-size:15px;color:var(--text-main)">$${(precio*cantidad).toFixed(2)}</div>
+                        <div class="carrito-item-acciones" style="display:flex;gap:8px;flex-shrink:0;margin-left:5px">${botonEditar}
                             <button type="button" onclick="eliminarItem(${index})" aria-label="Quitar ${escaparHtmlCarrito(item.nombre)}" style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px" title="Quitar plato">×</button>
                         </div>`;
                     contenedor.appendChild(div);
@@ -506,6 +725,7 @@
                     return `${Number(i.cantidad)||1}× ${String(i.nombre||'Producto')}${sin.length?' (sin '+sin.join(', ')+')':''}${importe}`;
                 }).join(' · ');
                 const card=document.createElement('div');
+                card.className='carrito-historial-card';
                 card.style.cssText='background:rgba(255,255,255,.025);border:1px solid var(--glass-border);border-radius:10px;padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px';
                 card.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text-main);line-height:1.55;overflow-wrap:anywhere">${escaparHtmlCarrito(lineas)}</div><small style="color:var(--text-muted)">${escaparHtmlCarrito(hora)}</small><div style="font-size:12px;color:var(--text-muted);margin-top:4px">${comandaValida(comanda)?`Importe: ${escaparHtmlCarrito(monedaAR(totalComandaServidor(comanda)))}`:'Comanda rechazada: no se suma a la cuenta'}</div></div><span class="badge-estado ${clase}">${escaparHtmlCarrito(etiqueta[estado]||estado)}</span>`;
                 cont.appendChild(card);

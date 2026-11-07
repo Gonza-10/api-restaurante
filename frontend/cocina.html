@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Cocina - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
     <style>
         body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
@@ -172,19 +175,216 @@
         body.light-mode .sg-cocina-modal p { color:#666 }
         body.light-mode .sg-cocina-modal-footer button:not(.sg-cocina-confirmar) { color:#1a1a1a;background:#f5f5f5;border-color:#ddd }
         @media(max-width:700px) { header { padding:14px 17px!important;gap:10px;flex-wrap:wrap } header>div { flex-wrap:wrap;gap:9px!important } .tabs-header { padding:0 10px;overflow-x:auto;gap:4px } .tab-btn { white-space:nowrap;padding:13px 10px } .sg-cocina-modal { padding:22px } }
+
+        /* P39: Cocina responsive, sin cambios en endpoints, estados o workers. */
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { min-width:0; width:100%; max-width:100%; }
+        body { height:100vh; height:100dvh; overflow:hidden; }
+        .cocina-header { flex:0 0 auto; gap:16px; position:relative; z-index:1800; min-width:0; }
+        .cocina-logo { min-width:0; white-space:nowrap; }
+        .cocina-header-acciones { min-width:0; justify-content:flex-end; }
+        .cocina-header-acciones > * { flex-shrink:0; }
+        .cocina-header .sg-theme-host { z-index:50; }
+        .cocina-header .sg-theme-popup { z-index:2000; }
+        .tabs-header { flex:0 0 auto; min-width:0; scrollbar-width:thin; scrollbar-color:#865038 transparent; }
+        .tab-btn { white-space:nowrap; flex-shrink:0; touch-action:manipulation; }
+        .tab-content { min-height:0; min-width:0; }
+        #tab-comandas { flex-direction:column; }
+        .kanban-board { flex:1; min-height:0; min-width:0; }
+        .kanban-column { min-width:0; min-height:0; }
+        .kanban-body { min-width:0; min-height:0; scrollbar-width:thin; scrollbar-color:#855039 transparent; overscroll-behavior:contain; }
+        .kanban-header { line-height:1.35; }
+        .comanda-card { min-width:0; overflow-wrap:anywhere; }
+        .comanda-header { gap:12px; flex-wrap:wrap; }
+        .modificador-sin { max-width:100%; width:fit-content; white-space:normal; overflow-wrap:anywhere; }
+        .comanda-card button { min-height:48px; font-size:14px!important; touch-action:manipulation; }
+        .cocina-vistas-moviles { display:none; min-width:0; flex:0 0 auto; gap:8px; padding:13px 16px 4px; background:var(--bg-dark); }
+        .cocina-vistas-moviles button { flex:1 1 0; min-width:0; min-height:48px; padding:9px 8px; background:rgba(255,255,255,.04); border:1px solid var(--glass-border); border-radius:11px; color:var(--text-muted); font:inherit; font-size:13px; font-weight:850; cursor:pointer; touch-action:manipulation; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .cocina-vistas-moviles button[aria-pressed="true"] { border-color:#ff7a00; color:#ff9b3b; background:rgba(255,122,0,.13); }
+        .cocina-vistas-moviles button:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .cocina-vistas-moviles .cocina-vista-cuenta { background:rgba(255,122,0,.13); border-radius:7px; padding:2px 5px; font-variant-numeric:tabular-nums; }
+        .cocina-vistas-moviles button[data-vista="pendiente"] { --cocina-estado-color:#bc60eb; }
+        .cocina-vistas-moviles button[data-vista="proceso"] { --cocina-estado-color:#ff7a00; }
+        .cocina-vistas-moviles button[data-vista="listo"] { --cocina-estado-color:#38d681; }
+        .cocina-vistas-moviles button[aria-pressed="true"] { border-color:var(--cocina-estado-color); }
+        .panel-scrollable { min-width:0; min-height:0; scrollbar-width:thin; scrollbar-color:#865038 transparent; }
+        .panel-scrollable > div, .grid-layout > *, .card-panel { min-width:0; }
+        .stock-row { gap:12px; overflow-wrap:anywhere; }
+        .noti-item { gap:12px; overflow-wrap:anywhere; }
+        .form-control { max-width:100%; min-height:46px; }
+        .sg-cocina-modal { max-height:calc(100dvh - 30px); overflow-y:auto; }
+        body.light-mode .cocina-vistas-moviles button { background:#fff; color:#515151; border-color:#d7d7d7; }
+        body.light-mode .cocina-vistas-moviles button[aria-pressed="true"] { background:#fff0e5; border-color:var(--cocina-estado-color); color:#a94900; }
+        @media (max-width:1180px) {
+            .kanban-board { gap:14px; padding:16px 20px; }
+            .kanban-header { font-size:15px; padding:15px 12px; letter-spacing:0; }
+            .kanban-body { padding:12px; }
+            .tabs-header { padding:0 20px; gap:8px; }
+            .tab-btn { padding:14px 12px; }
+            .panel-scrollable { padding:24px 20px; }
+            .grid-layout { gap:18px; }
+            .cocina-header { padding:14px 20px!important; }
+        }
+        @media (max-width:980px) {
+            .cocina-vistas-moviles { display:flex; }
+            .kanban-board { display:block; padding:12px 16px 20px; overflow:hidden; }
+            .kanban-column { display:none; height:100%; }
+            .kanban-board[data-vista="pendiente"] .kanban-column[data-estado="pendiente"],
+            .kanban-board[data-vista="proceso"] .kanban-column[data-estado="proceso"],
+            .kanban-board[data-vista="listo"] .kanban-column[data-estado="listo"] { display:flex; }
+            .kanban-body { padding:14px; }
+            .kanban-header { font-size:16px; padding:14px 10px; }
+            .grid-layout { grid-template-columns:minmax(0,1fr); }
+            .panel-scrollable { padding:22px 20px; }
+            .cocina-header { flex-wrap:wrap; }
+            .cocina-header-acciones { gap:10px!important; flex-wrap:wrap; }
+            #tab-notificaciones .panel-scrollable > div:first-child,
+            #tab-stock .panel-scrollable > div:first-child { flex-wrap:wrap; gap:12px; }
+        }
+        @media (min-width:601px) and (max-width:980px) {
+            .kanban-body { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-content:start; }
+            .kanban-body > .comanda-card { align-self:start; }
+        }
+        @media (max-width:600px) {
+            .cocina-header { display:grid!important; grid-template-columns:minmax(0,1fr); gap:10px!important; padding:13px 14px!important; }
+            .cocina-logo { font-size:clamp(18px,5.2vw,24px)!important; letter-spacing:0; }
+            .cocina-logo .cocina-subtitulo { font-size:12px!important; letter-spacing:1px!important; }
+            .cocina-header-acciones { display:grid!important; grid-template-columns:minmax(0,1fr) auto auto; gap:8px!important; width:100%; justify-content:stretch; }
+            #indicador-conexion { min-width:0; font-size:12px!important; }
+            #reloj-cocina { padding:7px 9px!important; font-size:12px!important; }
+            .cocina-header-acciones .sg-theme-popup { left:auto; right:0; }
+            #cocina-salir { grid-column:1/-1; justify-self:end; min-height:40px; }
+            .tabs-header { padding:0 10px; gap:4px; overflow-x:auto; overflow-y:hidden; }
+            .tab-btn { min-height:45px; font-size:12px; padding:11px 12px; }
+            .cocina-vistas-moviles { padding:10px 10px 4px; gap:5px; }
+            .cocina-vistas-moviles button { font-size:12px; padding:8px 5px; gap:3px; min-height:44px; }
+            .kanban-board { padding:10px 10px 15px; }
+            .kanban-body { padding:12px; gap:10px; }
+            .kanban-header { font-size:14px; }
+            .comanda-card { padding:13px; }
+            .comanda-card:hover { transform:none; }
+            .panel-scrollable { padding:16px 12px; }
+            .card-panel { padding:15px; }
+            .stock-row { padding:10px 4px; flex-wrap:wrap; }
+            .noti-item { flex-wrap:wrap; }
+            #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:100%; min-width:0; }
+            .sg-cocina-modal { padding:20px; }
+        }
+        @media (max-width:360px) {
+            .cocina-vistas-moviles button { font-size:11px; }
+            .cocina-logo .cocina-subtitulo { display:block; padding-top:3px; }
+            .cocina-header .sg-theme-popup { right:0; left:auto; width:min(228px,calc(100vw - 24px)); min-width:0; }
+        }
+        /* P39.1 · Cabecera ordenada y pestañas desplazables sin barra visible. */
+        .cocina-marca {
+            display:flex; align-items:center; flex:0 1 auto; gap:12px;
+            min-width:0; white-space:nowrap;
+        }
+        .cocina-marca .cocina-logo { margin:0; flex:0 1 auto; font-size:clamp(19px,2.1vw,25px)!important; }
+        .cocina-marca .cocina-subtitulo {
+            display:inline-flex; align-items:center; align-self:center;
+            color:var(--text-muted); font-family:inherit;
+            letter-spacing:1.5px; font-size:11px; font-weight:800;
+            white-space:nowrap;
+        }
+        .cocina-marca .cocina-subtitulo::before {
+            content:""; display:block; margin-right:10px;
+            width:1px; height:17px; background:rgba(255,122,0,.65);
+        }
+        .cocina-header { align-items:center!important; }
+        .cocina-header-acciones { display:flex; align-items:center; flex:0 0 auto; }
+        #indicador-conexion { white-space:nowrap; line-height:1.2; }
+        #reloj-cocina { white-space:nowrap; font-variant-numeric:tabular-nums; }
+        /* Solo para navegaciones horizontales: conservar swipe/scroll con la barra oculta. */
+        .tabs-header { overflow-x:auto; overflow-y:hidden; scrollbar-width:none!important; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+        .tabs-header::-webkit-scrollbar { width:0!important; height:0!important; display:none!important; }
+        @media (max-width:800px) {
+            .cocina-header {
+                display:grid!important; grid-template-columns:minmax(0,1fr);
+                justify-content:stretch; gap:10px!important; padding:13px 16px!important;
+            }
+            .cocina-marca { justify-self:start; }
+            .cocina-header-acciones {
+                display:flex!important; align-items:center; flex-wrap:nowrap!important;
+                width:100%; gap:9px!important; justify-content:flex-end!important;
+            }
+            #indicador-conexion { margin-right:auto; font-size:12px!important; gap:6px!important; }
+            #reloj-cocina { padding:7px 10px!important; font-size:12px!important; }
+            #cocina-salir { grid-column:auto; min-height:38px; padding:8px 10px!important; justify-self:auto; }
+            .tabs-header { padding:7px 10px 8px; gap:5px; }
+            .tab-btn {
+                flex:0 0 auto; border:1px solid transparent; border-radius:9px;
+                padding:10px 11px; min-height:41px; font-size:12px;
+                border-bottom:1px solid transparent;
+            }
+            .tab-btn.active {
+                color:var(--primary-orange); border-color:rgba(255,122,0,.38);
+                background:rgba(255,122,0,.12);
+            }
+        }
+        @media (min-width:801px) and (max-width:980px) {
+            .tabs-header { padding:7px 16px 8px; gap:6px; }
+            .tab-btn { border:1px solid transparent; border-radius:9px; padding:10px 12px; min-height:41px; }
+            .tab-btn.active { border-color:rgba(255,122,0,.38); background:rgba(255,122,0,.12); }
+        }
+        @media (max-width:600px) {
+            /* Dos filas reales: marca+tema y conexión+reloj+salir. */
+            .cocina-header {
+                display:grid!important;
+                grid-template-columns:minmax(0,1fr) auto auto;
+                grid-template-areas:"marca marca tema" "estado reloj salir";
+                align-items:center!important;
+                column-gap:7px!important; row-gap:10px!important;
+                padding:12px 12px!important;
+            }
+            .cocina-marca { grid-area:marca; min-width:0; gap:7px; }
+            .cocina-marca .cocina-logo { font-size:clamp(18px,5.5vw,23px)!important; }
+            .cocina-marca .cocina-subtitulo {
+                font-size:10px!important; letter-spacing:1px!important;
+                display:inline-flex!important; padding:0!important;
+            }
+            .cocina-marca .cocina-subtitulo::before { height:14px; margin-right:6px; }
+            .cocina-header-acciones { display:contents!important; }
+            #indicador-conexion { grid-area:estado; min-width:0; font-size:11px!important; gap:5px!important; }
+            #indicador-conexion > div:first-child { width:7px!important; height:7px!important; }
+            .cocina-header [data-savage-theme="inline"] { grid-area:tema; justify-self:end; }
+            .cocina-header .sg-theme-popup { right:0; left:auto; }
+            #reloj-cocina { grid-area:reloj; justify-self:end; padding:7px 8px!important; font-size:11px!important; }
+            #cocina-salir { grid-area:salir; justify-self:end; min-width:0; min-height:36px; padding:8px 9px!important; font-size:11px!important; }
+            #cocina-salir .sg-logout-icon { width:14px; height:14px; }
+            .tabs-header { padding:7px 9px 8px; }
+            .tab-btn { padding:10px 9px; }
+        }
+        @media (max-width:355px) {
+            .cocina-marca .cocina-logo { font-size:18px!important; }
+            .cocina-marca .cocina-subtitulo { font-size:9px!important; }
+            .cocina-header { column-gap:5px!important; padding-inline:9px!important; }
+            #cocina-salir { padding:7px 6px!important; font-size:10px!important; }
+            #reloj-cocina { font-size:10px!important; padding:7px 5px!important; }
+        }
+        body.light-mode .tab-btn.active { background:rgba(255,122,0,.12); }
+
+        @media (prefers-reduced-motion:reduce) { .comanda-card { transition:none; } }
     </style>
     <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
     <!-- CABECERA OPERATIVA -->
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: rgba(0,0,0,0.3);">
-        <h1 class="logo-restaurante" style="font-size: 24px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span> <span style="font-size: 14px; color: var(--text-muted); font-family: sans-serif; letter-spacing: 2px;">| COCINA</span></h1>
-        <div style="display: flex; align-items: center; gap: 15px;">
+    <header class="cocina-header sg-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: rgba(0,0,0,0.3);">
+        <div class="cocina-marca">
+            <h1 class="logo-restaurante cocina-logo sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+            <span class="cocina-subtitulo sg-role-unified">COCINA</span>
+        </div>
+        <div class="cocina-header-acciones" style="display: flex; align-items: center; gap: 15px;">
             <div id="indicador-conexion" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4CAF50; font-weight: bold;">
                 <div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div>
                 Sistema En Línea
             </div>
+            <div data-savage-theme="inline"></div>
             <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">00:00:00</span>
             <button type="button" id="cocina-salir" class="sg-cocina-salir sg-logout-unificado sg-logout-cabecera" aria-haspopup="dialog" aria-controls="cocina-modal-salida"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
         </div>
@@ -202,16 +402,22 @@
          TAB 1: TABLERO KANBAN (COMANDAS)
          ========================================================================== -->
     <main id="tab-comandas" class="tab-content active">
-        <div class="kanban-board">
-            <div class="kanban-column" style="border-top: 4px solid #a855f7;">
+        <!-- En móviles y tablets verticales: estados sin columnas comprimidas. -->
+        <div class="cocina-vistas-moviles" role="group" aria-label="Filtrar comandas por estado">
+            <button type="button" data-vista="pendiente" aria-pressed="true">Nuevos <span class="cocina-vista-cuenta" data-conteo="pendiente">0</span></button>
+            <button type="button" data-vista="proceso" aria-pressed="false">Preparando <span class="cocina-vista-cuenta" data-conteo="proceso">0</span></button>
+            <button type="button" data-vista="listo" aria-pressed="false">Listos <span class="cocina-vista-cuenta" data-conteo="listo">0</span></button>
+        </div>
+        <div class="kanban-board" data-vista="pendiente">
+            <div class="kanban-column" data-estado="pendiente" style="border-top: 4px solid #a855f7;">
                 <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
                 <div class="kanban-body" id="columna-pendientes"></div>
             </div>
-            <div class="kanban-column" style="border-top: 4px solid #ff7a00;">
+            <div class="kanban-column" data-estado="proceso" style="border-top: 4px solid #ff7a00;">
                 <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
                 <div class="kanban-body" id="columna-proceso"></div>
             </div>
-            <div class="kanban-column" style="border-top: 4px solid #2ecc71;">
+            <div class="kanban-column" data-estado="listo" style="border-top: 4px solid #2ecc71;">
                 <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
                 <div class="kanban-body" id="columna-listos"></div>
             </div>
@@ -377,6 +583,17 @@
             if(idTab === 'tab-stock') { cargarPanelStock(); cargarVencimientos(); }
             if(idTab === 'tab-acciones') cargarSelectoresAcciones();
         }
+
+        /* Vista móvil del tablero: solo cambia qué columna se ve, no los estados. */
+        document.querySelectorAll('.cocina-vistas-moviles [data-vista]').forEach(boton => {
+            boton.addEventListener('click', () => {
+                const vista = boton.dataset.vista;
+                document.querySelector('.kanban-board').dataset.vista = vista;
+                document.querySelectorAll('.cocina-vistas-moviles [data-vista]').forEach(b => {
+                    b.setAttribute('aria-pressed', String(b === boton));
+                });
+            });
+        });
 
         /* ==================== RELOJ ==================== */
         setInterval(() => {
@@ -553,6 +770,9 @@
             document.getElementById('contador-pendientes').textContent = contadores.pendiente;
             document.getElementById('contador-proceso').textContent = contadores.proceso;
             document.getElementById('contador-listos').textContent = contadores.listo;
+            document.querySelectorAll('.cocina-vista-cuenta').forEach(contador => {
+                contador.textContent = contadores[contador.dataset.conteo] ?? 0;
+            });
         }
 
         async function cambiarEstado(uuid, nuevoEstado) {
