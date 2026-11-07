@@ -63,6 +63,29 @@
         .texto-auxiliar-carrito { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
         .btn-edit-carrito:focus-visible, .quitable-editar:focus-within { outline: 2px solid var(--primary-orange); outline-offset: 2px; }
 
+        /* Barra de desplazamiento Savage Grill: discreta, oscura y con acento naranja. */
+        html, body {
+            scrollbar-width: thin;
+            scrollbar-color: #875138 #100f0f;
+        }
+        html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        html::-webkit-scrollbar-track, body::-webkit-scrollbar-track, *::-webkit-scrollbar-track {
+            background: #100f0f;
+        }
+        html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb, *::-webkit-scrollbar-thumb {
+            background: #79503a;
+            border: 2px solid #141111;
+            border-radius: 10px;
+        }
+        html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, *::-webkit-scrollbar-thumb:hover {
+            background: #ff7a00;
+        }
+        body.light-mode {
+            scrollbar-color: #c17e57 #f1f1f1;
+        }
     </style>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
