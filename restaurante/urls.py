@@ -12,7 +12,6 @@ from .views import (
     ComandaCreateView,
     TableroCocinaView,
     ComandaEstadoUpdateView,
-    TicketPDFView,
     LoginView,
     PerfilView,
     AccesoMesaView,
@@ -38,8 +37,22 @@ from .views_elaboraciones import (
     VencimientosView,
 )
 from .views_notificaciones import NotificacionesCocinaView
+from .views_cobros import CotizacionesView, CotizacionesActualizarView
+from .views_caja import CajaActualView, CajaAbrirView, CajaCerrarView, CajaMovimientosView, CajaViewSet
+from .views_cuenta import (
+    SesionCuentaView, SesionFacturaView, FacturaViewSetLista, FacturaDetalleView, PagoEfectivoView, PagoAnularView,
+    FacturaAnularView, PropinasView, CuentaClienteView,
+)
+from .views_mp import (
+    PagarMercadoPagoClienteView, PagarEstadoClienteView, PagarCancelarClienteView, PagoSincronizarView, PagoCancelarView,
+    PagoSimularView,
+)
 from .views_perdidas import MotivosPerdidaView, PerdidaViewSet, ResumenPerdidasView
 from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinRecetaView, ComandasRechazadasView
+from .views_extras import RecetaExtrasView, RecetaExtrasCopiarView, ExtraDetalleView
+from .views_comprobante import CuentaFacturaClienteView, CuentaComprobanteClienteView, FacturaComprobanteView
+from .views_auditoria import AuditoriaView
+from .views_tickets import TicketPDFView
 from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
     TurnoViewSet,
@@ -70,11 +83,19 @@ router.register(r'recetas', RecetaViewSet, basename='receta')
 router.register(r'perdidas', PerdidaViewSet, basename='perdida')
 router.register(r'elaboraciones', ElaboracionViewSet, basename='elaboracion')
 router.register(r'producciones', ProduccionViewSet, basename='produccion')
+router.register(r'cajas', CajaViewSet, basename='caja')
 
 urlpatterns = [
     # van ANTES del router: si no, 'perdidas/<pk>' tomaria 'motivos' y 'resumen' como si fueran ids
     path('perdidas/motivos', MotivosPerdidaView.as_view(), name='perdidas-motivos'),
     path('perdidas/resumen', ResumenPerdidasView.as_view(), name='perdidas-resumen'),
+    path('recetas/<int:pk>/extras', RecetaExtrasView.as_view(), name='receta-extras'),
+    path('recetas/<int:pk>/extras/copiar', RecetaExtrasCopiarView.as_view(), name='receta-extras-copiar'),
+    path('extras/<int:pk>', ExtraDetalleView.as_view(), name='extra-detalle'),
+    path('facturas/<int:pk>/comprobante', FacturaComprobanteView.as_view(), name='factura-comprobante'),
+    path('cuenta/factura', CuentaFacturaClienteView.as_view(), name='cuenta-factura'),
+    path('cuenta/comprobante', CuentaComprobanteClienteView.as_view(), name='cuenta-comprobante'),
+    path('auditoria', AuditoriaView.as_view(), name='auditoria'),
     path('', include(router.urls)),
     path('login', LoginView.as_view(), name='login'),
     path('me', PerfilView.as_view(), name='perfil'),
@@ -97,6 +118,27 @@ urlpatterns = [
     path('cocina/notificaciones', NotificacionesCocinaView.as_view(), name='cocina-notificaciones'),
     path('productos-sin-receta', ProductosSinRecetaView.as_view(), name='productos-sin-receta'),
     path('comandas-rechazadas', ComandasRechazadasView.as_view(), name='comandas-rechazadas'),
+    path('cotizaciones', CotizacionesView.as_view(), name='cotizaciones'),
+    path('cotizaciones/actualizar', CotizacionesActualizarView.as_view(), name='cotizaciones-actualizar'),
+    path('caja/actual', CajaActualView.as_view(), name='caja-actual'),
+    path('caja/abrir', CajaAbrirView.as_view(), name='caja-abrir'),
+    path('caja/cerrar', CajaCerrarView.as_view(), name='caja-cerrar'),
+    path('caja/movimientos', CajaMovimientosView.as_view(), name='caja-movimientos'),
+    path('sesiones-mesa/<int:pk>/cuenta', SesionCuentaView.as_view(), name='sesion-cuenta'),
+    path('sesiones-mesa/<int:pk>/factura', SesionFacturaView.as_view(), name='sesion-factura'),
+    path('facturas', FacturaViewSetLista.as_view(), name='facturas'),
+    path('facturas/<int:pk>', FacturaDetalleView.as_view(), name='factura-detalle'),
+    path('facturas/<int:pk>/pagos/efectivo', PagoEfectivoView.as_view(), name='pago-efectivo'),
+    path('facturas/<int:pk>/anular', FacturaAnularView.as_view(), name='factura-anular'),
+    path('pagos/<int:pk>/anular', PagoAnularView.as_view(), name='pago-anular'),
+    path('propinas', PropinasView.as_view(), name='propinas'),
+    path('pagos/<int:pk>/sincronizar', PagoSincronizarView.as_view(), name='pago-sincronizar'),
+    path('pagos/<int:pk>/cancelar', PagoCancelarView.as_view(), name='pago-cancelar'),
+    path('pagos/<int:pk>/simular', PagoSimularView.as_view(), name='pago-simular'),
+    path('cuenta', CuentaClienteView.as_view(), name='cuenta-cliente'),
+    path('cuenta/pagar/mercadopago', PagarMercadoPagoClienteView.as_view(), name='cuenta-pagar-mp'),
+    path('cuenta/pagar/estado', PagarEstadoClienteView.as_view(), name='cuenta-pagar-estado'),
+    path('cuenta/pagar/cancelar', PagarCancelarClienteView.as_view(), name='cuenta-pagar-cancelar'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Savage Grill - Pruebas automaticas (Jornada, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores, Elaboraciones y Reposicion)",
-    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores, Elaboraciones y Reposicion. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 16 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar.",
+    "description": "Prueba de punta a punta de Jornada, Turnos, Especiales, Disponibilidad, Stock, Recetas, Perdidas, Modificadores, Elaboraciones y Reposicion. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 08 a 16 ejecutados. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta y la sesion de la mesa 3 antes de empezar. Desde el hito 3 de cobros (cuenta y pagos) una mesa con consumo sin cobrar solo se cierra si el Gerente fuerza el cierre con motivo ({\"forzar\": true, \"motivo\": \"...\"}): por eso las limpiezas cierran con el token del gerente.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -185,7 +185,7 @@
                   "const base = pm.variables.replaceIn('{{base_url}}');",
                   "const token = pm.collectionVariables.get('token_gerente');",
                   "const cerrar = (id) => new Promise((ok) => pm.sendRequest(",
-                  "    { url: base + '/sesiones-mesa/' + id + '/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + token } },",
+                  "    { url: base + '/sesiones-mesa/' + id + '/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },\n    body: { mode: 'raw', raw: JSON.stringify({ forzar: true, motivo: 'Limpieza de la prueba' }) } },",
                   "    () => ok()",
                   "));",
                   "(async () => { for (const s of sesiones) { await cerrar(s.id); } })();"
@@ -1301,20 +1301,34 @@
           ]
         },
         {
-          "name": "3.7 Pero la mesa se puede cobrar (cerrar la sesion)",
+          "name": "3.7 Pero la mesa se puede cerrar (el gerente fuerza el cierre: tiene consumo sin cobrar)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{base_url}}/sesiones-mesa/{{id_sesion}}/cerrar",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_mozo}}",
+                  "value": "{{token_gerente}}",
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -2117,17 +2131,31 @@
           "name": "4.21 Limpieza: cerrar la sesion de la mesa 3",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{base_url}}/sesiones-mesa/{{id_sesion}}/cerrar",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_mozo}}",
+                  "value": "{{token_gerente}}",
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -6156,17 +6184,31 @@
           "name": "6.63 Limpieza: cerrar la sesion de la mesa 3",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{base_url}}/sesiones-mesa/{{id_sesion2}}/cerrar",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_mozo}}",
+                  "value": "{{token_gerente}}",
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -10984,17 +11026,31 @@
           "name": "8.43 Limpieza: cerrar la sesion de la mesa 3",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{base_url}}/sesiones-mesa/{{id_sesion4}}/cerrar",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_mozo}}",
+                  "value": "{{token_gerente}}",
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [

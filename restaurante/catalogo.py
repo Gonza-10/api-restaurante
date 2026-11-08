@@ -52,7 +52,8 @@ def _clave_precios(version):
 
 
 def guardar_precios_vistos(version, precios):
-    """Recuerda que precio mostraba el menu en una version: {id_producto: 'NN.NN'} (el especial si lo habia).
+    """Recuerda que precio mostraba el menu en una version: {id_producto: 'NN.NN'} (el especial si lo habia); los
+    extras van como 'x<id>'.
     Permite cobrar el precio que el cliente vio aunque cambie mientras arma el pedido. Nunca rompe el listado."""
     if not precios:
         return
@@ -66,7 +67,7 @@ def guardar_precios_vistos(version, precios):
 
 
 def precios_vistos(version):
-    """Precios que mostraba el menu en esa version: {id_producto: Decimal}. Vacio si la version es desconocida o ya
+    """Precios que mostraba el menu en esa version: {id_producto: Decimal} (y 'x<id_extra>' para los extras). Vacio si la version es desconocida o ya
     vencio su plazo (entonces se cobra el precio vigente). El cliente solo informa la version, nunca un precio."""
     try:
         crudos = redis_client.hgetall(_clave_precios(version))
@@ -76,7 +77,9 @@ def precios_vistos(version):
     resultado = {}
     for id_producto, precio in crudos.items():
         try:
-            resultado[int(id_producto)] = Decimal(precio)
+            # los platos van por su id (entero); los extras (hito 5 de cobros) por 'x' + id, tal cual se guardaron
+            clave = id_producto if id_producto.startswith('x') else int(id_producto)
+            resultado[clave] = Decimal(precio)
         except (ValueError, InvalidOperation):
             continue
     return resultado

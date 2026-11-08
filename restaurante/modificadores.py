@@ -55,7 +55,10 @@ def validar_modificadores(items):
 
 def lineas_de_items(items):
     """{linea: cantidad}: agrupa las unidades pedidas por producto y modificadores (ver stock_calculos.clave_de_linea)."""
-    return Counter(clave_de_linea(item['id'], item.get('sin')) for item in items)
+    return Counter(
+        clave_de_linea(item['id'], item.get('sin'), [(e['id'], e['cantidad']) for e in item.get('extras') or []])
+        for item in items
+    )
 
 
 def nombres_quitados(detalle):

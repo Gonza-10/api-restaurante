@@ -114,13 +114,16 @@ def porciones_posibles(ingredientes, disponible):
     return mejor, limitante
 
 
-# Una LINEA de pedido es un producto con sus modificadores: (id_producto, (ids de insumos quitados)). Dos unidades del
-# mismo plato son la misma linea solo si piden lo mismo. Por compatibilidad, un entero (solo el id del producto)
-# es una linea sin modificadores.
+# Una LINEA de pedido es un producto con sus modificadores: (id_producto, (ids de insumos quitados), (extras)), donde cada
+# extra es (id_extra, unidades por unidad de plato) (cobros, hito 5). Dos unidades del mismo plato son la misma linea solo
+# si piden lo mismo. Sin extras la clave es (id_producto, quitados), como antes. Por compatibilidad, un entero (solo el id
+# del producto) es una linea sin modificadores.
 
-def clave_de_linea(id_producto, sin=()):
-    """La clave de una linea: (id_producto, ids de los insumos quitados, ordenados y sin repetir)."""
-    return (id_producto, tuple(sorted(set(sin or ()))))
+def clave_de_linea(id_producto, sin=(), extras=()):
+    """La clave de una linea: (id_producto, ids de los insumos quitados ordenados y sin repetir[, extras ordenados])."""
+    quitados = tuple(sorted(set(sin or ())))
+    agregados = tuple(sorted((int(i), int(n)) for i, n in (extras or ())))
+    return (id_producto, quitados, agregados) if agregados else (id_producto, quitados)
 
 
 def id_de_linea(clave):
@@ -131,10 +134,30 @@ def sin_de_linea(clave):
     return tuple(clave[1]) if isinstance(clave, tuple) else ()
 
 
+def extras_de_linea(clave):
+    """[(id_extra, unidades por unidad de plato)] de una linea (vacio si no pidio extras)."""
+    return tuple(clave[2]) if isinstance(clave, tuple) and len(clave) > 2 else ()
+
+
 def receta_efectiva(ingredientes, sin):
     """La receta de una unidad SIN los ingredientes quitados: [(id_insumo, cantidad)] sin esos insumos."""
     quitados = set(sin or ())
     return [(id_insumo, cantidad) for id_insumo, cantidad in ingredientes if id_insumo not in quitados]
+
+
+def receta_con_extras(ingredientes, agregados):
+    """La receta de una unidad CON sus extras: suma al gasto de cada insumo lo que gastan los extras (si el extra es de un
+    insumo que la receta ya usa -mas cheddar- se suma a esa linea; si no, se agrega). ingredientes: [(id_insumo, cantidad)];
+    agregados: [(id_insumo, cantidad total del extra por unidad de plato)]."""
+    total = {}
+    for id_insumo, cantidad in list(ingredientes) + list(agregados):
+        total[id_insumo] = total.get(id_insumo, CERO) + a_decimal(cantidad)
+    return list(total.items())
+
+
+def precio_de_renglon(precio_plato, extras):
+    """Precio de UNA unidad del renglon: el plato mas los recargos. extras: [(precio por unidad de extra, unidades)]."""
+    return a_decimal(precio_plato) + sum((a_decimal(precio) * n for precio, n in extras), CERO)
 
 
 def requerimiento_por_insumo(conteo, recetas):

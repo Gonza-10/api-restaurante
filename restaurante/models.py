@@ -211,6 +211,12 @@ class PedidoCabecera(models.Model):
     estado = models.CharField(max_length=20, default='Abierto', db_column='Estado')
     # cuando el cliente pidio la cuenta (NULL = todavia no la pidio)
     fecha_hora_solicita_cuenta = models.DateTimeField(null=True, blank=True, db_column='FechaHoraSolicitaCuenta')
+    # cierre con saldo pendiente: solo Admin/Gerente y con motivo (hito 3)
+    cierre_forzado = models.BooleanField(default=False, db_column='CierreForzado')
+    motivo_cierre = models.CharField(max_length=200, null=True, blank=True, db_column='MotivoCierre')
+    empleado_cierre = models.ForeignKey(
+        Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleadoCierre', related_name='sesiones_cerradas'
+    )
     # jornada en la que se abrio la mesa (NULL en las sesiones anteriores a las jornadas)
     jornada = models.ForeignKey(
         Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='sesiones'
@@ -245,6 +251,17 @@ class PedidoDetalle(models.Model):
 
     def __str__(self):
         return f'{self.cantidad}x {self.producto.nombre}'
+
+class PedidoDetalleCompartido(models.Model):
+    """Plato dividido: los participantes entre los que se reparte el renglon en partes iguales."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    detalle = models.ForeignKey(PedidoDetalle, on_delete=models.CASCADE, db_column='IdPedidoDetalle', related_name='compartido')
+    participante = models.CharField(max_length=50, db_column='Participante')
+
+    class Meta:
+        db_table = 'PedidoDetalleCompartido'
+        managed = False
+
 
 class ComandaRecibida(models.Model):
     id = models.AutoField(primary_key=True, db_column='Id')
@@ -281,39 +298,111 @@ class MetodoPago(models.Model):
 
 
 class Factura(models.Model):
+    """La cuenta interna (sin ARCA) de una sesion de mesa. Una vigente por sesion. Se emite al empezar a cobrar y congela
+    el total y los renglones. Estado: Emitida | Pagada | Anulada. `total` esta en pesos; total_usd/brl/pyg son la foto de
+    cuanto equivale con las cotizaciones de ese momento (NULL solo si todavia no habia ninguna cotizacion guardada)."""
     id = models.AutoField(primary_key=True, db_column='Id')
     pedido_cabecera = models.ForeignKey(PedidoCabecera, on_delete=models.PROTECT, db_column='IdPedidoCabecera', related_name='facturas')
     fecha_hora_emision = models.DateTimeField(db_column='FechaHoraEmision')
-    total = models.DecimalField(max_digits=10, decimal_places=2, db_column='Total')
+    total = models.DecimalField(max_digits=14, decimal_places=2, db_column='Total')
+    # Casilla "quiero factura" (hito 6): el cliente pidio el comprobante PDF. La factura interna existe igual; lo opcional es el PDF.
     solicito_ticket = models.BooleanField(default=False, db_column='SolicitoTicket')
-    cambio_entregado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_column='CambioEntregado')
-    total_usd = models.DecimalField(max_digits=10, decimal_places=2, db_column='TotalUSD')
-    total_brl = models.DecimalField(max_digits=10, decimal_places=2, db_column='TotalBRL')
-    total_pyg = models.DecimalField(max_digits=10, decimal_places=2, db_column='TotalPYG')
+    nombre_factura = models.CharField(max_length=100, null=True, blank=True, db_column='NombreFactura')  # script 22: nombre en el PDF y en su archivo
+    cambio_entregado = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='CambioEntregado')
+    total_usd = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='TotalUSD')
+    total_brl = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='TotalBRL')
+    total_pyg = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='TotalPYG')
+    cotizacion_usd = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True, db_column='CotizacionUSD')
+    cotizacion_brl = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True, db_column='CotizacionBRL')
+    cotizacion_pyg = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True, db_column='CotizacionPYG')
+    estado = models.CharField(max_length=10, default='Emitida', db_column='Estado')
+    fecha_hora_pago = models.DateTimeField(null=True, blank=True, db_column='FechaHoraPago')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='facturas_emitidas')
+    fecha_hora_anulacion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraAnulacion')
+    empleado_anulacion = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleadoAnulacion', related_name='facturas_anuladas')
+    motivo_anulacion = models.CharField(max_length=200, null=True, blank=True, db_column='MotivoAnulacion')
 
     class Meta:
         db_table = 'Factura'
         managed = False
 
 
+class FacturaDetalle(models.Model):
+    """Un renglon de la factura: copia de lo consumido, con el nombre y el precio de ese momento."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    factura = models.ForeignKey(Factura, on_delete=models.CASCADE, db_column='IdFactura', related_name='detalles')
+    pedido_detalle = models.ForeignKey(PedidoDetalle, on_delete=models.SET_NULL, null=True, blank=True, db_column='IdPedidoDetalle', related_name='+')
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, db_column='IdProducto', related_name='+')
+    descripcion = models.CharField(max_length=150, db_column='Descripcion')
+    cantidad = models.IntegerField(db_column='Cantidad')
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, db_column='PrecioUnitario')
+    sub_total = models.DecimalField(max_digits=10, decimal_places=2, db_column='SubTotal')
+    identificador_comensal = models.CharField(max_length=50, null=True, blank=True, db_column='IdentificadorComensal')
+
+    class Meta:
+        db_table = 'FacturaDetalle'
+        managed = False
+
+
 class Pago(models.Model):
+    """Una parte del cobro de una factura. `monto` es lo que descuenta de la cuenta (pesos). Estado: Pendiente | Aprobado |
+    Rechazado | Cancelado | Expirado | Anulado. El efectivo nace Aprobado y es el unico que se anula."""
     id = models.AutoField(primary_key=True, db_column='Id')
     factura = models.ForeignKey(Factura, on_delete=models.CASCADE, db_column='IdFactura', related_name='pagos')
     metodo_pago = models.ForeignKey(MetodoPago, on_delete=models.PROTECT, db_column='IdMetodoPago', related_name='pagos')
-    monto = models.DecimalField(max_digits=10, decimal_places=2, db_column='Monto')
+    monto = models.DecimalField(max_digits=14, decimal_places=2, db_column='Monto')
     referencia_externa = models.CharField(max_length=100, null=True, blank=True, db_column='ReferenciaExterna')
     fecha_hora = models.DateTimeField(db_column='FechaHora')
+    estado = models.CharField(max_length=10, default='Aprobado', db_column='Estado')
+    moneda = models.CharField(max_length=3, default='ARS', db_column='Moneda')
+    monto_recibido = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='MontoRecibido')  # en `moneda`
+    cotizacion = models.DecimalField(max_digits=18, decimal_places=8, default=1, db_column='Cotizacion')  # ARS por 1 unidad; congelada
+    monto_propina = models.DecimalField(max_digits=14, decimal_places=2, default=0, db_column='MontoPropina')  # pesos
+    vuelto = models.DecimalField(max_digits=14, decimal_places=2, default=0, db_column='Vuelto')  # siempre en pesos
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='pagos_registrados')
+    empleado_propina = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleadoPropina', related_name='propinas')
+    clave_idempotencia = models.CharField(max_length=36, null=True, blank=True, db_column='ClaveIdempotencia')
+    fecha_hora_anulacion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraAnulacion')
+    empleado_anulacion = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleadoAnulacion', related_name='pagos_anulados')
+    motivo_anulacion = models.CharField(max_length=200, null=True, blank=True, db_column='MotivoAnulacion')
+    # Mercado Pago (script 20). `referencia_externa` guarda nuestra referencia 'SG-<id>' (external_reference en MP).
+    mp_preferencia_id = models.CharField(max_length=100, null=True, blank=True, db_column='MpPreferenciaId')
+    mp_url_pago = models.CharField(max_length=500, null=True, blank=True, db_column='MpUrlPago')
+    fecha_hora_expiracion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraExpiracion')
+    mp_pago_id = models.CharField(max_length=40, null=True, blank=True, db_column='MpPagoId')
+    mp_estado = models.CharField(max_length=30, null=True, blank=True, db_column='MpEstado')
+    mp_monto_neto = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='MpMontoNeto')
 
     class Meta:
         db_table = 'Pago'
         managed = False
 
 
+class PagoEvento(models.Model):
+    """Historial de un pago (auditoria): que paso, cuando y quien."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    pago = models.ForeignKey(Pago, on_delete=models.CASCADE, db_column='IdPago', related_name='eventos')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')
+    evento = models.CharField(max_length=30, db_column='Evento')
+    estado_anterior = models.CharField(max_length=10, null=True, blank=True, db_column='EstadoAnterior')
+    estado_nuevo = models.CharField(max_length=10, db_column='EstadoNuevo')
+    detalle = models.CharField(max_length=400, null=True, blank=True, db_column='Detalle')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='+')
+
+    class Meta:
+        db_table = 'PagoEvento'
+        managed = False
+
+
 class CotizacionMoneda(models.Model):
+    """Cotizacion oficial de una moneda (USD, BRL, PYG): ARS por 1 unidad. Se guarda una fila nueva solo cuando el valor
+    cambia (worker_cotizacion.py, desde el BCRA); la vigente es la ultima de cada moneda. Nadie la carga a mano."""
     id = models.AutoField(primary_key=True, db_column='Id')
     moneda = models.CharField(max_length=3, db_column='Moneda')
-    valor = models.DecimalField(max_digits=10, decimal_places=4, db_column='Valor')
-    fecha = models.DateField(db_column='Fecha')
+    valor = models.DecimalField(max_digits=18, decimal_places=8, db_column='Valor')
+    fecha = models.DateField(db_column='Fecha')  # fecha de la cotizacion segun la fuente (dia habil al que corresponde)
+    fuente = models.CharField(max_length=30, default='BCRA', db_column='Fuente')
+    fecha_hora = models.DateTimeField(db_column='FechaHora')  # cuando la guardamos
 
     class Meta:
         db_table = 'CotizacionMoneda'
@@ -324,25 +413,53 @@ class Caja(models.Model):
     id = models.AutoField(primary_key=True, db_column='Id')
     empleado_apertura = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleadoApertura', related_name='cajas_abiertas')
     fecha_hora_apertura = models.DateTimeField(db_column='FechaHoraApertura')
-    monto_apertura = models.DecimalField(max_digits=10, decimal_places=2, db_column='MontoApertura')
+    monto_apertura = models.DecimalField(max_digits=14, decimal_places=2, db_column='MontoApertura')  # efectivo en pesos; el detalle por moneda esta en CajaMoneda
     empleado_cierre = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleadoCierre', related_name='cajas_cerradas')
     fecha_hora_cierre = models.DateTimeField(null=True, blank=True, db_column='FechaHoraCierre')
-    monto_cierre = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_column='MontoCierre')
+    monto_cierre = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='MontoCierre')  # efectivo en pesos contado al cerrar
     estado = models.CharField(max_length=20, default='Abierta', db_column='Estado')
+    total_esperado_ars = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='TotalEsperadoARS')    # efectivo en pesos + Mercado Pago, al cerrar
+    total_declarado_ars = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='TotalDeclaradoARS')
 
     class Meta:
         db_table = 'Caja'
         managed = False
 
 
+class CajaMoneda(models.Model):
+    """Una fila por caja, medio y moneda. Efectivo: ARS, USD, BRL y PYG (lo que habia al abrir y, al cerrar, lo esperado, lo
+    contado y la diferencia). MercadoPago: una sola fila en ARS con lo esperado, lo acreditado y la diferencia al cerrar."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    caja = models.ForeignKey(Caja, on_delete=models.CASCADE, db_column='IdCaja', related_name='monedas')
+    medio = models.CharField(max_length=20, default='Efectivo', db_column='Medio')  # Efectivo | MercadoPago
+    moneda = models.CharField(max_length=3, db_column='Moneda')
+    monto_apertura = models.DecimalField(max_digits=14, decimal_places=2, default=0, db_column='MontoApertura')
+    monto_esperado = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='MontoEsperado')
+    monto_declarado = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='MontoDeclarado')
+    diferencia = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, db_column='Diferencia')  # declarado - esperado
+
+    class Meta:
+        db_table = 'CajaMoneda'
+        managed = False
+
+
 class MovimientoCaja(models.Model):
+    """Entrada o salida de dinero de la caja. `medio` dice donde esta ese dinero: Efectivo (el cajon) o MercadoPago (la cuenta
+    digital: se anota cuando el pago se aprueba). `monto` esta en `moneda`; `cotizacion` es ARS por 1 unidad vigente en ese
+    momento (1 si es ARS) y `monto_ars` el equivalente en pesos. Tipo: Ingreso | Egreso. Concepto: Manual | Venta |
+    Propina | Vuelto | Anulacion."""
     id = models.AutoField(primary_key=True, db_column='Id')
     caja = models.ForeignKey(Caja, on_delete=models.CASCADE, db_column='IdCaja', related_name='movimientos')
     tipo = models.CharField(max_length=20, db_column='Tipo')
-    monto = models.DecimalField(max_digits=10, decimal_places=2, db_column='Monto')
+    concepto = models.CharField(max_length=20, default='Manual', db_column='Concepto')
+    medio = models.CharField(max_length=20, default='Efectivo', db_column='Medio')  # Efectivo (cajon) | MercadoPago (cuenta digital, solo ARS)
+    moneda = models.CharField(max_length=3, default='ARS', db_column='Moneda')
+    monto = models.DecimalField(max_digits=14, decimal_places=2, db_column='Monto')
+    cotizacion = models.DecimalField(max_digits=18, decimal_places=8, default=1, db_column='Cotizacion')
+    monto_ars = models.DecimalField(max_digits=14, decimal_places=2, db_column='MontoARS')
     descripcion = models.CharField(max_length=200, null=True, blank=True, db_column='Descripcion')
     fecha_hora = models.DateTimeField(db_column='FechaHora')
-    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleado', related_name='movimientos_caja')
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, null=True, blank=True, db_column='IdEmpleado', related_name='movimientos_caja')  # NULL: lo registro el sistema (Mercado Pago)
     pago = models.ForeignKey(Pago, on_delete=models.SET_NULL, null=True, blank=True, db_column='IdPago', related_name='movimientos_caja')
 
     class Meta:
@@ -536,6 +653,37 @@ class PedidoDetalleModificador(models.Model):
 
     class Meta:
         db_table = 'PedidoDetalleModificador'
+        managed = False
+
+
+class RecetaExtra(models.Model):
+    """Un extra que se puede sumar a los platos de una receta (cobros, hito 5): mas cheddar, aderezo. Gasta `cantidad` del
+    insumo por cada unidad de extra y cobra `precio` por unidad. No se borra (queda en el historial): se desactiva."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    receta = models.ForeignKey(Receta, on_delete=models.CASCADE, db_column='IdReceta', related_name='extras')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='usos_como_extra')
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3, db_column='Cantidad')   # unidad base, por unidad de extra
+    precio = models.DecimalField(max_digits=10, decimal_places=2, db_column='Precio')       # recargo por unidad de extra
+    max_por_unidad = models.IntegerField(default=1, db_column='MaxPorUnidad')               # unidades de extra por unidad de plato
+    activo = models.BooleanField(default=True, db_column='Activo')
+    disponible = models.BooleanField(default=True, db_column='Disponible')                  # lo calcula el stock
+
+    class Meta:
+        db_table = 'RecetaExtra'
+        managed = False
+
+
+class PedidoDetalleExtra(models.Model):
+    """Los extras de un renglon del pedido, con el recargo congelado al pedir. El precio del renglon ya los incluye."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    detalle = models.ForeignKey(PedidoDetalle, on_delete=models.CASCADE, db_column='IdPedidoDetalle', related_name='extras')
+    extra = models.ForeignKey(RecetaExtra, on_delete=models.PROTECT, db_column='IdRecetaExtra', related_name='+')
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, db_column='IdInsumo', related_name='+')
+    cantidad = models.IntegerField(db_column='Cantidad')                                    # unidades de extra por unidad de plato
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, db_column='PrecioUnitario')
+
+    class Meta:
+        db_table = 'PedidoDetalleExtra'
         managed = False
 
 

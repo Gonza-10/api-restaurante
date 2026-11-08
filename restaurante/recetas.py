@@ -10,11 +10,12 @@ from django.db import transaction
 from django.db.models import Sum
 
 from .catalogo import invalidar_cache_catalogo
-from .models import Insumo, LoteInsumo, Producto, RecetaIngrediente
+from .models import Insumo, LoteInsumo, Producto, RecetaExtra, RecetaIngrediente
 from .stock import descontar_fefo, lotes_fefo, ultimo_costo
 from .stock_calculos import (
     CERO, costo_de_receta, evaluar_pedido, hay_para_una, mensaje_cliente_faltantes, motivo_interno_faltantes, porciones_posibles,
-    id_de_linea, receta_efectiva, redondear_dinero, requerimiento_por_insumo, sin_de_linea, texto_cantidad,
+    extras_de_linea, id_de_linea, receta_con_extras, receta_efectiva, redondear_dinero, requerimiento_por_insumo, sin_de_linea,
+    texto_cantidad,
 )
 
 
@@ -48,14 +49,26 @@ def stock_disponible(ids_insumo, bloquear=False):
 
 def recetas_de_lineas(lineas):
     """{linea: [(id_insumo, cantidad)]}: la receta EFECTIVA de cada linea del pedido, o sea la del producto sin los
-    ingredientes que el cliente quito (hito 5). La linea es un id de producto o (id_producto, ids quitados); los
-    productos sin receta no aparecen."""
+    ingredientes que el cliente quito y con lo que gastan los extras que sumo (cobros, hito 5). La linea es un id de
+    producto o (id_producto, ids quitados[, extras]); los productos sin receta no aparecen."""
     lineas = list(lineas)
     base = recetas_de_productos({id_de_linea(linea) for linea in lineas})
-    return {
-        linea: receta_efectiva(base[id_de_linea(linea)], sin_de_linea(linea))
-        for linea in lineas if id_de_linea(linea) in base
-    }
+    ids_extra = {id_extra for linea in lineas for id_extra, _ in extras_de_linea(linea)}
+    gasto_extra = dict(  # {id_extra: (id_insumo, cantidad por unidad de extra)}
+        (id_extra, (id_insumo, cantidad))
+        for id_extra, id_insumo, cantidad in RecetaExtra.objects.filter(id__in=ids_extra).values_list('id', 'insumo_id', 'cantidad')
+    ) if ids_extra else {}
+    resultado = {}
+    for linea in lineas:
+        if id_de_linea(linea) not in base:
+            continue
+        receta = receta_efectiva(base[id_de_linea(linea)], sin_de_linea(linea))
+        agregados = [
+            (gasto_extra[id_extra][0], gasto_extra[id_extra][1] * unidades)
+            for id_extra, unidades in extras_de_linea(linea) if id_extra in gasto_extra
+        ]
+        resultado[linea] = receta_con_extras(receta, agregados) if agregados else receta
+    return resultado
 
 
 def evaluar_conteo(conteo, bloquear=False):
@@ -188,11 +201,40 @@ def calcular_disponibilidad(ids_producto=None, ids_insumo=None):
     ]
 
 
+def calcular_disponibilidad_extras(ids_producto=None, ids_insumo=None):
+    """Que extras se pueden ofrecer segun el stock de ahora: [(id_extra, disponible_actual, disponible_nuevo)]. Un extra
+    se ofrece mientras haya stock para UNA unidad de extra. Mismos filtros que calcular_disponibilidad."""
+    consulta = RecetaExtra.objects.all()
+    if ids_producto is not None:
+        consulta = consulta.filter(receta__productos__id__in=list(ids_producto)).distinct()
+    elif ids_insumo is not None:
+        consulta = consulta.filter(insumo_id__in=list(ids_insumo))
+    extras = list(consulta.values_list('id', 'insumo_id', 'cantidad', 'disponible'))
+    disponible = stock_disponible({insumo for _, insumo, _, _ in extras})
+    return [(id_extra, actual, disponible.get(insumo, CERO) >= cantidad) for id_extra, insumo, cantidad, actual in extras]
+
+
+def _recalcular_extras(ids_producto=None, ids_insumo=None):
+    """Actualiza RecetaExtra.disponible. Devuelve True si alguno cambio (el menu de los clientes cambia)."""
+    cambios = [(i, nuevo) for i, actual, nuevo in calcular_disponibilidad_extras(ids_producto, ids_insumo) if actual != nuevo]
+    for disponible in (True, False):
+        ids = [i for i, nuevo in cambios if nuevo is disponible]
+        if ids:
+            RecetaExtra.objects.filter(id__in=ids).update(disponible=disponible)
+    if cambios:
+        print(f'[DISPONIBILIDAD] extras: ahora se ofrecen {[i for i, n in cambios if n]}; dejan de ofrecerse {[i for i, n in cambios if not n]}')
+    return bool(cambios)
+
+
 def recalcular_disponibilidad(ids_producto=None, ids_insumo=None):
-    """Actualiza Producto.disponible y, si algun plato cambio, avisa al menu de los clientes (aviso en tiempo real).
-    Devuelve los ids de los platos que cambiaron. Hay que llamarla con el stock ya confirmado en la base."""
+    """Actualiza Producto.disponible (y RecetaExtra.disponible) y, si algun plato o extra cambio, avisa al menu de los
+    clientes (aviso en tiempo real). Devuelve los ids de los platos que cambiaron. Hay que llamarla con el stock ya
+    confirmado en la base."""
+    cambiaron_extras = _recalcular_extras(ids_producto, ids_insumo)
     cambios = [(i, nuevo) for i, actual, nuevo in calcular_disponibilidad(ids_producto, ids_insumo) if actual != nuevo]
     if not cambios:
+        if cambiaron_extras:
+            invalidar_cache_catalogo()
         return []
     ahora_si = [i for i, nuevo in cambios if nuevo]
     ahora_no = [i for i, nuevo in cambios if not nuevo]

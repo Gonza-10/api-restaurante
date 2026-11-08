@@ -10,6 +10,7 @@ from rest_framework.validators import UniqueValidator
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 from .especiales import precios_especiales_vigentes
 from .modificadores import quitables_de_productos
+from .extras import extras_de_productos
 
 
 def fecha_iso(valor):
@@ -41,12 +42,15 @@ class ProductoSerializer(serializers.ModelSerializer):
     visible = serializers.BooleanField(source='visible_cliente', read_only=True)
     # ingredientes que el cliente puede pedir quitar de este plato (hito 5): solo id y nombre, el resto de la receta es interno
     quitables = serializers.SerializerMethodField()
+    # extras que se le pueden sumar al plato con recargo (cobros, hito 5): id, nombre, precio y maximo por unidad. El menu del
+    # cliente solo trae los activos y con stock; el listado de gestion (incluir_inactivos) trae todos con sus datos internos
+    extras = serializers.SerializerMethodField()
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
                   'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy',
-                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible', 'quitables']
+                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible', 'quitables', 'extras']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
@@ -73,6 +77,12 @@ class ProductoSerializer(serializers.ModelSerializer):
             por_producto = quitables_de_productos([obj.id])
         quitables = por_producto.get(obj.id, {})
         return [{'id': i, 'nombre': nombre} for i, nombre in sorted(quitables.items(), key=lambda par: par[1].lower())]
+
+    def get_extras(self, obj):
+        por_producto = self.context.get('extras_por_producto')
+        if por_producto is None:  # fuera del listado (por ejemplo, tras crear o editar un producto)
+            por_producto = extras_de_productos([obj.id])
+        return por_producto.get(obj.id, [])
 
     def get_agotado_desde(self, obj):
         return fecha_iso(obj.fecha_hora_agotado) if obj.agotado_manual and self._es_personal() else None
@@ -329,6 +339,12 @@ class SesionAbrirSerializer(serializers.Serializer):
     )
 
 
+class ExtraComandaSerializer(serializers.Serializer):
+    """Un extra pedido para UNA unidad del plato: id del extra (RecetaExtra) y cuantas unidades de extra."""
+    id = serializers.IntegerField(min_value=1)
+    cantidad = serializers.IntegerField(min_value=1, max_value=10, default=1)
+
+
 class ItemComandaSerializer(serializers.Serializer):
     id = serializers.IntegerField()  # asumido: Producto.Id
     nombre = serializers.CharField(required=False)  # se recibe, se ignora
@@ -339,8 +355,38 @@ class ItemComandaSerializer(serializers.Serializer):
         error_messages={'not_a_list': 'Debe ser una lista de ids de insumos.'},
     )
 
+    # plato para compartir: nombres de quienes lo dividen (el total se reparte en partes iguales entre ellos). Se elige antes
+    # de confirmar el pedido; los nombres pueden ser de comensales cargados o no.
+    compartido = serializers.ListField(
+        child=serializers.CharField(max_length=50, allow_blank=False, trim_whitespace=True), required=False, default=list,
+        max_length=20, error_messages={'not_a_list': 'Debe ser una lista de nombres.'},
+    )
+
+    # extras que suma el cliente a ESTA unidad (cobros, hito 5): [{"id": id_extra, "cantidad": 2}]. Solo valen los que la
+    # receta del plato ofrece y tienen stock; el recargo lo pone el servidor (nunca el cliente)
+    extras = ExtraComandaSerializer(many=True, required=False, default=list)
+
+    def validate_extras(self, value):
+        ids = [e['id'] for e in value]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError('No repitas el mismo extra: indica la cantidad.')
+        if len(ids) > 10:
+            raise serializers.ValidationError('Hasta 10 extras distintos por plato.')
+        return sorted(value, key=lambda e: e['id'])   # mismo orden siempre: dos unidades iguales quedan en el mismo renglon
+
     def validate_sin(self, value):
         return sorted(set(value))  # sin repetidos y en orden: dos unidades iguales quedan en el mismo renglon
+
+    def validate_compartido(self, value):
+        vistos, limpios = set(), []
+        for nombre in value:
+            clave = nombre.strip().casefold()
+            if clave and clave not in vistos:
+                vistos.add(clave)
+                limpios.append(nombre.strip())
+        if len(limpios) == 1:
+            raise serializers.ValidationError('Para compartir un plato hacen falta al menos dos personas.')
+        return sorted(limpios, key=str.casefold)   # mismo orden siempre: dos unidades iguales quedan en el mismo renglon
 
 
 class ComandaEntradaSerializer(serializers.Serializer):
@@ -354,6 +400,11 @@ class ComandaEntradaSerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField(required=False)
     # version del menu que el cliente tenia al armar el pedido (header X-Catalogo-Version de GET /productos)
     version_menu = serializers.IntegerField(required=False, min_value=0)
+    # quien pide (opcional): su nombre en la cuenta. Los platos 'compartido' se reparten aparte.
+    comensal = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+
+    def validate_comensal(self, value):
+        return (value or '').strip() or None
 
     def validate_items(self, value):
         if not value:
@@ -366,6 +417,8 @@ class ItemCocinaSerializer(serializers.Serializer):
     cantidad = serializers.IntegerField()
     # ingredientes que el cliente pidio quitar ("Cebolla"), ordenados; lista vacia si no quito ninguno
     sin = serializers.ListField(child=serializers.CharField(), required=False)
+    # extras que sumo el cliente ("Cheddar", "Aderezo x2"), ordenados; lista vacia si no sumo ninguno
+    extras = serializers.ListField(child=serializers.CharField(), required=False)
 
 
 class ComandaCocinaSerializer(serializers.Serializer):
@@ -394,6 +447,8 @@ class ItemHistorialSerializer(serializers.Serializer):
     cantidad = serializers.IntegerField()
     sub_total = serializers.DecimalField(max_digits=10, decimal_places=2)
     sin = serializers.ListField(child=serializers.CharField(), required=False)  # ingredientes quitados
+    # extras con recargo: [{"nombre": "Cheddar", "cantidad": 2, "precio": "500.00"}]; `precio` ya esta incluido en el del renglon
+    extras = serializers.ListField(child=serializers.DictField(), required=False)
 
 
 class ComandaHistorialSerializer(serializers.Serializer):

@@ -14,11 +14,14 @@ django.setup()
 from django.utils import timezone
 from django.db import connection, IntegrityError, transaction
 from collections import Counter
-from restaurante.models import ComandaRecibida, PedidoCabecera, PedidoDetalle, PedidoDetalleModificador, Producto
+from restaurante.models import (
+    ComandaRecibida, Factura, PedidoCabecera, PedidoDetalle, PedidoDetalleCompartido, PedidoDetalleExtra, PedidoDetalleModificador,
+    Producto, RecetaExtra,
+)
 from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
 from restaurante.recetas import consumir_pedido, mensaje_para_cliente, motivo_para_personal
 from restaurante.stock import StockInsuficiente
-from restaurante.stock_calculos import clave_de_linea
+from restaurante.stock_calculos import clave_de_linea, precio_de_renglon
 
 r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
 
@@ -38,6 +41,7 @@ def insertar_comanda_control(uuid_str, id_pedido_cabecera):
 
 
 MENSAJE_GENERICO = 'Insumos insuficientes. Disculpe las molestias.'
+MENSAJE_CUENTA_EN_CURSO = 'La cuenta de la mesa ya esta en curso: no se pueden enviar mas pedidos. Avisa al mozo.'
 
 
 def marcar_rechazada(id_comanda, motivo, mensaje):
@@ -61,7 +65,9 @@ def procesar_comanda(ch, method, properties, body):
 
     try:
         with transaction.atomic():
-            pedido_cabecera = PedidoCabecera.objects.get(id=datos['id_pedido_cabecera'])
+            # la fila de la sesion se bloquea: emitir la factura bloquea la misma fila, asi una comanda y la factura de la
+            # misma mesa se ordenan (o entra la comanda y la factura la incluye, o la factura sale y la comanda se rechaza)
+            pedido_cabecera = PedidoCabecera.objects.select_for_update().get(id=datos['id_pedido_cabecera'])
 
             id_comanda = insertar_comanda_control(uuid_str, pedido_cabecera.id)
 
@@ -74,48 +80,86 @@ def procesar_comanda(ch, method, properties, body):
             # el cliente paga el precio que vio (si cambio despues) salvo que ahora sea menor; ver precio_segun_lo_que_vio
             # (hito 5) cada item puede traer 'sin': los ids de los insumos que el cliente pidio quitar. Dos unidades del
             # mismo plato van al mismo renglon solo si piden lo mismo; los mensajes anteriores a esto no traen 'sin'.
+            # 'compartido' (hito 3): nombres entre quienes se divide el plato; mismas unidades con distinto reparto = otro renglon
+            # 'extras' (cobros, hito 5): [{'id', 'cantidad', 'precio' (el que el cliente vio)}]; mismos extras = mismo renglon
             conteo = Counter(
-                (item['id'], item.get('precio'), tuple(sorted(set(item.get('sin') or [])))) for item in datos['items']
+                (item['id'], item.get('precio'), tuple(sorted(set(item.get('sin') or []))),
+                 tuple(sorted({str(n).strip() for n in (item.get('compartido') or []) if str(n).strip()}, key=str.casefold)),
+                 tuple(sorted((e['id'], e['cantidad'], e.get('precio')) for e in (item.get('extras') or []))))
+                for item in datos['items']
             )
-            unidades = Counter(clave_de_linea(item['id'], item.get('sin')) for item in datos['items'])
+            unidades = Counter(
+                clave_de_linea(item['id'], item.get('sin'), [(e['id'], e['cantidad']) for e in (item.get('extras') or [])])
+                for item in datos['items']
+            )
+
+            comensal = (datos.get('comensal') or '').strip()[:50] or None
+
+            if pedido_cabecera.estado != 'Abierto':
+                rechazo = ('La sesion de la mesa ya esta cerrada.', 'La mesa ya no esta abierta. Avisa al mozo.')
+            elif Factura.objects.filter(pedido_cabecera=pedido_cabecera, estado__in=('Emitida', 'Pagada')).exists():
+                rechazo = ('La mesa tiene la cuenta en curso (factura emitida): no recibe pedidos.', MENSAJE_CUENTA_EN_CURSO)
 
             # Primero el stock, todo o nada: descuenta los insumos de las recetas por FEFO. Si el ultimo stock lo
             # tomo otra comanda antes, esta se rechaza y no queda nada a medias (el punto de guardado la deshace).
-            try:
-                with transaction.atomic():
-                    faltantes = consumir_pedido(dict(unidades), id_comanda, pedido_cabecera.jornada_id)
-                    if faltantes:
-                        rechazo = (motivo_para_personal(faltantes), mensaje_para_cliente(faltantes))
-                    else:
-                        for (id_producto, precio_visto, sin), cantidad in conteo.items():
-                            producto = Producto.objects.get(id=id_producto)
-                            precio = precio_segun_lo_que_vio(precio_a_cobrar(producto, precios_esp), precio_visto)
-                            detalle = PedidoDetalle.objects.create(
-                                pedido_cabecera=pedido_cabecera,
-                                comanda_id=id_comanda,
-                                producto=producto,
-                                cantidad=cantidad,
-                                precio_unitario=precio,
-                                sub_total=precio * cantidad,
-                                estado_cocina=False
-                            )
-                            if sin:  # lo quitado no se descuenta (ya lo resolvio consumir_pedido); aca solo se registra
-                                PedidoDetalleModificador.objects.bulk_create(
-                                    [PedidoDetalleModificador(detalle=detalle, insumo_id=id_insumo) for id_insumo in sin]
+            if rechazo is None:
+                try:
+                    with transaction.atomic():
+                        faltantes = consumir_pedido(dict(unidades), id_comanda, pedido_cabecera.jornada_id)
+                        if faltantes:
+                            rechazo = (motivo_para_personal(faltantes), mensaje_para_cliente(faltantes))
+                        else:
+                            for (id_producto, precio_visto, sin, compartido, extras), cantidad in conteo.items():
+                                producto = Producto.objects.get(id=id_producto)
+                                precio = precio_segun_lo_que_vio(precio_a_cobrar(producto, precios_esp), precio_visto)
+                                # cada extra se cobra al precio que el cliente vio (o menos, si bajo); el renglon = plato + recargos
+                                filas_extra = []
+                                for id_extra, unidades_extra, visto_extra in extras:
+                                    extra = RecetaExtra.objects.get(id=id_extra)
+                                    filas_extra.append((extra, unidades_extra, precio_segun_lo_que_vio(extra.precio, visto_extra)))
+                                precio = precio_de_renglon(precio, [(p, n) for _, n, p in filas_extra])
+                                detalle = PedidoDetalle.objects.create(
+                                    pedido_cabecera=pedido_cabecera,
+                                    comanda_id=id_comanda,
+                                    producto=producto,
+                                    cantidad=cantidad,
+                                    precio_unitario=precio,
+                                    sub_total=precio * cantidad,
+                                    identificador_comensal=comensal,
+                                    estado_cocina=False
                                 )
-            except StockInsuficiente as error:
-                # no deberia pasar (los lotes estaban bloqueados), pero si pasa se rechaza igual
-                rechazo = (f'Stock insuficiente de {error.insumo.nombre}.', MENSAJE_GENERICO)
+                                if sin:  # lo quitado no se descuenta (ya lo resolvio consumir_pedido); aca solo se registra
+                                    PedidoDetalleModificador.objects.bulk_create(
+                                        [PedidoDetalleModificador(detalle=detalle, insumo_id=id_insumo) for id_insumo in sin]
+                                    )
+                                if filas_extra:  # el stock de los extras ya lo descontó consumir_pedido; aca solo se registran
+                                    PedidoDetalleExtra.objects.bulk_create([
+                                        PedidoDetalleExtra(detalle=detalle, extra=extra, insumo_id=extra.insumo_id, cantidad=n, precio_unitario=p)
+                                        for extra, n, p in filas_extra
+                                    ])
+                                if compartido:  # plato dividido: el total del renglon se reparte entre estos participantes
+                                    PedidoDetalleCompartido.objects.bulk_create(
+                                        [PedidoDetalleCompartido(detalle=detalle, participante=nombre) for nombre in compartido]
+                                    )
+                except RecetaExtra.DoesNotExist:
+                    # un extra borrado a mano de la base: no se acepta la comanda (nada se descontó, el punto de guardado lo deshace)
+                    rechazo = ('Un extra pedido ya no existe.', 'Un extra del pedido ya no esta disponible. Actualiza el menu y volve a pedir.')
+                except StockInsuficiente as error:
+                    # no deberia pasar (los lotes estaban bloqueados), pero si pasa se rechaza igual
+                    rechazo = (f'Stock insuficiente de {error.insumo.nombre}.', MENSAJE_GENERICO)
 
             if rechazo is not None:
                 marcar_rechazada(id_comanda, *rechazo)
+            else:
+                # dentro de la transaccion: asi nunca hay una comanda aceptada sin estado en Redis (una comanda sin estado se
+                # toma por entregada y no bloquearia el cobro). Si el commit fallara, la clave queda sola y es inofensiva.
+                r.set(f'comanda:estado:{uuid_str}', 'pendiente')
 
         if rechazo is not None:
             print(f'[RECHAZADA] Comanda {uuid_str}: {rechazo[0]}')
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        r.set(f'comanda:estado:{uuid_str}', 'pendiente')
         print(f'[OK] Comanda {uuid_str} procesada.')
 
     except IntegrityError:

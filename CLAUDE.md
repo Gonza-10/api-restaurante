@@ -20,6 +20,8 @@ Requiere SQL Server (RestauranteDB), RabbitMQ (5672) y Redis (6379) activos. En 
 - `python manage.py runserver 8080`
 - `python restaurante/worker.py` (comandas)
 - `python restaurante/worker_pdf.py` (tickets PDF)
+- `python restaurante/worker_cotizacion.py` (cotización del BCRA cada 30 min; hace falta para cobrar en moneda extranjera)
+- `python restaurante/worker_mercadopago.py` (confirma los cobros pendientes de Mercado Pago cada 15 s; hace falta para cobrar con Mercado Pago). `MP_MODO=simulado` (por defecto) no necesita credenciales; el token real va solo en el `.env` propio (`MP_ACCESS_TOKEN`), nunca en el repositorio
 
 ## Git
 

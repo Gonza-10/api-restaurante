@@ -57,3 +57,45 @@ class RecetaEntradaSerializer(serializers.Serializer):
         if all(i['quitable'] for i in valor):
             raise serializers.ValidationError('Al menos un ingrediente tiene que ser fijo: si todos se pueden quitar, el plato podria quedar vacio.')
         return valor
+
+
+class ExtraEntradaSerializer(serializers.Serializer):
+    """POST /recetas/<id>/extras y PUT/PATCH /extras/<id> (cobros, hito 5). `cantidad` es lo que gasta UNA unidad de extra, en
+    unidad base (g, ml o u); `precio` es el recargo en pesos por unidad de extra."""
+    insumo = serializers.PrimaryKeyRelatedField(
+        queryset=Insumo.objects.filter(activo=True),
+        error_messages={'does_not_exist': 'No existe un insumo activo con ese id.', 'required': 'Campo obligatorio.',
+                        'incorrect_type': 'Debe ser el id del insumo.'},
+    )
+    cantidad = serializers.DecimalField(
+        max_digits=12, decimal_places=3, min_value=Decimal('0.001'),
+        error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero.',
+                        'min_value': 'Debe ser mayor que cero.', 'max_decimal_places': 'Maximo 3 decimales.',
+                        'max_digits': 'Numero demasiado grande.', 'max_whole_digits': 'Numero demasiado grande.'},
+    )
+    precio = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal('0'),
+        error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero.',
+                        'min_value': 'No puede ser negativo.', 'max_decimal_places': 'Maximo 2 decimales.',
+                        'max_digits': 'Numero demasiado grande.', 'max_whole_digits': 'Numero demasiado grande.'},
+    )
+    max_por_unidad = serializers.IntegerField(
+        min_value=1, max_value=10, required=False, default=1,
+        error_messages={'invalid': 'Debe ser un numero entero.', 'min_value': 'Minimo 1.', 'max_value': 'Maximo 10.'},
+    )
+    activo = serializers.BooleanField(required=False, default=True)
+
+    def validate(self, datos):
+        # las unidades no se parten: no existe "medio huevo" de extra
+        if datos['insumo'].tipo_medida == 'Unidad' and not es_entera(datos['cantidad']):
+            raise serializers.ValidationError({'cantidad': 'Este insumo se mide en unidades: la cantidad debe ser entera.'})
+        return datos
+
+
+class ExtraCopiarSerializer(serializers.Serializer):
+    """POST /recetas/<id>/extras/copiar: de que receta se copian los extras."""
+    origen = serializers.PrimaryKeyRelatedField(
+        queryset=Receta.objects.filter(insumo_producido__isnull=True),
+        error_messages={'does_not_exist': 'No existe una receta de plato con ese id.', 'required': 'Campo obligatorio.',
+                        'incorrect_type': 'Debe ser el id de la receta.'},
+    )

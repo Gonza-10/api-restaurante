@@ -41,6 +41,7 @@ from .serializers import (
     fecha_iso,
 )
 from .redis_client import redis_client
+from .cuenta import ReglaCuenta, cerrar_sesion, factura_vigente
 from .auth import (
     emitir_token, ttl_token_segundos,
     ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
@@ -49,6 +50,7 @@ from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
 from .especiales import precios_especiales_vigentes
 from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
+from .extras import clave_precio_extra, extras_de_detalle, extras_de_productos, texto_extras, validar_extras
 from .recetas import evaluar_conteo, faltantes_para_respuesta, mensaje_para_cliente
 from .catalogo import (
     invalidar_cache_catalogo, version_catalogo, clave_cache_catalogo, guardar_precios_vistos, precios_vistos,
@@ -184,6 +186,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
         contexto['precios_especiales'] = precios_especiales_vigentes()  # una sola consulta por pedido
         if self.action == 'list':
             contexto['quitables_por_producto'] = quitables_de_productos()  # tambien una sola consulta
+            contexto['extras_por_producto'] = extras_de_productos()        # y los extras que se ofrecen (cobros, hito 5)
         return contexto
 
     def list(self, request, *args, **kwargs):
@@ -211,9 +214,10 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 redis_client.setex(cache_key, CACHE_TTL_SEGUNDOS, json.dumps(respuesta.data))
             if not incluir_inactivos:
                 # "el cliente paga el precio que vio": se recuerda que precio mostraba esta version del menu
-                guardar_precios_vistos(version, {
-                    p['id']: p['precio_especial'] if p.get('es_especial_hoy') else p['precio'] for p in respuesta.data
-                })
+                precios = {p['id']: p['precio_especial'] if p.get('es_especial_hoy') else p['precio'] for p in respuesta.data}
+                for p in respuesta.data:  # y el recargo de cada extra que se ofrecia
+                    precios.update({clave_precio_extra(e['id']): e['precio'] for e in p.get('extras') or []})
+                guardar_precios_vistos(version, precios)
 
         respuesta['X-Catalogo-Version'] = str(version)  # el front la guarda y la envia como version_menu al pedir
         return respuesta
@@ -468,23 +472,26 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='cerrar')
     def cerrar(self, request, pk=None):
-        """Cierra la sesion: la fecha la pone el servidor y la mesa queda libre, en una sola operacion."""
-        sesion = self.get_object()
-        if sesion.estado != 'Abierto':
-            return Response({'error': 'La sesion ya esta cerrada.'}, status=status.HTTP_409_CONFLICT)
-        with transaction.atomic():
-            sesion.estado = 'Cerrado'
-            sesion.fecha_hora_cierre = timezone.now()
-            sesion.save(update_fields=['estado', 'fecha_hora_cierre'])
-            mesa = sesion.mesa
-            mesa.estado = False
-            mesa.save(update_fields=['estado'])
+        """Cierra la sesion: la fecha la pone el servidor y la mesa queda libre, en una sola operacion.
+        Se cierra sin consumo o con la factura pagada. Con consumo sin pagar responde 409; un Admin o Gerente puede forzar el
+        cierre con {"forzar": true, "motivo": "..."}. Con un pago pendiente no se cierra nunca."""
+        sesion = self.get_object()   # un Mozo solo cierra sus propias mesas
+        datos = request.data if isinstance(request.data, dict) else {}
+        forzar = datos.get('forzar') in (True, 'true', 'True', '1', 1)
+        try:
+            sesion = cerrar_sesion(
+                sesion.id, request.user.empleado, request.user.rol in ADMIN_GERENTE,
+                forzar=forzar, motivo=datos.get('motivo'),
+            )
+        except ReglaCuenta as error:
+            return Response({'error': error.mensaje, **error.extra}, status=error.estado)
         return Response(PedidoCabeceraSerializer(sesion).data)
 
 
-class PedidoDetalleViewSet(viewsets.ModelViewSet):
+class PedidoDetalleViewSet(viewsets.ReadOnlyModelViewSet):
+    """Solo lectura: los renglones nacen del worker al aceptar una comanda y no se editan a mano (el total de la cuenta
+    sale de aca: tocarlos romperia la factura y la caja)."""
     roles_lectura = SALON
-    roles_escritura = SALON
     queryset = PedidoDetalle.objects.select_related('producto', 'pedido_cabecera').all()
     serializer_class = PedidoDetalleSerializer
 
@@ -534,7 +541,9 @@ def _publicar_evento_comanda_lista(id_comanda_uuid: str):
 def _armar_tablero_cocina():
     comandas = ComandaRecibida.objects.select_related(
         'pedido_cabecera__mesa'
-    ).prefetch_related('detalles__producto', 'detalles__modificadores__insumo').order_by('fecha_hora_recepcion')
+    ).prefetch_related(
+        'detalles__producto', 'detalles__modificadores__insumo', 'detalles__extras__insumo'
+    ).order_by('fecha_hora_recepcion')
 
     resultado = []
     for comanda in comandas:
@@ -546,7 +555,8 @@ def _armar_tablero_cocina():
 
         # solo los items de ESTA comanda (no los de toda la sesion de la mesa)
         items = [
-            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad, 'sin': nombres_quitados(d)}
+            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad, 'sin': nombres_quitados(d),
+             'extras': texto_extras(d)}
             for d in comanda.detalles.all()
         ]
 
@@ -616,6 +626,14 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        # con la cuenta en curso (factura emitida) la mesa ya no pide: el total esta congelado. El worker lo vuelve a
+        # controlar bajo bloqueo; este aviso es para responder rapido.
+        if factura_vigente(pedido_cabecera) is not None:
+            return Response(
+                {'error': 'La cuenta de esta mesa ya esta en curso: no se pueden enviar mas pedidos. Avisa al mozo.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
         # el menu del cliente puede estar desactualizado: el servidor decide si el plato se puede pedir
         ids_pedidos = {item['id'] for item in datos['items']}
         existentes = {p.id: p for p in Producto.objects.filter(id__in=ids_pedidos)}
@@ -651,6 +669,17 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
 
+        # extras con recargo ("mas cheddar"): solo los que la receta del plato ofrece, activos, con stock y dentro del maximo
+        invalidos = validar_extras(datos['items'])
+        if invalidos:
+            for problema in invalidos:
+                problema['producto'] = existentes[problema['id']].nombre
+            return Response(
+                {'error': 'Hay extras que no se pueden pedir con ese plato. Actualiza el menu y volve a armar el pedido.',
+                 'extras_invalidos': invalidos},
+                status=status.HTTP_409_CONFLICT
+            )
+
         # hay insumos para todo lo que pide? Es un aviso previo: la palabra final la tiene el worker, que descuenta el
         # stock. Si no alcanza se rechaza el pedido entero y se informa cuanto se puede preparar de cada plato.
         faltantes, _, _ = evaluar_conteo(lineas_de_items(datos['items']))
@@ -673,9 +702,16 @@ class ComandaCreateView(APIView):
                     'id': item['id'],
                     'precio': str(vistos[item['id']]) if item['id'] in vistos else None,
                     'sin': item['sin'],
+                    'extras': [
+                        {'id': e['id'], 'cantidad': e['cantidad'],
+                         'precio': str(vistos[clave_precio_extra(e['id'])]) if clave_precio_extra(e['id']) in vistos else None}
+                        for e in item.get('extras') or []
+                    ],
+                    'compartido': item.get('compartido') or [],
                 }
                 for item in datos['items']
             ],
+            'comensal': datos.get('comensal'),
         }
 
         try:
@@ -745,7 +781,8 @@ class TicketPDFView(APIView):
         )
         if not os.path.exists(ruta):
             raise Http404('El ticket todavia no fue generado o la comanda no existe.')
-        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+
 
 
 # ==================== LOGIN ====================
@@ -884,7 +921,9 @@ def _sesion_cliente(request, numero_mesa, pin):
 def _comandas_de_sesion(sesion):
     """Comandas de una sesion con sus items y su estado. El estado vive en Redis mientras la comanda
     esta activa; cuando ya no esta ahi, la comanda fue entregada."""
-    comandas = sesion.comandas.prefetch_related('detalles__producto', 'detalles__modificadores__insumo').order_by('fecha_hora_recepcion')
+    comandas = sesion.comandas.prefetch_related(
+        'detalles__producto', 'detalles__modificadores__insumo', 'detalles__extras__insumo'
+    ).order_by('fecha_hora_recepcion')
     resultado = []
     for comanda in comandas:
         items = [
@@ -894,6 +933,7 @@ def _comandas_de_sesion(sesion):
                 'cantidad': d.cantidad,
                 'sub_total': d.sub_total,
                 'sin': nombres_quitados(d),
+                'extras': extras_de_detalle(d),
             }
             for d in comanda.detalles.all()
         ]

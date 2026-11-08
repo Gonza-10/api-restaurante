@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .auth import ADMIN_GERENTE, COCINA
-from .models import ComandaRecibida, Producto, Receta, RecetaIngrediente
+from .models import ComandaRecibida, PedidoDetalleExtra, Producto, Receta, RecetaIngrediente
 from .catalogo import invalidar_cache_catalogo
 from .modificadores import quitables_de_receta
 from .recetas import armar_receta, contexto_lectura, recalcular_al_confirmar
@@ -95,6 +95,11 @@ class RecetaViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': 'La receta la usan estos productos: ' + ', '.join(usados)
                           + '. Desasignarla de cada uno antes de borrarla.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        if PedidoDetalleExtra.objects.filter(extra__receta=receta).exists():
+            return Response(
+                {'error': 'Los extras de esta receta ya se usaron en pedidos: no se borra para no perder el historial.'},
                 status=status.HTTP_409_CONFLICT
             )
         receta.delete()
