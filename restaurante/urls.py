@@ -52,6 +52,9 @@ from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinReceta
 from .views_extras import RecetaExtrasView, RecetaExtrasCopiarView, ExtraDetalleView
 from .views_comprobante import CuentaFacturaClienteView, CuentaComprobanteClienteView, FacturaComprobanteView
 from .views_auditoria import AuditoriaView
+from .views_reservas import (
+    ReservasView, ReservaDetalleView, ReservaCancelarView, ReservasDisponibilidadView,
+)
 from .views_tickets import TicketPDFView
 from .views_disponibilidad import catalogo_eventos, CatalogoVersionView, ProductoDisponibilidadView
 from .views_operacion import (
@@ -96,6 +99,10 @@ urlpatterns = [
     path('cuenta/factura', CuentaFacturaClienteView.as_view(), name='cuenta-factura'),
     path('cuenta/comprobante', CuentaComprobanteClienteView.as_view(), name='cuenta-comprobante'),
     path('auditoria', AuditoriaView.as_view(), name='auditoria'),
+    path('reservas', ReservasView.as_view(), name='reservas'),
+    path('reservas/disponibilidad', ReservasDisponibilidadView.as_view(), name='reservas-disponibilidad'),
+    path('reservas/<int:pk>', ReservaDetalleView.as_view(), name='reserva-detalle'),
+    path('reservas/<int:pk>/cancelar', ReservaCancelarView.as_view(), name='reserva-cancelar'),
     path('', include(router.urls)),
     path('login', LoginView.as_view(), name='login'),
     path('me', PerfilView.as_view(), name='perfil'),

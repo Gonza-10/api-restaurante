@@ -112,6 +112,7 @@ MP_SYNC_INTERVALO_SEG=15     # cada cuanto el worker de Mercado Pago confirma lo
    | 20 | `20_AE4_MercadoPago_Migraciones.sql` | Cobros, hito 4: en `Pago`, los datos de Mercado Pago (`MpPreferenciaId`, `MpUrlPago`, `FechaHoraExpiracion`, `MpPagoId` único, `MpEstado`, `MpMontoNeto`) y el índice `IX_Pago_Estado`; `MovimientoCaja.IdEmpleado` pasa a admitir `NULL` (un cobro aprobado por Mercado Pago lo anota el sistema). Requiere el 19 |
    | 21 | `21_AE4_Extras_Migraciones.sql` | Cobros, hito 5: `RecetaExtra` (los extras que ofrece cada receta: insumo, cuánto gasta y cuánto cuesta una unidad, máximo por plato, `Activo` y `Disponible`; `UQ_RecetaExtra`: un insumo se ofrece una sola vez por receta) y `PedidoDetalleExtra` (los extras de cada renglón del pedido, con el recargo congelado; `UQ_PedidoDetalleExtra`). Requiere el 12 y el 14 |
    | 22 | `22_AE4_Comprobante_Auditoria_Migraciones.sql` | Cobros, hito 6: `Factura.NombreFactura` (a nombre de quién se emite el comprobante PDF; la casilla «quiero factura» ya existía como `SolicitoTicket`) y dos índices por fecha, `IX_PagoEvento_FechaHora` e `IX_MovimientoCaja_FechaHora`, para la línea de tiempo de auditoría. No crea tablas. Requiere el 18 y el 19 |
+   | 23 | `23_AE4_Reservas_Migraciones.sql` | Reservas: en `Reserva` suma el turno (`IdTurno`), la cantidad de personas, notas, origen (Llamada, Mensaje u Otro), quién y cuándo la canceló, cuándo se resolvió y qué sesión de mesa la cumplió; estados `Confirmada`, `Cancelada`, `Cumplida` y `No se presentó`; y un índice único que impide dos reservas confirmadas para la misma mesa, fecha y turno. Requiere el 00 y el 08 |
    | 99 | `99_Seed_AE4.sql` | Datos de prueba reproducibles: 4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo |
 
 4. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
@@ -520,6 +521,28 @@ La rueda sigue donde terminaba el hito 1: **receta → pedido → descuento**.
 8. **Auditoría = línea de tiempo de solo lectura**, sin tablas nuevas: reúne lo que el cobro ya registra (`PagoEvento`, `MovimientoCaja`, `Caja`, `Factura` y los cierres de mesa forzados) en una sola lista ordenada. Cada evento trae `fecha_hora`, `tipo`, `evento`, una `descripcion` lista para mostrar (por ejemplo «Pago #11 (Efectivo): Anulado (Aprobado -> Anulado). Error de carga»), quién lo hizo (`empleado: {id, nombre}`, o `null` si lo registró el sistema, como las aprobaciones de Mercado Pago), la mesa, la factura, el pago, la caja, el monto y la moneda. Un filtro que no corresponde a un tipo lo deja afuera (con `caja` salen solo movimientos y aperturas/cierres de esa caja, porque un pago o una factura no pertenecen a una caja). Cada fuente trae solo lo más nuevo que hace falta para la página pedida, así que se puede consultar con un historial largo.
 
 - **Probarlo:** `python Tests\Scripts\probar_comprobante_calculos.py` (112 chequeos: importes en formato argentino, nombre del archivo, validación de la casilla, contenido del comprobante y dibujo con un doble estricto de la librería de PDF) y `python Tests\Scripts\probar_auditoria_calculos.py` (48 chequeos: filtros, una frase por tipo de evento, mezcla y paginación), `python Tests\\Scripts\\probar_comprobante_dobles.py` (la copia en `tickets/`: se guarda, se reemplaza, se borra y no pisa otras facturas), ninguno necesita nada corriendo; y la carpeta «6. Comprobante y auditoría (hito 6)» de la colección `Savage_Grill_Cobros` (requiere el script SQL 22, `MP_MODO=simulado`, `runserver`, `worker.py`, RabbitMQ y Redis; usa la mesa 5 y al terminar deja la caja cerrada con el arqueo exacto). Lo que los scripts no pueden probar es el dibujo real con `fpdf2`: se ve abriendo el PDF que baja Postman.
+
+## Reservas
+
+Las cargan **Admin y Gerente** a partir de llamadas y mensajes (el mozo solo las consulta). No hay autogestión ni seña: queda como siguiente etapa.
+
+- **Una reserva es de una jornada** (fecha + turno: Almuerzo, Cena...) y **no tiene duración**: bloquea la mesa **toda la jornada**. Hay una sola reserva `Confirmada` por mesa y jornada (la base lo garantiza con un índice único); para la misma mesa se elige otro turno u otra fecha.
+- **Estados:** `Confirmada` → `Cumplida` (el cliente llegó y se abrió la mesa por su reserva), `Cancelada` (el cliente avisó que no viene) o `No se presentó` (no llegó dentro de la tolerancia).
+- **Abrir una mesa reservada:** `POST /sesiones-mesa/abrir` responde **409** con `codigo: "mesa_reservada"` y los datos de la reserva (nombre, apellido, hora, turno). El mozo confirma que es la del cliente y vuelve a enviar con `reserva_id`; la reserva pasa a `Cumplida` y queda ligada a la sesión. **Nadie** abre una mesa reservada para otra persona, tampoco Admin ni Gerente: si el cliente avisa que no viene, se cancela la reserva.
+- **Tolerancia:** 30 minutos después de la hora de llegada (`RESERVA_TOLERANCIA_MINUTOS` en el `.env`, por defecto 30). Pasado ese tiempo, la reserva pasa **sola** a `No se presentó` y la mesa queda libre. No hay un proceso aparte: se aplica al abrir una mesa y al consultar mesas y reservas.
+- **Mapa de mesas:** `GET /mesas` suma `reserva` (id, nombre, apellido, hora, turno, personas) en la mesa que la jornada abierta tiene reservada, y `null` en las demás.
+- **Se puede reservar una mesa en particular** (`numero_mesa`) o dejar que el sistema elija la más chica libre que alcance. Se valida capacidad, que la hora esté dentro del turno, que no sea en el pasado y que la mesa no esté ocupada en la jornada en curso.
+
+| Método y ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /reservas` | Mozo, Admin, Gerente | Lista. Filtros: `fecha`, `desde`, `hasta` (sin fechas: desde hoy), `turno`, `mesa`, `estado` |
+| `POST /reservas` | Admin, Gerente | Alta: `nombre`, `apellido`, `telefono`, `fecha`, `turno` (id), `hora` (HH:MM), `cantidad_personas`; opcionales `numero_mesa`, `notas`, `origen` |
+| `GET /reservas/{id}` | Mozo, Admin, Gerente | Detalle |
+| `PATCH /reservas/{id}` | Admin, Gerente | Edita una reserva `Confirmada` (se manda solo lo que cambia) |
+| `POST /reservas/{id}/cancelar` | Admin, Gerente | Cancela (cuerpo opcional `{"motivo": "..."}`). No se borran: quedan en el historial |
+| `GET /reservas/disponibilidad?fecha=&turno=&personas=` | Mozo, Admin, Gerente | Mesas libres para esa jornada y la sugerida |
+
+- **Probarlo:** `python Tests\Scripts\probar_reservas_calculos.py` (47 chequeos: horarios de los turnos, turno que cruza la medianoche, tolerancia, teléfono, elección de mesa y mensajes; no necesita nada corriendo) y la colección `Savage_Grill_Reservas` de Postman (requiere el script SQL 23 y `runserver`; cubre alta, validaciones, disponibilidad, edición, cancelación y apertura de mesa por la reserva). El vencimiento automático depende del reloj y lo cubre el script de cálculos.
 
 ## Estructura del repositorio
 

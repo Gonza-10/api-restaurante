@@ -142,6 +142,8 @@ class MesaSerializer(serializers.ModelSerializer):
     mozo_nombre = serializers.SerializerMethodField()
     fecha_hora_inicio = serializers.SerializerMethodField()
     solicita_cuenta = serializers.SerializerMethodField()
+    # reserva que bloquea la mesa en la jornada abierta (la arma MesaViewSet en el contexto); None si no hay
+    reserva = serializers.SerializerMethodField()
 
     class Meta:
         model = Mesa
@@ -166,6 +168,9 @@ class MesaSerializer(serializers.ModelSerializer):
     def get_solicita_cuenta(self, obj):
         sesion = self._sesion_abierta(obj)
         return bool(sesion and sesion.fecha_hora_solicita_cuenta)
+
+    def get_reserva(self, obj):
+        return self.context.get('reservas_por_mesa', {}).get(obj.id)
 
     def validate_numero(self, value):
         if value <= 0:
@@ -336,6 +341,11 @@ class SesionAbrirSerializer(serializers.Serializer):
     cantidad_comensales = serializers.IntegerField(
         min_value=1,
         error_messages={'required': 'Campo obligatorio.', 'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe haber al menos un comensal.'}
+    )
+    # Si la mesa tiene una reserva en la jornada, solo se abre indicando esa reserva (el mozo confirma que es la del cliente).
+    reserva_id = serializers.IntegerField(
+        required=False, min_value=1,
+        error_messages={'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe ser mayor a 0.'}
     )
 
 

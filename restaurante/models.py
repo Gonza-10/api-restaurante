@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 # ==================== IDENTIDAD Y ACCESO ====================
@@ -51,19 +52,40 @@ class Mesa(models.Model):
 
 
 class Reserva(models.Model):
+    """Reserva de una mesa para una jornada (fecha + turno). La carga Admin o Gerente. No tiene duracion: bloquea la mesa
+    toda la jornada hasta que se cumple, se cancela o pasa la tolerancia de llegada (ver reservas.py)."""
     id = models.AutoField(primary_key=True, db_column='Id')
     nombre = models.CharField(max_length=80, db_column='Nombre')
     apellido = models.CharField(max_length=80, db_column='Apellido')
     telefono = models.CharField(max_length=20, db_column='Telefono')
     fecha = models.DateField(db_column='Fecha')
-    hora = models.TimeField(db_column='Hora')
+    hora = models.TimeField(db_column='Hora')  # hora de llegada acordada, dentro del horario del turno
+    turno = models.ForeignKey('Turno', on_delete=models.PROTECT, db_column='IdTurno', related_name='reservas')
+    cantidad_personas = models.IntegerField(default=1, db_column='CantidadPersonas')
     mesa = models.ForeignKey(Mesa, on_delete=models.SET_NULL, null=True, blank=True, db_column='IdMesa', related_name='reservas')
     empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT, db_column='IdEmpleado', related_name='reservas')
-    estado = models.CharField(max_length=20, default='Confirmada', db_column='Estado')
+    estado = models.CharField(max_length=20, default='Confirmada', db_column='Estado')  # Confirmada / Cancelada / Cumplida / No se presentó
+    notas = models.CharField(max_length=300, null=True, blank=True, db_column='Notas')
+    origen = models.CharField(max_length=20, null=True, blank=True, db_column='Origen')  # Llamada / Mensaje / Otro
+    fecha_hora_alta = models.DateTimeField(default=timezone.now, db_column='FechaHoraAlta')
+    fecha_hora_cancelacion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraCancelacion')
+    empleado_cancelacion = models.ForeignKey(
+        Empleado, on_delete=models.PROTECT, null=True, blank=True,
+        db_column='IdEmpleadoCancelacion', related_name='reservas_canceladas'
+    )
+    motivo_cancelacion = models.CharField(max_length=200, null=True, blank=True, db_column='MotivoCancelacion')
+    fecha_hora_resolucion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraResolucion')
+    pedido_cabecera = models.ForeignKey(
+        'PedidoCabecera', on_delete=models.SET_NULL, null=True, blank=True,
+        db_column='IdPedidoCabecera', related_name='reservas'
+    )
 
     class Meta:
         db_table = 'Reserva'
         managed = False
+
+    def __str__(self):
+        return f'Reserva {self.id} - {self.nombre} {self.apellido}'
 
 
 # ==================== MENÚ ====================

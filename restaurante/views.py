@@ -48,6 +48,9 @@ from .auth import (
 )
 from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
+from .reservas import ReservaNoVigente, cumplir_reserva, reserva_bloqueante, reservas_bloqueantes_por_mesa, vencer_reservas
+from .reservas_calculos import mensaje_mesa_reservada
+from .serializers_reservas import reserva_resumen
 from .especiales import precios_especiales_vigentes
 from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
 from .extras import clave_precio_extra, extras_de_detalle, extras_de_productos, texto_extras, validar_extras
@@ -315,6 +318,20 @@ class MesaViewSet(viewsets.ModelViewSet):
         mesa.save(update_fields=['activa'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        if self.action in ('list', 'retrieve'):
+            # cada mesa muestra la reserva que la bloquea en la jornada abierta (el mozo la necesita para abrirla)
+            try:
+                vencer_reservas()
+                contexto['reservas_por_mesa'] = {
+                    id_mesa: reserva_resumen(r)
+                    for id_mesa, r in reservas_bloqueantes_por_mesa(jornada_abierta()).items()
+                }
+            except Exception:  # el mapa de mesas nunca debe caerse por las reservas
+                contexto['reservas_por_mesa'] = {}
+        return contexto
+
 
 class RolViewSet(viewsets.ReadOnlyModelViewSet):
     """Lista de roles, para armar el formulario de empleados (el que los gestiona es el Gerente)."""
@@ -420,6 +437,7 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
         entrada.is_valid(raise_exception=True)
         numero = entrada.validated_data['numero_mesa']
         comensales = entrada.validated_data['cantidad_comensales']
+        reserva_id = entrada.validated_data.get('reserva_id')
 
         jornada = jornada_abierta()
         if jornada is None:
@@ -435,6 +453,22 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': f'La mesa {numero} admite hasta {mesa.capacidad_maxima} comensales.'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Una mesa reservada en esta jornada solo se abre por esa reserva; nadie la ocupa para otra persona.
+        vencer_reservas()
+        reserva = reserva_bloqueante(mesa.id, jornada)
+        if reserva is not None and reserva_id != reserva.id:
+            return Response(
+                {'error': mensaje_mesa_reservada(numero, reserva.nombre, reserva.apellido, reserva.turno.nombre, reserva.hora),
+                 'codigo': 'mesa_reservada', 'reserva': reserva_resumen(reserva)},
+                status=status.HTTP_409_CONFLICT
+            )
+        if reserva is None and reserva_id is not None:
+            return Response(
+                {'error': f'La reserva indicada no está vigente para la mesa {numero} en esta jornada '
+                          '(se canceló, ya se cumplió o venció la tolerancia de llegada).'},
+                status=status.HTTP_409_CONFLICT
             )
 
         for _ in range(5):
@@ -456,6 +490,13 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
                     )
                     mesa.estado = True
                     mesa.save(update_fields=['estado'])
+                    if reserva is not None:
+                        cumplir_reserva(reserva.id, sesion)   # abrir por la reserva la marca Cumplida
+            except ReservaNoVigente:
+                return Response(
+                    {'error': 'La reserva dejó de estar vigente justo ahora (se canceló o venció la tolerancia). La mesa no se abrió.'},
+                    status=status.HTTP_409_CONFLICT
+                )
             except IntegrityError:
                 # otra apertura simultanea tomo la misma mesa o el mismo PIN: se vuelve a evaluar
                 mesa.refresh_from_db()

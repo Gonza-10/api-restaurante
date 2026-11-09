@@ -1,0 +1,2079 @@
+{
+  "info": {
+    "name": "Savage Grill - Reservas",
+    "description": "Prueba de punta a punta de las reservas: alta con validaciones, una reserva por mesa y jornada (fecha + turno), disponibilidad, edicion, cancelacion y apertura de mesa por la reserva (la mesa reservada no se abre para nadie mas). Requiere runserver (8080), Redis y el script SQL 23 ejecutado, y las cuentas de prueba del seed. Se corre entera con Run collection. La carpeta 0 cierra cualquier jornada abierta. Las reservas de prueba son de dentro de 30 dias (menos la de la carpeta 5, de hoy a las 23:50) y se cancelan al final. No correrla entre las 23:50 y las 00:30. Lo que NO se puede probar desde Postman es el vencimiento automatico a los 30 minutos (depende del reloj): lo cubre Tests/Scripts/probar_reservas_calculos.py.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparacion (logins, turnos, fechas y limpieza)",
+      "item": [
+        {
+          "name": "0.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_gerente', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Login mozo (jperez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"jperez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_mozo', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.3 Login admin (agomez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"agomez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_admin', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.4 Turnos: ids de Almuerzo y Cena",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/turnos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "const lista = Array.isArray(t) ? t : t.results;",
+                  "const alm = lista.find(x => x.nombre === 'Almuerzo'), cen = lista.find(x => x.nombre === 'Cena');",
+                  "pm.test('Existen Almuerzo y Cena', () => { pm.expect(alm).to.exist; pm.expect(cen).to.exist; });",
+                  "pm.collectionVariables.set('turno_almuerzo', alm.id);",
+                  "pm.collectionVariables.set('turno_cena', cen.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.5 Fechas de prueba (hoy, ayer, +30 y +31 dias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/turnos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const f = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };",
+                  "pm.collectionVariables.set('fecha_hoy', f(0));",
+                  "pm.collectionVariables.set('fecha_ayer', f(-1));",
+                  "pm.collectionVariables.set('fecha_a', f(30));",
+                  "pm.collectionVariables.set('fecha_b', f(31));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.6 Limpieza: cerrar la jornada si hay una abierta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cerro una) o 409 (no habia)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Alta de reservas y validaciones",
+      "item": [
+        {
+          "name": "1.1 El mozo NO puede cargar reservas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Telefono invalido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"abc\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Marca el telefono', () => pm.expect(pm.response.json()).to.have.property('telefono'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Hora fuera del turno (20:30 en el Almuerzo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"20:30\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explica el horario del turno', () => pm.expect(pm.response.json().error).to.include('horario del turno'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 No se reserva en el pasado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_ayer}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Dice que es el pasado', () => pm.expect(pm.response.json().error).to.include('pasado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Capacidad: 3 personas no entran en la mesa 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":3,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Menciona la capacidad', () => pm.expect(pm.response.json().error).to.include('admite hasta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Mesa inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":999}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 El admin reserva la mesa 1 para el Almuerzo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Gomez\",\"telefono\":\"3764123456\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":1,\"origen\":\"Llamada\",\"notas\":\"Cumple\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Queda Confirmada', () => pm.expect(j.estado).to.eql('Confirmada'));",
+                  "pm.test('Mesa 1 y turno Almuerzo', () => { pm.expect(j.numero_mesa).to.eql(1); pm.expect(j.turno.nombre).to.eql('Almuerzo'); });",
+                  "pm.test('Se espera hasta las 13:30', () => pm.expect(j.espera_hasta).to.include('13:30'));",
+                  "pm.collectionVariables.set('reserva_1', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Misma mesa, mismo turno y fecha: se rechaza",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Beto\",\"apellido\":\"Ruiz\",\"telefono\":\"3764999999\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"14:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Nombra a quien la tiene', () => pm.expect(pm.response.json().error).to.include('Ana Gomez'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 Misma mesa y fecha pero OTRO turno (Cena): se acepta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Beto\",\"apellido\":\"Ruiz\",\"telefono\":\"3764999999\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_cena}},\"hora\":\"21:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reserva_2', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Misma mesa, mismo turno, OTRA fecha: se acepta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Beto\",\"apellido\":\"Ruiz\",\"telefono\":\"3764999999\",\"fecha\":\"{{fecha_b}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"13:00\",\"cantidad_personas\":2,\"numero_mesa\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reserva_3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.11 Sin mesa: el sistema elige la mas chica libre que alcance (3 personas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Carla\",\"apellido\":\"Diaz\",\"telefono\":\"3764555555\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"12:30\",\"cantidad_personas\":3}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('No es la mesa 1 (de 2 personas, ya reservada)', () => pm.expect(j.numero_mesa).to.not.eql(1));",
+                  "pm.collectionVariables.set('reserva_4', j.id);",
+                  "pm.collectionVariables.set('mesa_reserva_4', j.numero_mesa);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Consultas y disponibilidad",
+      "item": [
+        {
+          "name": "2.1 Disponibilidad: la mesa 1 y la elegida en 1.11 ya no estan libres",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas/disponibilidad?fecha={{fecha_a}}&turno={{turno_almuerzo}}&personas=2",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const nums = j.mesas.map(m => m.numero);",
+                  "pm.test('La mesa 1 no esta', () => pm.expect(nums).to.not.include(1));",
+                  "pm.test('La mesa de la reserva 4 no esta', () => pm.expect(nums).to.not.include(Number(pm.collectionVariables.get('mesa_reserva_4'))));",
+                  "pm.test('Todas admiten 2 o mas', () => j.mesas.forEach(m => pm.expect(m.capacidad).to.be.at.least(2)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Disponibilidad del OTRO turno: la mesa 1 esta libre en la Cena de la fecha B",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas/disponibilidad?fecha={{fecha_b}}&turno={{turno_cena}}&personas=2",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Sugiere la mesa 1 (la mas chica)', () => pm.expect(j.mesa_sugerida).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Listar por fecha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas?fecha={{fecha_a}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const ids = lista.map(r => r.id);",
+                  "pm.test('Estan las reservas 1 y 4', () => { pm.expect(ids).to.include(Number(pm.collectionVariables.get('reserva_1'))); pm.expect(ids).to.include(Number(pm.collectionVariables.get('reserva_4'))); });",
+                  "pm.test('Todas son de esa fecha', () => lista.forEach(r => pm.expect(r.fecha).to.eql(pm.collectionVariables.get('fecha_a'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Estado invalido en el filtro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas?estado=inventado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 El mozo puede consultar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas?fecha={{fecha_a}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Detalle de una reserva",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas/{{reserva_1}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Es la de Ana Gomez', () => { pm.expect(j.nombre).to.eql('Ana'); pm.expect(j.apellido).to.eql('Gomez'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 Reserva inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas/99999999",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Edicion",
+      "item": [
+        {
+          "name": "3.1 El mozo NO puede editar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_1}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"notas\":\"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 El admin cambia notas y hora (dentro del turno)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_1}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"notas\":\"Mesa tranquila\",\"hora\":\"13:30\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nuevas notas y hora', () => { pm.expect(j.notas).to.eql('Mesa tranquila'); pm.expect(j.hora).to.eql('13:30'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Hora fuera del turno",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_1}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"hora\":\"22:00\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Mas personas que la capacidad de la mesa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_1}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"cantidad_personas\":3}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Menciona la capacidad', () => pm.expect(pm.response.json().error).to.include('admite hasta'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Cancelacion",
+      "item": [
+        {
+          "name": "4.1 El mozo NO puede cancelar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_4}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 El admin cancela la reserva 4 (el cliente avisó que no viene)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_4}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"Avisó por mensaje\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Queda Cancelada', () => pm.expect(j.estado).to.eql('Cancelada'));",
+                  "pm.test('Guarda motivo y quien la canceló', () => { pm.expect(j.cancelacion.motivo).to.eql('Avisó por mensaje'); pm.expect(j.cancelacion.por).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Cancelar de nuevo: se rechaza",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/reservas/{{reserva_4}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Una reserva cancelada no se edita",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_4}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"notas\":\"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 La mesa quedó libre: se puede reservar de nuevo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Dora\",\"apellido\":\"Paz\",\"telefono\":\"3764777777\",\"fecha\":\"{{fecha_a}}\",\"turno\":{{turno_almuerzo}},\"hora\":\"12:30\",\"cantidad_personas\":3,\"numero_mesa\":{{mesa_reserva_4}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reserva_5', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Apertura de mesa con reserva (jornada en curso)",
+      "item": [
+        {
+          "name": "5.1 El gerente comienza la jornada (Cena)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{turno_cena}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Reserva de HOY para la Cena en la mesa 3 (23:50)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Fernando\",\"apellido\":\"Pérez\",\"telefono\":\"3764888888\",\"fecha\":\"{{fecha_hoy}}\",\"turno\":{{turno_cena}},\"hora\":\"23:50\",\"cantidad_personas\":2,\"numero_mesa\":3}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reserva_hoy', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 El mapa de mesas muestra la reserva en la mesa 3",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const mesas = pm.response.json();",
+                  "const lista = Array.isArray(mesas) ? mesas : mesas.results;",
+                  "const m3 = lista.find(m => m.numero === 3);",
+                  "pm.test('La mesa 3 trae su reserva', () => { pm.expect(m3.reserva).to.not.eql(null); pm.expect(m3.reserva.nombre).to.eql('Fernando'); });",
+                  "pm.test('Las demas mesas no tienen reserva en esta jornada', () => pm.expect(lista.filter(m => m.numero !== 3 && m.reserva).length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 El mozo NO puede abrir la mesa 3 sin la reserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const j = pm.response.json();",
+                  "pm.test('Codigo mesa_reservada', () => pm.expect(j.codigo).to.eql('mesa_reservada'));",
+                  "pm.test('Nombra al cliente', () => pm.expect(j.error).to.include('Fernando Pérez'));",
+                  "pm.test('Trae la reserva para confirmar', () => pm.expect(j.reserva.id).to.eql(Number(pm.collectionVariables.get('reserva_hoy'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Tampoco el gerente: nadie ocupa una mesa reservada para otra persona",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Mismo motivo', () => pm.expect(pm.response.json().codigo).to.eql('mesa_reservada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 Una reserva que no es de esa mesa no sirve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2, \"reserva_id\": {{reserva_1}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 Otra mesa sin reserva se abre normal (mesa 4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 4, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('sesion_mesa_4', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.8 El mozo abre la mesa 3 POR la reserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 3, \"cantidad_comensales\": 2, \"reserva_id\": {{reserva_hoy}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('sesion_mesa_3', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.9 La reserva quedó Cumplida y ligada a la sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/reservas/{{reserva_hoy}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Cumplida', () => pm.expect(j.estado).to.eql('Cumplida'));",
+                  "pm.test('Ligada a la sesion', () => pm.expect(j.id_sesion).to.eql(Number(pm.collectionVariables.get('sesion_mesa_3'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.10 La reserva cumplida no se puede cancelar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/reservas/{{reserva_hoy}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.11 Reservar una mesa ocupada en la jornada en curso: se rechaza",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\":\"Gus\",\"apellido\":\"Lopez\",\"telefono\":\"3764666666\",\"fecha\":\"{{fecha_hoy}}\",\"turno\":{{turno_cena}},\"hora\":\"23:55\",\"cantidad_personas\":2,\"numero_mesa\":4}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Dice que esta ocupada', () => pm.expect(pm.response.json().error).to.include('ocupada'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Limpieza",
+      "item": [
+        {
+          "name": "6.1 Cerrar la sesión de la mesa 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{sesion_mesa_3}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba de reservas\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cerro) o 404/409', () => pm.expect([200, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Cerrar la sesión de la mesa 4",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{sesion_mesa_4}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba de reservas\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cerro) o 404/409', () => pm.expect([200, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 Cancelar reserva 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_1}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cancelo) o 409 (ya no estaba confirmada)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 Cancelar reserva 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_2}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cancelo) o 409 (ya no estaba confirmada)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 Cancelar reserva 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_3}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cancelo) o 409 (ya no estaba confirmada)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 Cancelar reserva 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/reservas/{{reserva_5}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\":\"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cancelo) o 409 (ya no estaba confirmada)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.7 Cerrar la jornada",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (cerro) o 409 (no habia)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
