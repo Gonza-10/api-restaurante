@@ -94,7 +94,7 @@ def procesar_evento(ch, method, properties, body):
 
 def main():
     parametros = pika.ConnectionParameters(
-        host='localhost',
+        host=config('RABBIT_HOST', default='localhost'),
         credentials=pika.PlainCredentials(
             config('RABBIT_USER'), config('RABBIT_PASS')
         )

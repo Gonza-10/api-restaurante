@@ -31,7 +31,13 @@ if SECRET_KEY in ('', 'changeme') or SECRET_KEY.startswith('django-insecure') or
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+# Servidores desde los que se acepta el trafico. Vacio = solo localhost (con DEBUG=True).
+# En produccion: ALLOWED_HOSTS=savagegrill.brazilsouth.cloudapp.azure.com (varios, separados por coma).
+ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='').split(',') if h.strip()]
+
+# Detras de Caddy (HTTPS): Django confia en el encabezado que le manda el proxy y acepta formularios de ese origen.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if o.strip()]
 
 
 # Application definition
@@ -89,6 +95,11 @@ DATABASES = {
         'ENGINE': 'mssql',
         'NAME': config('DB_NAME'),
         'HOST': config('DB_HOST'),
+        # Sin DB_USER se usa la autenticacion de Windows (la PC de desarrollo). En Docker/Linux se define DB_USER
+        # (sa) y DB_PASSWORD; DB_PORT es opcional (por defecto 1433).
+        'USER': config('DB_USER', default=''),
+        'PASSWORD': config('DB_PASSWORD', default=''),
+        'PORT': config('DB_PORT', default=''),
         'OPTIONS': {
             'driver': 'ODBC Driver 18 for SQL Server',
             'extra_params': 'TrustServerCertificate=yes',

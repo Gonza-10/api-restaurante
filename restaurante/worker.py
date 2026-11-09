@@ -23,7 +23,7 @@ from restaurante.recetas import consumir_pedido, mensaje_para_cliente, motivo_pa
 from restaurante.stock import StockInsuficiente
 from restaurante.stock_calculos import clave_de_linea, precio_de_renglon
 
-r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
+r = redis.Redis(host=config('REDIS_HOST', default='127.0.0.1'), port=config('REDIS_PORT', default=6379, cast=int), decode_responses=True)
 
 
 def insertar_comanda_control(uuid_str, id_pedido_cabecera):
@@ -173,7 +173,7 @@ def procesar_comanda(ch, method, properties, body):
 
 def main():
     parametros = pika.ConnectionParameters(
-        host='localhost',
+        host=config('RABBIT_HOST', default='localhost'),
         credentials=pika.PlainCredentials(
             config('RABBIT_USER'), config('RABBIT_PASS')
         )

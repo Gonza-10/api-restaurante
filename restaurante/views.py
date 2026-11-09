@@ -500,7 +500,7 @@ class PedidoDetalleViewSet(viewsets.ReadOnlyModelViewSet):
 
 def _publicar_en_rabbitmq(payload: dict):
     parametros = pika.ConnectionParameters(
-        host='localhost',
+        host=config('RABBIT_HOST', default='localhost'),
         credentials=pika.PlainCredentials(
             config('RABBIT_USER'), config('RABBIT_PASS')
         )
@@ -519,7 +519,7 @@ def _publicar_en_rabbitmq(payload: dict):
 
 def _publicar_evento_comanda_lista(id_comanda_uuid: str):
     parametros = pika.ConnectionParameters(
-        host='localhost',
+        host=config('RABBIT_HOST', default='localhost'),
         credentials=pika.PlainCredentials(
             config('RABBIT_USER'), config('RABBIT_PASS')
         )

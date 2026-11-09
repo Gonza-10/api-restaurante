@@ -1,7 +1,11 @@
 import redis
 
-REDIS_HOST = '127.0.0.1'  # IP numerica: en Windows 'localhost' puede sumar ~2 s al abrir cada conexion nueva
-REDIS_PORT = 6379
+from decouple import config
+
+# IP numerica por defecto: en Windows 'localhost' puede sumar ~2 s al abrir cada conexion nueva.
+# En Docker se define REDIS_HOST=redis (nombre del servicio).
+REDIS_HOST = config('REDIS_HOST', default='127.0.0.1')
+REDIS_PORT = config('REDIS_PORT', default=6379, cast=int)
 
 
 def nuevo_cliente():
