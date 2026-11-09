@@ -52,6 +52,10 @@ from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinReceta
 from .views_extras import RecetaExtrasView, RecetaExtrasCopiarView, ExtraDetalleView
 from .views_comprobante import CuentaFacturaClienteView, CuentaComprobanteClienteView, FacturaComprobanteView
 from .views_auditoria import AuditoriaView
+from .views_comensales import (
+    ComandaCancelarView, MesaComensalesEstadoView, MesaComensalesView, MesaOkView, MesaRegenerarPinView, SesionComensalesView,
+    SesionLiberarRondaView, SesionPinVistoView, SesionRegenerarPinView,
+)
 from .views_reservas import (
     ReservasView, ReservaDetalleView, ReservaCancelarView, ReservasDisponibilidadView,
 )
@@ -148,6 +152,15 @@ urlpatterns = [
     path('cuenta/pagar/estado', PagarEstadoClienteView.as_view(), name='cuenta-pagar-estado'),
     path('cuenta/pagar/cancelar', PagarCancelarClienteView.as_view(), name='cuenta-pagar-cancelar'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
+    path('mesa/comensales', MesaComensalesView.as_view(), name='mesa-comensales'),
+    path('mesa/comensales/estado', MesaComensalesEstadoView.as_view(), name='mesa-comensales-estado'),
+    path('mesa/comensales/ok', MesaOkView.as_view(), name='mesa-comensales-ok'),
+    path('mesa/regenerar-pin', MesaRegenerarPinView.as_view(), name='mesa-regenerar-pin'),
+    path('sesiones-mesa/<int:pk>/comensales', SesionComensalesView.as_view(), name='sesion-comensales'),
+    path('sesiones-mesa/<int:pk>/liberar-ronda', SesionLiberarRondaView.as_view(), name='sesion-liberar-ronda'),
+    path('sesiones-mesa/<int:pk>/regenerar-pin', SesionRegenerarPinView.as_view(), name='sesion-regenerar-pin'),
+    path('sesiones-mesa/<int:pk>/pin/visto', SesionPinVistoView.as_view(), name='sesion-pin-visto'),
+    path('pedidos/<uuid:uuid_comanda>/cancelar', ComandaCancelarView.as_view(), name='comanda-cancelar'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
     path('pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoUpdateView.as_view(), name='actualizar-estado-comanda'),

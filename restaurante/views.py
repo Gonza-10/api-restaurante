@@ -42,6 +42,12 @@ from .serializers import (
 )
 from .redis_client import redis_client
 from .cuenta import ReglaCuenta, cerrar_sesion, factura_vigente
+from .comensales import comensal_de_sesion, generar_pin_libre, reiniciar_ok
+from .comensales_calculos import (
+    FAMILIAR, RETIRADO, mensaje_comensal_requerido, mensaje_comensal_retirado, mensaje_pin_cambiado, pin_fue_anterior,
+    GRUPAL,
+)
+from .estado_comandas import transicionar
 from .auth import (
     emitir_token, ttl_token_segundos,
     ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
@@ -390,14 +396,17 @@ def _ip(request):
     return request.META.get('REMOTE_ADDR', 'desconocida')
 
 
-def _generar_pin_libre():
-    """PIN de 4 digitos que no este en uso por ninguna otra sesion abierta."""
-    en_uso = set(PedidoCabecera.objects.filter(estado='Abierto').values_list('codigo_pin', flat=True))
-    for _ in range(100):
-        pin = f'{secrets.randbelow(10000):04d}'
-        if pin not in en_uso:
-            return pin
-    return None
+_generar_pin_libre = generar_pin_libre   # PIN de 4 digitos que no este en uso por ninguna otra sesion abierta (ver comensales.py)
+
+
+def _pin_incorrecto(sesion, pin, clave_pin):
+    """Respuesta 403 para un PIN que no es el de la sesion. Si fue el PIN de la mesa antes de un cambio, el dispositivo se entera de
+    que cambio (`pin_cambiado`) y NO se cuenta como intento fallido: un celular que sigue consultando con el PIN viejo no debe
+    bloquear por IP a quienes ya entraron con el nuevo."""
+    if pin_fue_anterior(pin, sesion.pins_anteriores):
+        return Response({'error': mensaje_pin_cambiado(), 'codigo': 'pin_cambiado'}, status=status.HTTP_403_FORBIDDEN)
+    registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+    return Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
 
 
 class PedidoCabeceraViewSet(viewsets.ModelViewSet):
@@ -439,6 +448,7 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
         numero = entrada.validated_data['numero_mesa']
         comensales = entrada.validated_data['cantidad_comensales']
         reserva_id = entrada.validated_data.get('reserva_id')
+        modalidad = entrada.validated_data['modalidad']
 
         jornada = jornada_abierta()
         if jornada is None:
@@ -488,6 +498,8 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
                         cantidad_comensales=comensales,
                         estado='Abierto',
                         jornada=jornada,
+                        modalidad=modalidad,
+                        ronda_liberada=(modalidad == FAMILIAR),   # una mesa grupal espera el OK de todos en la primera ronda
                     )
                     mesa.estado = True
                     mesa.save(update_fields=['estado'])
@@ -592,7 +604,7 @@ def _armar_tablero_cocina():
         uuid_str = str(comanda.id_comanda_uuid)
         estado = redis_client.get(f'comanda:estado:{uuid_str}')
 
-        if estado is None:
+        if estado is None or estado == 'retenida':   # la primera ronda de una mesa grupal no se ve en cocina hasta que sale
             continue
 
         # solo los items de ESTA comanda (no los de toda la sesion de la mesa)
@@ -653,8 +665,19 @@ class ComandaCreateView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         if not secrets.compare_digest(pedido_cabecera.codigo_pin.strip().encode(), datos['pin'].encode()):
-            registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
-            return Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
+            return _pin_incorrecto(pedido_cabecera, datos['pin'], clave_pin)
+
+        # quien pide: en una mesa Grupal cada pedido es de un comensal registrado (y activo); en una Familiar es opcional
+        comensal_obj = None
+        if datos.get('id_comensal'):
+            comensal_obj = comensal_de_sesion(pedido_cabecera.id, datos['id_comensal'])
+            if comensal_obj is None:
+                return Response({'error': 'Ese comensal no está en la mesa. Ingresá tu nombre de nuevo.', 'codigo': 'comensal_desconocido'},
+                                status=status.HTTP_409_CONFLICT)
+            if comensal_obj.estado == RETIRADO:
+                return Response({'error': mensaje_comensal_retirado(), 'codigo': 'comensal_retirado'}, status=status.HTTP_403_FORBIDDEN)
+        elif pedido_cabecera.modalidad == GRUPAL:
+            return Response({'error': mensaje_comensal_requerido(), 'codigo': 'comensal_requerido'}, status=status.HTTP_409_CONFLICT)
 
         # una mesa de una jornada ya cerrada se puede cobrar, pero no pide mas. Las sesiones anteriores a las
         # jornadas (sin jornada) piden mientras haya alguna jornada abierta.
@@ -753,7 +776,8 @@ class ComandaCreateView(APIView):
                 }
                 for item in datos['items']
             ],
-            'comensal': datos.get('comensal'),
+            'comensal': comensal_obj.nombre if comensal_obj is not None else datos.get('comensal'),
+            'id_comensal': comensal_obj.id if comensal_obj is not None else None,
         }
 
         try:
@@ -763,6 +787,9 @@ class ComandaCreateView(APIView):
                 {'error': 'No se pudo conectar con el servidor de mensajeria. Intenta de nuevo.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
+
+        if comensal_obj is not None and not pedido_cabecera.ronda_liberada:
+            reiniciar_ok(pedido_cabecera.id, comensal_obj.id)   # sigue armando su pedido: tiene que volver a dar el OK
 
         return Response(
             {'mensaje': 'Comanda encolada correctamente.'},
@@ -792,17 +819,21 @@ class ComandaEstadoUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        clave = f'comanda:estado:{uuid_comanda}'
-        if not redis_client.exists(clave):
+        # atomico: una comanda retenida (esperando el OK de todos) no la mueve la cocina, y si en el mismo instante se cancela
+        # gana uno solo de los dos
+        cambio, anterior = transicionar(
+            uuid_comanda, ('pendiente', 'proceso', 'listo'), None if nuevo_estado == 'entregado' else nuevo_estado)
+        if not cambio:
+            if anterior == 'retenida':
+                return Response(
+                    {'error': 'La comanda espera el OK de todos los comensales de la mesa (o que el mozo libere la primera ronda).',
+                     'codigo': 'comanda_retenida'},
+                    status=status.HTTP_409_CONFLICT
+                )
             return Response(
                 {'error': 'La comanda no existe o ya fue cerrada.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        if nuevo_estado == 'entregado':
-            redis_client.delete(clave)
-        else:
-            redis_client.set(clave, nuevo_estado)
 
         if nuevo_estado == 'listo':
             try:
@@ -914,6 +945,11 @@ class AccesoMesaView(APIView):
             sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').filter(
                 estado='Abierto', codigo_pin=pin, mesa__activa=True
             ).first()
+            if sesion is None:
+                # el PIN pudo ser el de una mesa antes de que lo cambiaran: se le avisa y no cuenta como intento fallido
+                vieja = PedidoCabecera.objects.filter(estado='Abierto', mesa__activa=True, pins_anteriores__contains=pin).first()
+                if vieja is not None and pin_fue_anterior(pin, vieja.pins_anteriores):
+                    return Response({'error': mensaje_pin_cambiado(), 'codigo': 'pin_cambiado'}, status=status.HTTP_403_FORBIDDEN)
         if sesion is None:
             registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
             return Response(
@@ -927,6 +963,8 @@ class AccesoMesaView(APIView):
             'mozo_nombre': f'{sesion.empleado.nombre} {sesion.empleado.apellido}',
             'fecha_hora_inicio': fecha_iso(sesion.fecha_hora_apertura),
             'solicita_cuenta': sesion.fecha_hora_solicita_cuenta is not None,
+            'modalidad': sesion.modalidad,
+            'ronda_liberada': sesion.ronda_liberada,
         })
 
 
@@ -954,8 +992,7 @@ def _sesion_cliente(request, numero_mesa, pin):
         )
 
     if not secrets.compare_digest(sesion.codigo_pin.strip().encode(), pin.encode()):
-        registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
-        return None, Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
+        return None, _pin_incorrecto(sesion, pin, clave_pin)
 
     return sesion, None
 
@@ -963,7 +1000,7 @@ def _sesion_cliente(request, numero_mesa, pin):
 def _comandas_de_sesion(sesion):
     """Comandas de una sesion con sus items y su estado. El estado vive en Redis mientras la comanda
     esta activa; cuando ya no esta ahi, la comanda fue entregada."""
-    comandas = sesion.comandas.prefetch_related(
+    comandas = sesion.comandas.select_related('comensal').prefetch_related(
         'detalles__producto', 'detalles__modificadores__insumo', 'detalles__extras__insumo'
     ).order_by('fecha_hora_recepcion')
     resultado = []
@@ -980,11 +1017,13 @@ def _comandas_de_sesion(sesion):
             for d in comanda.detalles.all()
         ]
         rechazada = comanda.estado == 'Rechazada'
+        cancelada = comanda.estado == 'Cancelada'
         resultado.append({
             'id_comanda_uuid': str(comanda.id_comanda_uuid),
-            'estado': 'rechazada' if rechazada
+            'estado': 'rechazada' if rechazada else 'cancelada' if cancelada
             else (redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') or 'entregado'),
-            'mensaje': comanda.mensaje_cliente if rechazada else None,
+            'mensaje': comanda.mensaje_cliente if rechazada else ('Este pedido se canceló antes de prepararse.' if cancelada else None),
+            'comensal': comanda.comensal.nombre if comanda.comensal_id else None,
             'timestamp': comanda.fecha_hora_recepcion,
             'items': items,
             'total': sum((i['sub_total'] for i in items), Decimal('0.00')),

@@ -8,6 +8,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
+from .comensales_calculos import modalidad_valida
 from .especiales import precios_especiales_vigentes
 from .modificadores import quitables_de_productos
 from .extras import extras_de_productos
@@ -146,6 +147,11 @@ class MesaSerializer(serializers.ModelSerializer):
     metodo_pago_solicitado = serializers.SerializerMethodField()
     # reserva que bloquea la mesa en la jornada abierta (la arma MesaViewSet en el contexto); None si no hay
     reserva = serializers.SerializerMethodField()
+    # modalidad de la sesion abierta (Familiar / Grupal) y si la primera ronda ya salio a cocina; None si la mesa esta libre
+    modalidad = serializers.SerializerMethodField()
+    ronda_liberada = serializers.SerializerMethodField()
+    # aviso urgente para el mozo: alguien pidio un PIN nuevo y el mozo todavia no lo vio. None si no hay aviso pendiente.
+    aviso_pin = serializers.SerializerMethodField()
 
     class Meta:
         model = Mesa
@@ -177,6 +183,20 @@ class MesaSerializer(serializers.ModelSerializer):
 
     def get_reserva(self, obj):
         return self.context.get('reservas_por_mesa', {}).get(obj.id)
+
+    def get_modalidad(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return sesion.modalidad if sesion else None
+
+    def get_ronda_liberada(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return sesion.ronda_liberada if sesion else None
+
+    def get_aviso_pin(self, obj):
+        sesion = self._sesion_abierta(obj)
+        if not sesion or not sesion.aviso_pin_pendiente:
+            return None
+        return {'solicitado_por': sesion.pin_regenerado_por, 'fecha_hora': fecha_iso(sesion.pin_regenerado_en)}
 
     def validate_numero(self, value):
         if value <= 0:
@@ -295,7 +315,7 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PedidoCabecera
-        fields = '__all__'
+        exclude = ['pins_anteriores']   # los PIN viejos son solo para avisar "el PIN cambio" al dispositivo que todavia lo usa
 
     def get_total(self, obj):
         return sum((detalle.sub_total for detalle in obj.detalles.all()), Decimal('0.00'))
@@ -353,6 +373,14 @@ class SesionAbrirSerializer(serializers.Serializer):
         required=False, min_value=1,
         error_messages={'invalid': 'Debe ser un numero entero.', 'min_value': 'Debe ser mayor a 0.'}
     )
+    # Familiar (por defecto) o Grupal: la elige el mozo segun quienes se sientan.
+    modalidad = serializers.CharField(required=False, default='Familiar')
+
+    def validate_modalidad(self, value):
+        modalidad = modalidad_valida(value)
+        if modalidad is None:
+            raise serializers.ValidationError("La modalidad debe ser 'Familiar' o 'Grupal'.")
+        return modalidad
 
 
 class ExtraComandaSerializer(serializers.Serializer):
@@ -418,6 +446,8 @@ class ComandaEntradaSerializer(serializers.Serializer):
     version_menu = serializers.IntegerField(required=False, min_value=0)
     # quien pide (opcional): su nombre en la cuenta. Los platos 'compartido' se reparten aparte.
     comensal = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True, trim_whitespace=True)
+    # perfil del comensal (POST /mesa/comensales): en una mesa Grupal es obligatorio y reemplaza al nombre suelto
+    id_comensal = serializers.IntegerField(required=False, min_value=1)
 
     def validate_comensal(self, value):
         return (value or '').strip() or None
@@ -475,6 +505,8 @@ class ComandaHistorialSerializer(serializers.Serializer):
     total = serializers.DecimalField(max_digits=12, decimal_places=2)
     # solo en las comandas rechazadas por falta de insumos: texto para mostrar al cliente (null en el resto)
     mensaje = serializers.CharField(allow_null=True, required=False)
+    # quien hizo el pedido (nombre del comensal; null si no se indico)
+    comensal = serializers.CharField(allow_null=True, required=False)
 
 
 class HistorialMesaSerializer(serializers.Serializer):

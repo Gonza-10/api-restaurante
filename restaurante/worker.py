@@ -15,9 +15,10 @@ from django.utils import timezone
 from django.db import connection, IntegrityError, transaction
 from collections import Counter
 from restaurante.models import (
-    ComandaRecibida, Factura, PedidoCabecera, PedidoDetalle, PedidoDetalleCompartido, PedidoDetalleExtra, PedidoDetalleModificador,
+    ComandaRecibida, Comensal, Factura, PedidoCabecera, PedidoDetalle, PedidoDetalleCompartido, PedidoDetalleExtra, PedidoDetalleModificador,
     Producto, RecetaExtra,
 )
+from restaurante.comensales_calculos import RETIRADO, estado_inicial_de_comanda, mensaje_comensal_retirado
 from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
 from restaurante.recetas import consumir_pedido, mensaje_para_cliente, motivo_para_personal
 from restaurante.stock import StockInsuficiente
@@ -95,10 +96,21 @@ def procesar_comanda(ch, method, properties, body):
 
             comensal = (datos.get('comensal') or '').strip()[:50] or None
 
+            # el perfil del comensal (mesa grupal): se vuelve a verificar con la sesion bloqueada, por si se retiro mientras la
+            # comanda esperaba en la cola
+            comensal_obj = None
+            if datos.get('id_comensal'):
+                comensal_obj = Comensal.objects.filter(pk=datos['id_comensal'], pedido_cabecera=pedido_cabecera).first()
+                if comensal_obj is not None:
+                    comensal = comensal_obj.nombre
+                    ComandaRecibida.objects.filter(pk=id_comanda).update(comensal_id=comensal_obj.id)
+
             if pedido_cabecera.estado != 'Abierto':
                 rechazo = ('La sesion de la mesa ya esta cerrada.', 'La mesa ya no esta abierta. Avisa al mozo.')
             elif Factura.objects.filter(pedido_cabecera=pedido_cabecera, estado__in=('Emitida', 'Pagada')).exists():
                 rechazo = ('La mesa tiene la cuenta en curso (factura emitida): no recibe pedidos.', MENSAJE_CUENTA_EN_CURSO)
+            elif datos.get('id_comensal') and (comensal_obj is None or comensal_obj.estado == RETIRADO):
+                rechazo = ('El comensal ya no esta en la mesa (se retiro).', mensaje_comensal_retirado())
 
             # Primero el stock, todo o nada: descuenta los insumos de las recetas por FEFO. Si el ultimo stock lo
             # tomo otra comanda antes, esta se rechaza y no queda nada a medias (el punto de guardado la deshace).
@@ -153,7 +165,9 @@ def procesar_comanda(ch, method, properties, body):
             else:
                 # dentro de la transaccion: asi nunca hay una comanda aceptada sin estado en Redis (una comanda sin estado se
                 # toma por entregada y no bloquearia el cobro). Si el commit fallara, la clave queda sola y es inofensiva.
-                r.set(f'comanda:estado:{uuid_str}', 'pendiente')
+                # una mesa grupal, antes de la primera ronda, deja la comanda 'retenida': descuenta stock pero la cocina no la ve
+                # hasta que todos dan el OK (o el mozo la libera). La sesion esta bloqueada, asi que no se cruza con la liberacion.
+                r.set(f'comanda:estado:{uuid_str}', estado_inicial_de_comanda(pedido_cabecera.modalidad, pedido_cabecera.ronda_liberada))
 
         if rechazo is not None:
             print(f'[RECHAZADA] Comanda {uuid_str}: {rechazo[0]}')

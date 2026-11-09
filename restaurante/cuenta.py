@@ -25,6 +25,7 @@ from .caja import ReglaCaja, caja_abierta, caja_abierta_bloqueada, cotizacion_pa
 from .cobros_calculos import CERO, MONEDA_BASE, CobroInvalido, calcular_cobro_efectivo, calcular_cobro_tarjeta, convertir_a_ars
 from .cobros_calculos import equivalentes
 from .cotizacion import cotizaciones_vigentes
+from .comensales_calculos import ESTADOS_ACTIVOS
 from .cuenta_calculos import (
     SIN_ASIGNAR, desglose_por_comensal, descripcion_de_renglon, partes_de_ingreso, saldo_de_la_cuenta, total_aprobado,
 )
@@ -35,7 +36,7 @@ from .models import (
 )
 from .redis_client import redis_client
 
-ESTADOS_QUE_BLOQUEAN_EL_COBRO = ('pendiente', 'proceso')
+ESTADOS_QUE_BLOQUEAN_EL_COBRO = ('retenida', 'pendiente', 'proceso')   # retenida: la primera ronda de una mesa grupal todavia no salio
 ESTADOS_FACTURA_VIGENTE = ('Emitida', 'Pagada')
 
 
@@ -64,6 +65,16 @@ def comandas_en_cocina(sesion):
         if estado in ESTADOS_QUE_BLOQUEAN_EL_COBRO:
             en_cocina.append(str(comanda.id_comanda_uuid))
     return en_cocina
+
+
+def comandas_sin_entregar(sesion):
+    """UUID de las comandas aceptadas de la sesion que todavia no se entregaron (retenida, pendiente, proceso o listo): con alguna
+    de ellas la mesa no se puede cerrar. Una comanda entregada o cancelada ya no tiene estado en Redis."""
+    activas = []
+    for comanda in sesion.comandas.filter(estado='Aceptada'):
+        if redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') in ESTADOS_ACTIVOS:
+            activas.append(str(comanda.id_comanda_uuid))
+    return activas
 
 
 def detalles_de_sesion(sesion):
@@ -334,6 +345,24 @@ def cerrar_sesion(sesion_id, empleado, es_admin_o_gerente, forzar=False, motivo=
         factura = factura_vigente(sesion)
         if factura is not None and Pago.objects.filter(factura=factura, estado='Pendiente').exists():
             raise ReglaCuenta('Hay un pago pendiente de resolver: esperar a que se apruebe o se cancele antes de cerrar la mesa.')
+
+        # una comanda sin entregar (incluida la retenida de la primera ronda) no se abandona: se entrega o se cancela antes.
+        # Solo un Admin o Gerente puede forzar el cierre (con motivo): lo que no empezo a prepararse se cancela con devolucion de
+        # stock y lo que ya estaba en preparacion se da por entregado.
+        sin_entregar = comandas_sin_entregar(sesion)
+        if sin_entregar:
+            if not forzar:
+                raise ReglaCuenta(
+                    'La mesa tiene pedidos sin entregar. Esperar a que se entreguen o cancelarlos (POST /pedidos/{uuid}/cancelar) '
+                    'antes de cerrar la mesa.',
+                    codigo='comandas_pendientes', comandas_pendientes=sin_entregar)
+            if not es_admin_o_gerente:
+                raise ReglaCuenta('Solo un Admin o Gerente puede cerrar una mesa con pedidos sin entregar.', estado=403,
+                                  codigo='comandas_pendientes', comandas_pendientes=sin_entregar)
+            if not motivo:
+                raise ReglaCuenta('Indicar el motivo para cerrar la mesa con pedidos sin entregar.', estado=400)
+            from .comensales import resolver_comandas_sin_entregar   # import tardio: comensales importa este modulo
+            resolver_comandas_sin_entregar(sesion, empleado, f'cierre de mesa forzado: {motivo}')
 
         total = total_de_sesion(sesion)
         pagada = factura is not None and factura.estado == 'Pagada'

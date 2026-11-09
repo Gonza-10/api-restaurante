@@ -1,0 +1,3585 @@
+{
+  "info": {
+    "name": "Savage Grill - Comensales y seguridad de la mesa",
+    "description": "Modalidad de la mesa (Familiar/Grupal), comensales con nombre, OK de todos en la primera ronda (comandas retenidas hasta que todos confirman o el mozo libera), cancelar comandas con devolucion de stock, PIN regenerable y cierre de mesa bloqueado con pedidos sin entregar. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y el script SQL 25. Se corre entera con Run collection; usa las mesas 6, 7, 8 y 9 y las deja cerradas (y la jornada, si la abrio esta prueba). Los pedidos pasan por el worker, asi que algunos pasos esperan unos segundos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparacion (logins)",
+      "item": [
+        {
+          "name": "0.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_gerente', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Login mozo (jperez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"jperez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_mozo', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.3 Login admin (agomez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"agomez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_admin', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P. Preparar jornada y plato",
+      "item": [
+        {
+          "name": "P.1 Preparar: cerrar las sesiones abiertas de las mesas 6, 7, 8 y 9 (cierre forzado del gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa?estado=Abierto&mesa=6,7,8,9",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const sesiones = pm.response.json();",
+                  "const base = pm.variables.replaceIn('{{base_url}}'); const token = pm.collectionVariables.get('token_gerente');",
+                  "const cerrar = (id) => new Promise((ok) => pm.sendRequest({ url: base + '/sesiones-mesa/' + id + '/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ forzar: true, motivo: 'Limpieza de la prueba' }) } }, () => ok()));",
+                  "(async () => { for (const s of sesiones) { await cerrar(s.id); } })();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.2 Preparar: turno para la jornada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/turnos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "const cena = t.find(x => /cena/i.test(x.nombre)) || t[0];",
+                  "pm.test('Hay un turno', () => pm.expect(cena).to.not.be.undefined);",
+                  "pm.collectionVariables.set('t3_turno', cena.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.3 Preparar: jornada abierta (si no la habia, la abre el gerente y la cierra la limpieza)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{t3_turno}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Abierta ahora (201) o ya habia una (409)', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "pm.collectionVariables.set('t3_jornada_propia', pm.response.code === 201 ? '1' : '0');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.4 Preparar: elegir un plato pedible sin ingredientes quitables",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
+                  "pm.collectionVariables.set('c_prod', p.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Modalidad y apertura de la mesa",
+      "item": [
+        {
+          "name": "1.1 Una modalidad que no existe es invalida (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"cantidad_comensales\": 2, \"modalidad\": \"amigos\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Marca el campo', () => pm.expect(pm.response.json()).to.have.property('modalidad'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 El mozo abre la mesa 6 como Grupal (3 comensales)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"cantidad_comensales\": 3, \"modalidad\": \"Grupal\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('c6_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('c6_sesion', s.id);",
+                  "pm.test('Mesa 6' , () => pm.expect(s.numero_mesa).to.eql(6));",
+                  "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
+                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 El mozo ve la modalidad en el mapa de mesas (sin aviso de PIN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json(); const arr = Array.isArray(lista) ? lista : lista.results;",
+                  "const m = arr.find(x => x.numero === 6);",
+                  "pm.test('Grupal y la primera ronda sin liberar', () => { pm.expect(m.modalidad).to.eql('Grupal'); pm.expect(m.ronda_liberada).to.eql(false); });",
+                  "pm.test('Sin aviso de PIN', () => pm.expect(m.aviso_pin).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 El cliente ingresa el PIN y ve la modalidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/acceso-mesa",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Mesa 6, Grupal, ronda sin liberar', () => { pm.expect(d.numero_mesa).to.eql(6); pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.ronda_liberada).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Comensales",
+      "item": [
+        {
+          "name": "2.1 Sin nombre no se ingresa (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \"   \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Marca el nombre', () => pm.expect(pm.response.json()).to.have.property('nombre'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Un nombre de mas de 50 caracteres es invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Ana ingresa a la mesa (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \"Ana\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('c_ana', d.comensal.id);",
+                  "pm.test('Situacion nuevo', () => pm.expect(d.situacion).to.eql('nuevo'));",
+                  "pm.test('Nombre Ana', () => pm.expect(d.comensal.nombre).to.eql('Ana'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Beto ingresa a la mesa (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \"Beto\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('c_beto', d.comensal.id);",
+                  "pm.test('Situacion nuevo', () => pm.expect(d.situacion).to.eql('nuevo'));",
+                  "pm.test('Nombre Beto', () => pm.expect(d.comensal.nombre).to.eql('Beto'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 'ana' en minusculas es la misma Ana (200, no se duplica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \" ana \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Misma persona', () => { pm.expect(d.situacion).to.eql('existente'); pm.expect(d.comensal.id).to.eql(Number(pm.collectionVariables.get('c_ana'))); });",
+                  "pm.test('Siguen siendo dos', () => pm.expect(d.comensales.length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 PIN incorrecto: no se ingresa (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"0000\", \"nombre\": \"Intruso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const real = pm.collectionVariables.get('c6_pin');",
+                  "const mal = String((parseInt(real, 10) + 1) % 10000).padStart(4, '0');",
+                  "pm.request.body.raw = JSON.stringify({numero_mesa: 6, pin: mal, nombre: 'Intruso'});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Dice PIN incorrecto', () => pm.expect(pm.response.json().error).to.include('PIN incorrecto'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 Estado de la mesa: dos activos, esperando el OK de ambos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Grupal esperando el OK', () => { pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.espera_ok).to.eql(true); pm.expect(d.ronda_liberada).to.eql(false); });",
+                  "pm.test('Faltan Ana y Beto', () => pm.expect(d.faltan_por_ok).to.eql(['Ana', 'Beto']));",
+                  "pm.test('Dos comensales activos', () => pm.expect(d.comensales.filter(c => c.estado === 'Activo').length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 Sin token el salon no ve los comensales (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/comensales",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.9 El mozo ve los comensales de su mesa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/comensales",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ana y Beto', () => pm.expect(pm.response.json().comensales.map(c => c.nombre)).to.eql(['Ana', 'Beto']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Primera ronda con el OK de todos (mesa grupal)",
+      "item": [
+        {
+          "name": "3.1 En una mesa Grupal hay que ingresar el nombre antes de pedir (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_x}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_x', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Codigo comensal_requerido', () => pm.expect(pm.response.json().codigo).to.eql('comensal_requerido'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Un comensal que no existe en la mesa (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_x}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": 999999999, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_x', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Codigo comensal_desconocido', () => pm.expect(pm.response.json().codigo).to.eql('comensal_desconocido'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Ana pide 2 platos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_ana}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}, \"items\": [{\"id\": {{c_prod}}}, {\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_ana', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Beto pide 1 plato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_beto}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_beto}}, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_beto', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Las dos comandas quedan retenidas, cada una con su comensal (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const cs = pm.response.json().comandas;",
+                  "const a = cs.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana')); const b = cs.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_beto'));",
+                  "pm.test('Las dos existen (si falla: worker.py apagado)', () => { pm.expect(a).to.not.be.undefined; pm.expect(b).to.not.be.undefined; });",
+                  "pm.test('Retenidas', () => { pm.expect(a.estado).to.eql('retenida'); pm.expect(b.estado).to.eql('retenida'); });",
+                  "pm.test('Cada una con su comensal', () => { pm.expect(a.comensal).to.eql('Ana'); pm.expect(b.comensal).to.eql('Beto'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 La cocina NO ve las comandas retenidas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(x => x.id_comanda_uuid);",
+                  "pm.test('Ni la de Ana ni la de Beto', () => { pm.expect(ids).to.not.include(pm.collectionVariables.get('c_uuid_ana')); pm.expect(ids).to.not.include(pm.collectionVariables.get('c_uuid_beto')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.7 La cocina no puede mover una comanda retenida (409)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_ana}}/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Codigo comanda_retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.8 La mesa no se cierra con pedidos sin entregar (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('Codigo comandas_pendientes con las dos', () => { pm.expect(d.codigo).to.eql('comandas_pendientes'); pm.expect(d.comandas_pendientes.length).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.9 Ana da el OK: todavia falta Beto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/ok",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Todavia no sale', () => { pm.expect(d.liberada_ahora).to.eql(false); pm.expect(d.ronda_liberada).to.eql(false); });",
+                  "pm.test('Falta Beto', () => pm.expect(d.faltan_por_ok).to.eql(['Beto']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.10 Ana retira su OK para seguir pidiendo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/ok",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}, \"ok\": false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Vuelven a faltar los dos', () => pm.expect(pm.response.json().faltan_por_ok).to.eql(['Ana', 'Beto']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.11 Un comensal que no es de la mesa no puede dar el OK (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/ok",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": 999999999}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.12 Ana vuelve a dar el OK",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/ok",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todavia falta Beto', () => pm.expect(pm.response.json().faltan_por_ok).to.eql(['Beto']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.13 Beto da el OK: la primera ronda sale junta a cocina",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/ok",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_beto}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Liberada ahora', () => { pm.expect(d.liberada_ahora).to.eql(true); pm.expect(d.ronda_liberada).to.eql(true); pm.expect(d.faltan_por_ok).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.14 Ahora la cocina ve las dos comandas, pendientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json(); const a = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana')); const b = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_beto'));",
+                  "pm.test('Pendientes', () => { pm.expect(a.estado).to.eql('pendiente'); pm.expect(b.estado).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.15 Ya liberada la primera ronda, Ana pide un plato mas: sale directo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_ana2}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_ana2', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.16 La comanda nueva esta pendiente, sin esperar a nadie (espera al worker)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json().find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana2'));",
+                  "pm.test('Pendiente (si falla: worker.py apagado)', () => { pm.expect(a).to.not.be.undefined; pm.expect(a.estado).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.17 La cocina empieza la comanda de Ana: pasa a proceso",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_ana}}/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. El mozo libera la primera ronda",
+      "item": [
+        {
+          "name": "4.1 El mozo abre la mesa 7 como Grupal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 7, \"cantidad_comensales\": 2, \"modalidad\": \"Grupal\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('c7_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('c7_sesion', s.id);",
+                  "pm.test('Mesa 7' , () => pm.expect(s.numero_mesa).to.eql(7));",
+                  "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
+                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Carla ingresa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 7, \"pin\": \"{{c7_pin}}\", \"nombre\": \"Carla\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('c_carla', d.comensal.id);",
+                  "pm.test('Situacion nuevo', () => pm.expect(d.situacion).to.eql('nuevo'));",
+                  "pm.test('Nombre Carla', () => pm.expect(d.comensal.nombre).to.eql('Carla'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Dani ingresa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 7, \"pin\": \"{{c7_pin}}\", \"nombre\": \"Dani\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('c_dani', d.comensal.id);",
+                  "pm.test('Situacion nuevo', () => pm.expect(d.situacion).to.eql('nuevo'));",
+                  "pm.test('Nombre Dani', () => pm.expect(d.comensal.nombre).to.eql('Dani'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Carla pide 1 plato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_carla}}\", \"mesa_id\": 7, \"pin\": \"{{c7_pin}}\", \"id_comensal\": {{c_carla}}, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_carla', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 Sin token el mozo no libera la ronda (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c7_sesion}}/liberar-ronda",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Dani se demora: el mozo libera la primera ronda sin esperarlo (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c7_sesion}}/liberar-ronda",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Salio la comanda de Carla', () => { pm.expect(d.liberadas).to.eql(1); pm.expect(d.ronda_liberada).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.7 La cocina ve la comanda de Carla",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json().find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_carla'));",
+                  "pm.test('Pendiente', () => { pm.expect(a).to.not.be.undefined; pm.expect(a.estado).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.8 Liberar otra vez no hace nada (0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c7_sesion}}/liberar-ronda",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No sale nada', () => pm.expect(pm.response.json().liberadas).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.9 Cocina entrega la comanda de Carla",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_carla}}/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Regenerar el PIN de la mesa",
+      "item": [
+        {
+          "name": "5.1 Beto se fue y siguen pidiendo: Ana pide un PIN nuevo marcando que Beto se retiro (200, sin PIN en la respuesta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/regenerar-pin",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}, \"retirados\": [{{c_beto}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('El PIN nuevo NO se le da al cliente: se lo da el mozo', () => { pm.expect(d).to.not.have.property('pin'); });",
+                  "pm.test('Beto figura como retirado', () => pm.expect(d.retirados.map(r => r.nombre)).to.eql(['Beto']));",
+                  "pm.test('Se cancelo solo lo pendiente de Beto', () => { pm.expect(d.comandas_canceladas.length).to.eql(1); pm.expect(d.comandas_canceladas[0].comensal).to.eql('Beto'); pm.expect(d.comandas_canceladas[0].items[0].cantidad).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Con el PIN viejo ya no se entra: avisa que cambio (403, pin_cambiado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Codigo pin_cambiado', () => pm.expect(pm.response.json().codigo).to.eql('pin_cambiado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 El PIN viejo tampoco abre la mesa desde la pantalla de acceso (403, pin_cambiado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/acceso-mesa",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Codigo pin_cambiado', () => pm.expect(pm.response.json().codigo).to.eql('pin_cambiado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Un dispositivo con el PIN viejo no puede seguir pidiendo (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_x}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_beto}}, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_x', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Codigo pin_cambiado', () => pm.expect(pm.response.json().codigo).to.eql('pin_cambiado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Esos intentos viejos no bloquearon la IP: el mozo sigue operando y la mesa figura con aviso urgente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json(); const arr = Array.isArray(lista) ? lista : lista.results;",
+                  "const m = arr.find(x => x.numero === 6);",
+                  "pm.test('Aviso urgente: lo pidio Ana', () => { pm.expect(m.aviso_pin).to.not.eql(null); pm.expect(m.aviso_pin.solicitado_por).to.eql('Ana'); });",
+                  "pm.test('El aviso no trae el PIN, solo quien lo pidio y cuando', () => pm.expect(Object.keys(m.aviso_pin).sort()).to.eql(['fecha_hora', 'solicitado_por']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 El mozo lee el PIN nuevo de su mesa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('PIN nuevo y distinto', () => { pm.expect(d.codigo_pin).to.match(/^\\d{4}$/); pm.expect(d.codigo_pin).to.not.eql(pm.collectionVariables.get('c6_pin')); });",
+                  "pm.test('No se filtran los PIN viejos', () => pm.expect(d).to.not.have.property('pins_anteriores'));",
+                  "pm.collectionVariables.set('c6_pin_viejo', pm.collectionVariables.get('c6_pin'));",
+                  "pm.collectionVariables.set('c6_pin', d.codigo_pin);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 El mozo confirma que vio el aviso: deja de ser urgente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/pin/visto",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.8 El mapa ya no marca el aviso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json(); const arr = Array.isArray(lista) ? lista : lista.results;",
+                  "pm.test('Sin aviso', () => pm.expect(arr.find(x => x.numero === 6).aviso_pin).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.9 Con el PIN nuevo se entra: Ana sigue, Beto figura retirado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "const e = n => d.comensales.find(c => c.nombre === n).estado;",
+                  "pm.test('Ana activa y Beto retirado', () => { pm.expect(e('Ana')).to.eql('Activo'); pm.expect(e('Beto')).to.eql('Retirado'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.10 Lo pendiente de Beto figura cancelado; lo de Ana sigue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const cs = pm.response.json().comandas; const est = v => cs.find(x => x.id_comanda_uuid === v).estado;",
+                  "pm.test('Beto: cancelada', () => pm.expect(est(pm.collectionVariables.get('c_uuid_beto'))).to.eql('cancelada'));",
+                  "pm.test('Ana: en proceso y pendiente', () => { pm.expect(est(pm.collectionVariables.get('c_uuid_ana'))).to.eql('proceso'); pm.expect(est(pm.collectionVariables.get('c_uuid_ana2'))).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.11 La cuenta quedo solo con lo de Ana: los 3 platos (lo de Beto salio de la cuenta)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/cuenta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Dos renglones (los dos pedidos de Ana)', () => pm.expect(d.renglones.length).to.eql(2));",
+                  "pm.test('Solo Ana en el desglose', () => pm.expect(Object.keys(d.por_comensal)).to.eql(['Ana']));",
+                  "pm.test('El total es de 3 platos, no de 4', () => { const p = parseFloat(d.renglones[0].sub_total) / 2; pm.expect(parseFloat(d.total)).to.be.closeTo(3 * p, 0.011); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.12 La cocina ya no ve lo cancelado y conserva lo de Ana",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(x => x.id_comanda_uuid);",
+                  "pm.test('Beto fuera, Ana dentro', () => { pm.expect(ids).to.not.include(pm.collectionVariables.get('c_uuid_beto')); pm.expect(ids).to.include(pm.collectionVariables.get('c_uuid_ana2')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.13 Beto, ya retirado, no puede pedir aunque tenga el PIN nuevo (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_x}}\", \"mesa_id\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_beto}}, \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_x', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Codigo comensal_retirado', () => pm.expect(pm.response.json().codigo).to.eql('comensal_retirado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.14 No se puede pedir otro PIN a los pocos segundos (429)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/regenerar-pin",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 429', () => pm.response.to.have.status(429));",
+                  "pm.test('Codigo espera_pin', () => pm.expect(pm.response.json().codigo).to.eql('espera_pin'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.15 Un comensal que no es de la mesa no puede marcar retirados (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/regenerar-pin",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"retirados\": [999999999]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.16 Beto vuelve con el PIN nuevo y su mismo nombre: se reactiva (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"nombre\": \"Beto\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Reactivado', () => pm.expect(pm.response.json().situacion).to.eql('reactivado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.17 Nadie marcado, nada se cancela: el mozo cambia el PIN otra vez (sin espera)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/regenerar-pin",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Devuelve el PIN nuevo al mozo', () => { pm.expect(d.pin).to.match(/^\\d{4}$/); pm.expect(d.pin).to.not.eql(pm.collectionVariables.get('c6_pin')); });",
+                  "pm.test('Sin retirados ni canceladas', () => { pm.expect(d.retirados).to.eql([]); pm.expect(d.comandas_canceladas).to.eql([]); });",
+                  "pm.collectionVariables.set('c6_pin', d.pin);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.18 Lo de Ana sigue igual despues de cambiar el PIN sin marcar a nadie",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const cs = pm.response.json().comandas; const est = v => cs.find(x => x.id_comanda_uuid === v).estado;",
+                  "pm.test('Ana intacta', () => { pm.expect(est(pm.collectionVariables.get('c_uuid_ana'))).to.eql('proceso'); pm.expect(est(pm.collectionVariables.get('c_uuid_ana2'))).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Cancelar comandas y cierre de mesa",
+      "item": [
+        {
+          "name": "6.1 El mozo abre la mesa 8 sin indicar modalidad: queda Familiar y sin espera",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 8, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('c8_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('c8_sesion', s.id);",
+                  "pm.test('Mesa 8' , () => pm.expect(s.numero_mesa).to.eql(8));",
+                  "pm.test('Modalidad Familiar', () => pm.expect(s.modalidad).to.eql('Familiar'));",
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Preparar: ultimo movimiento del libro de stock (para medir la devolucion)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?limite=1",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json(); pm.collectionVariables.set('c_mov_base', l.length ? l[0].id : 0);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 El cliente pide 2 platos sin comensal (Familiar no lo exige)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_f}}\", \"mesa_id\": 8, \"pin\": \"{{c8_pin}}\", \"items\": [{\"id\": {{c_prod}}}, {\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_f', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 En una mesa Familiar la comanda sale directo: pendiente, sin retener (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 8, \"pin\": \"{{c8_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_f'));",
+                  "pm.test('Pendiente (si falla: worker.py apagado)', () => { pm.expect(c).to.not.be.undefined; pm.expect(c.estado).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 En una mesa Familiar no hay primera ronda que liberar (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c8_sesion}}/liberar-ronda",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 Sin token no se cancela (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_f}}/cancelar",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.7 Una comanda que no existe (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.8 El mozo cancela la comanda pendiente (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_f}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"El cliente se arrepintio\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cancelada', () => pm.expect(pm.response.json().estado).to.eql('Cancelada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.9 Cancelar otra vez (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_f}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Dice que ya esta cancelada', () => pm.expect(pm.response.json().error).to.include('cancelada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.10 La cuenta quedo en cero y sin renglones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa/{{c8_sesion}}/cuenta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Sin renglones y total 0', () => { pm.expect(d.renglones.length).to.eql(0); pm.expect(parseFloat(d.total)).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.11 El cliente ve la comanda cancelada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 8, \"pin\": \"{{c8_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_f'));",
+                  "pm.test('Cancelada, sin items y con mensaje', () => { pm.expect(c.estado).to.eql('cancelada'); pm.expect(c.items.length).to.eql(0); pm.expect(c.mensaje).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.12 El stock se devolvio por completo: lo consumido y lo devuelto se compensan (libro del gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/movimientos-stock?limite=200",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const nuevos = pm.response.json().filter(m => m.id > Number(pm.collectionVariables.get('c_mov_base')));",
+                  "const consumo = nuevos.filter(m => m.tipo === 'Consumo'); const devol = nuevos.filter(m => m.tipo === 'Devolucion');",
+                  "const suma = l => l.reduce((a, m) => a + parseFloat(m.cantidad), 0);",
+                  "pm.test('Cada consumo tiene su devolucion (o el plato no descuenta insumos)', () => { pm.expect(devol.length).to.eql(consumo.length); });",
+                  "pm.test('Lo devuelto compensa exactamente lo consumido', () => pm.expect(suma(consumo) + suma(devol)).to.be.closeTo(0, 0.0005));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.13 El libro de stock sigue consistente (gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/stock/verificacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Consistente', () => pm.expect(pm.response.json().consistente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.14 Sin pedidos sin entregar y sin consumo, la mesa se cierra normal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c8_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cerrada', () => pm.expect(pm.response.json().estado).to.eql('Cerrado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.15 El mozo abre la mesa 9 (Familiar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 9, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('c9_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('c9_sesion', s.id);",
+                  "pm.test('Mesa 9' , () => pm.expect(s.numero_mesa).to.eql(9));",
+                  "pm.test('Modalidad Familiar', () => pm.expect(s.modalidad).to.eql('Familiar'));",
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.16 El cliente pide 1 plato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{c_uuid_g}}\", \"mesa_id\": 9, \"pin\": \"{{c9_pin}}\", \"items\": [{\"id\": {{c_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('c_uuid_g', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.17 La cocina empieza a prepararlo (espera al worker)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_g}}/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.18 Una comanda en proceso ya no se cancela (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{c_uuid_g}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Codigo no_cancelable', () => pm.expect(pm.response.json().codigo).to.eql('no_cancelable'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.19 La mesa no se cierra con el pedido sin entregar (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c9_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Codigo comandas_pendientes', () => pm.expect(pm.response.json().codigo).to.eql('comandas_pendientes'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.20 El mozo no puede forzar el cierre (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c9_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.21 El gerente fuerza el cierre sin motivo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c9_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.22 El gerente fuerza el cierre con motivo: la mesa se cierra (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c9_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"El cliente se fue\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cerrada', () => pm.expect(pm.response.json().estado).to.eql('Cerrado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.23 La cocina ya no tiene esa comanda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fuera del tablero', () => pm.expect(pm.response.json().map(x => x.id_comanda_uuid)).to.not.include(pm.collectionVariables.get('c_uuid_g')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Limpieza",
+      "item": [
+        {
+          "name": "7.1 Limpieza: el gerente cierra la mesa 6 (forzado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c6_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.2 Limpieza: el gerente cierra la mesa 7 (forzado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{c7_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Limpieza de la prueba\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.3 Limpieza: cerrar la jornada si la abrio esta prueba",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('t3_jornada_propia') !== '1') { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

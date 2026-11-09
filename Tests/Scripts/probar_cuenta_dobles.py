@@ -222,6 +222,11 @@ ok('caja ARS tras anular (vuelto recuperado)', C.resumen_arqueo(caja)['efectivo'
 regla('no se anula dos veces', lambda: U.anular_pago(p2.id, admin, 'x'))
 
 # --- cierre de mesa ---
+# un pedido listo pero sin entregar impide cerrar la mesa; solo Admin/Gerente fuerzan (con motivo)
+regla('cerrar con un pedido listo sin entregar: 409', lambda: U.cerrar_sesion(s1.id, mozo, False))
+regla('el mozo no fuerza el cierre con pedidos sin entregar', lambda: U.cerrar_sesion(s1.id, mozo, False, forzar=True, motivo='x'), estado=403)
+regla('forzar sin motivo con pedidos sin entregar', lambda: U.cerrar_sesion(s1.id, admin, True, forzar=True), estado=400)
+REDIS.pop(f'comanda:estado:u{s1.id}-0')   # la cocina entrega el pedido
 regla('cerrar con saldo: 409', lambda: U.cerrar_sesion(s1.id, mozo, False))
 regla('mozo no fuerza', lambda: U.cerrar_sesion(s1.id, mozo, False, forzar=True, motivo='x'), estado=403)
 regla('forzar sin motivo', lambda: U.cerrar_sesion(s1.id, admin, True, forzar=True), estado=400)

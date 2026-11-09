@@ -106,6 +106,40 @@ def descontar_fefo(
         return movimientos
 
 
+def devolver_comanda(id_comanda, empleado=None, id_jornada=None, motivo=None):
+    """Devuelve al stock lo que consumio una comanda que se cancela: un movimiento 'Devolucion' por cada lote que se toco, con lo
+    que todavia no se habia devuelto (cancelar dos veces nunca devuelve de mas). Un lote vencido o dado de baja no recupera nada
+    (esa mercaderia ya se desecho). Devuelve la lista de movimientos creados."""
+    from .comensales_calculos import plan_devolucion
+    with transaction.atomic():
+        movimientos = list(
+            MovimientoStock.objects.filter(comanda_id=id_comanda, tipo__in=('Consumo', 'Devolucion'))
+            .values_list('lote_id', 'tipo', 'cantidad')
+        )
+        plan = plan_devolucion(movimientos)
+        if not plan:
+            return []
+        lotes = {lote.id: lote for lote in LoteInsumo.objects.select_for_update().filter(id__in=plan.keys()).order_by('id')}
+        ahora = timezone.now()
+        creados = []
+        insumos = set()
+        for id_lote in sorted(plan):
+            lote = lotes.get(id_lote)
+            if lote is None or lote.estado not in ('Activo', 'Agotado'):
+                continue
+            lote.cantidad_actual += plan[id_lote]
+            lote.estado = 'Activo'
+            lote.save(update_fields=['cantidad_actual', 'estado'])
+            creados.append(MovimientoStock.objects.create(
+                lote=lote, tipo='Devolucion', cantidad=plan[id_lote], fecha_hora=ahora, empleado=empleado,
+                jornada_id=id_jornada, comanda_id=id_comanda, motivo=(motivo or 'Comanda cancelada')[:100],
+            ))
+            insumos.add(lote.insumo_id)
+        if insumos:
+            _recalcular_platos(insumos)   # los platos que se habian quedado sin insumos vuelven a ofrecerse
+        return creados
+
+
 def registrar_compra(proveedor, empleado, lineas, numero_comprobante=None, nota=None):
     """Registra una compra: la cabecera, un lote por linea y un movimiento 'Compra' por lote, todo o nada.
     lineas: [{'insumo', 'cantidad', 'tamano_presentacion', 'cantidad_presentaciones', 'costo_total', 'fecha_vencimiento'}]

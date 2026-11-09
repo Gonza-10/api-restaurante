@@ -245,6 +245,15 @@ class PedidoCabecera(models.Model):
     jornada = models.ForeignKey(
         Jornada, on_delete=models.PROTECT, null=True, blank=True, db_column='IdJornada', related_name='sesiones'
     )
+    # Familiar (todos agregan al pedido, la cuenta va a nombre de uno) o Grupal (nombre por dispositivo y OK de todos en la
+    # primera ronda). RondaLiberada: la primera ronda ya salio a cocina (en una mesa Familiar nace liberada).
+    modalidad = models.CharField(max_length=10, default='Familiar', db_column='Modalidad')
+    ronda_liberada = models.BooleanField(default=False, db_column='RondaLiberada')
+    # seguridad de la mesa: ultimo cambio de PIN (quien lo pidio), PIN viejos (para avisar "el PIN cambio") y aviso al mozo
+    pin_regenerado_en = models.DateTimeField(null=True, blank=True, db_column='PinRegeneradoEn')
+    pin_regenerado_por = models.CharField(max_length=80, null=True, blank=True, db_column='PinRegeneradoPor')
+    pins_anteriores = models.CharField(max_length=60, null=True, blank=True, db_column='PinsAnteriores')
+    aviso_pin_pendiente = models.BooleanField(default=False, db_column='AvisoPinPendiente')
 
     class Meta:
         db_table = 'PedidoCabecera'
@@ -287,6 +296,24 @@ class PedidoDetalleCompartido(models.Model):
         managed = False
 
 
+class Comensal(models.Model):
+    """Quien esta en la mesa. Nombre unico dentro de la sesion (sin distinguir mayusculas ni acentos)."""
+    id = models.AutoField(primary_key=True, db_column='Id')
+    pedido_cabecera = models.ForeignKey(PedidoCabecera, on_delete=models.CASCADE, db_column='IdPedidoCabecera', related_name='comensales')
+    nombre = models.CharField(max_length=50, db_column='Nombre')
+    fecha_hora_ingreso = models.DateTimeField(db_column='FechaHoraIngreso')
+    estado = models.CharField(max_length=10, default='Activo', db_column='Estado')   # Activo / Retirado
+    ok_primera_ronda = models.BooleanField(default=False, db_column='OkPrimeraRonda')
+    fecha_hora_retiro = models.DateTimeField(null=True, blank=True, db_column='FechaHoraRetiro')
+
+    class Meta:
+        db_table = 'Comensal'
+        managed = False
+
+    def __str__(self):
+        return self.nombre
+
+
 class ComandaRecibida(models.Model):
     id = models.AutoField(primary_key=True, db_column='Id')
     id_comanda_uuid = models.UUIDField(unique=True, db_column='IdComandaUuid')
@@ -295,8 +322,13 @@ class ComandaRecibida(models.Model):
         db_column='IdPedidoCabecera', related_name='comandas'
     )
     fecha_hora_recepcion = models.DateTimeField(db_column='FechaHoraRecepcion')
-    # Aceptada, o Rechazada si al llegar no alcanzaba el stock (entonces no tiene items ni descuenta nada)
+    # Aceptada; Rechazada si al llegar no alcanzaba el stock (sin items, no descuenta nada); Cancelada si se cancelo antes de
+    # prepararse (stock devuelto, sin renglones en la cuenta; el motivo queda en `motivo`)
     estado = models.CharField(max_length=10, default='Aceptada', db_column='Estado')
+    comensal = models.ForeignKey(
+        'Comensal', on_delete=models.PROTECT, null=True, blank=True, db_column='IdComensal', related_name='comandas'
+    )
+    fecha_hora_cancelacion = models.DateTimeField(null=True, blank=True, db_column='FechaHoraCancelacion')
     motivo = models.CharField(max_length=500, null=True, blank=True, db_column='Motivo')  # interno: solo personal
     mensaje_cliente = models.CharField(max_length=300, null=True, blank=True, db_column='MensajeCliente')
 
