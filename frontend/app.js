@@ -2,9 +2,12 @@
    LÓGICA GLOBAL Y MÓDULO DE ADMINISTRACIÓN - PyLP III
    ========================================================================== */
 
-const API_URL = 'http://localhost:8080/api/v1/productos';
-const API_CATEGORIAS_URL = 'http://localhost:8080/api/v1/categorias';
-const API_PEDIDOS_URL = 'http://localhost:8080/api/v1/pedidos';
+// config.js define la direccion de la API (ver ese archivo); el respaldo solo cubre una pagina que no lo cargue.
+const SG_API_ORIGEN = (window.SAVAGE_CONFIG && window.SAVAGE_CONFIG.API_ORIGIN) || 'http://localhost:8080';
+const SG_API_BASE = SG_API_ORIGEN + '/api/v1';
+const API_URL = SG_API_BASE + '/productos';
+const API_CATEGORIAS_URL = SG_API_BASE + '/categorias';
+const API_PEDIDOS_URL = SG_API_BASE + '/pedidos';
 
 const contenedorLista = document.getElementById('listado');
 const alertaError = document.getElementById('caja-error');
@@ -91,7 +94,7 @@ document.addEventListener('DOMContentLoaded', inicializarTema);
    ========================================================================== */
 function procesarImagen(url) {
     if (!url) return 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80';
-    if (url.startsWith('/media/')) return `http://localhost:8080${url}`;
+    if (url.startsWith('/media/')) return `${SG_API_ORIGEN}${url}`;
     return url;
 }
 
@@ -526,7 +529,7 @@ async function confirmarPedido() {
 /* ==========================================================================
    GESTIÓN DE JORNADAS (GERENCIA) - NUEVA FUNCIONALIDAD
    ========================================================================== */
-const API_JORNADA_BASE = 'http://localhost:8080/api/v1/jornada';
+const API_JORNADA_BASE = SG_API_BASE + '/jornada';
 
 window.cargarEstadoJornada = async function() {
     const badge = document.getElementById('estado-jornada-badge');
@@ -578,7 +581,7 @@ window.abrirJornada = async function() {
 
         // Si el back responde 400, no hay turno sugerido (estamos fuera de horario)
         if (resp.status === 400) {
-            const turnosResp = await apiFetch('http://localhost:8080/api/v1/turnos', { method: 'GET' });
+            const turnosResp = await apiFetch(SG_API_BASE + '/turnos', { method: 'GET' });
             const turnos = await turnosResp.json();
             
             let mensaje = "Estás fuera de horario. Ingresá SOLO EL NÚMERO (ID) del turno:\n\n";
