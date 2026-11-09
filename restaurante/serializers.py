@@ -142,6 +142,8 @@ class MesaSerializer(serializers.ModelSerializer):
     mozo_nombre = serializers.SerializerMethodField()
     fecha_hora_inicio = serializers.SerializerMethodField()
     solicita_cuenta = serializers.SerializerMethodField()
+    # con que medio dijo el cliente que quiere pagar (Efectivo / MercadoPago / Tarjeta) al pedir la cuenta; None si no lo dijo
+    metodo_pago_solicitado = serializers.SerializerMethodField()
     # reserva que bloquea la mesa en la jornada abierta (la arma MesaViewSet en el contexto); None si no hay
     reserva = serializers.SerializerMethodField()
 
@@ -168,6 +170,10 @@ class MesaSerializer(serializers.ModelSerializer):
     def get_solicita_cuenta(self, obj):
         sesion = self._sesion_abierta(obj)
         return bool(sesion and sesion.fecha_hora_solicita_cuenta)
+
+    def get_metodo_pago_solicitado(self, obj):
+        sesion = self._sesion_abierta(obj)
+        return sesion.metodo_pago_solicitado if sesion and sesion.fecha_hora_solicita_cuenta else None
 
     def get_reserva(self, obj):
         return self.context.get('reservas_por_mesa', {}).get(obj.id)

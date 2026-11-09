@@ -1,0 +1,1551 @@
+{
+  "info": {
+    "name": "Savage Grill - Pago con tarjeta",
+    "description": "Pago con tarjeta de credito/debito, manual: el cliente pide pagar con tarjeta, el mozo recibe el aviso en la mesa, lleva el postnet y confirma el cobro en el sistema. No pasa por ninguna pasarela ni mueve el efectivo de la caja. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y los scripts SQL 19 y 24. Se corre entera con Run collection. La carpeta P repite la preparacion de la coleccion de Cobros (mesa 5, jornada, caja, dos pedidos entregados y cuenta emitida) y la carpeta 1 prueba la tarjeta. Al final cierra la mesa, la caja con el arqueo exacto y, si la abrio esta prueba, la jornada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparacion (logins)",
+      "item": [
+        {
+          "name": "0.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_gerente', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Login mozo (jperez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"jperez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_mozo', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.3 Login admin (agomez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"agomez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_admin', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P. Preparar la mesa 5 con la cuenta lista para cobrar",
+      "item": [
+        {
+          "name": "P.1 Preparar: cerrar las sesiones abiertas de la mesa 5 (cierre forzado del gerente)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa?estado=Abierto&mesa=5",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista las sesiones abiertas (200)', () => pm.response.to.have.status(200));",
+                  "const sesiones = pm.response.json();",
+                  "const base = pm.variables.replaceIn('{{base_url}}');",
+                  "const token = pm.collectionVariables.get('token_gerente');",
+                  "const cerrar = (id) => new Promise((ok) => pm.sendRequest(",
+                  "    { url: base + '/sesiones-mesa/' + id + '/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },",
+                  "      body: { mode: 'raw', raw: JSON.stringify({ forzar: true, motivo: 'Limpieza de la prueba' }) } },",
+                  "    () => ok()",
+                  "));",
+                  "(async () => { for (const s of sesiones) { await cerrar(s.id); } })();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.2 Preparar: si hay una caja abierta, se cierra con el arqueo exacto (gerente)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/caja/actual",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('caja_abierta_previa', d.abierta ? 'si' : 'no');",
+                  "if (d.abierta) {",
+                  "  const m = {}; Object.keys(d.caja.arqueo.efectivo).forEach(k => m[k] = d.caja.arqueo.efectivo[k].esperado);",
+                  "  pm.collectionVariables.set('montos_cierre_previo', JSON.stringify({montos: m, mercado_pago: d.caja.arqueo.mercado_pago.esperado}));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.3 Cerrar la caja previa (si habia; si no habia, responde 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/caja/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"montos\": {\"ARS\": 0, \"USD\": 0, \"BRL\": 0, \"PYG\": 0}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const previo = pm.collectionVariables.get('montos_cierre_previo');",
+                  "if (pm.collectionVariables.get('caja_abierta_previa') === 'si' && previo) { pm.request.body.raw = previo; }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cerro la previa (200) o no habia ninguna (409)', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.4 Preparar: turno para la jornada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/turnos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "const cena = t.find(x => /cena/i.test(x.nombre)) || t[0];",
+                  "pm.test('Hay un turno', () => pm.expect(cena).to.not.be.undefined);",
+                  "pm.collectionVariables.set('t3_turno', cena.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.5 Preparar: jornada abierta (si no la habia, la abre el gerente y la cierra la limpieza)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{t3_turno}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Abierta ahora (201) o ya habia una (409)', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "pm.collectionVariables.set('t3_jornada_propia', pm.response.code === 201 ? '1' : '0');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.6 Preparar: elegir un plato pedible sin ingredientes quitables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
+                  "pm.collectionVariables.set('t3_prod', p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.7 El mozo abre la mesa 5 (2 comensales)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 5, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('t3_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('t3_sesion', s.id);",
+                  "pm.test('Mesa 5', () => pm.expect(s.numero_mesa).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.8 El gerente abre la caja (50000 ARS y 20 USD)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/caja/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"montos\": {\"ARS\": 50000, \"USD\": 20}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.9 El cliente pide 2 platos como Ana",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{t3_uuid_a}}\", \"mesa_id\": 5, \"pin\": \"{{t3_pin}}\", \"comensal\": \"Ana\", \"items\": [{\"id\": {{t3_prod}}}, {\"id\": {{t3_prod}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('t3_uuid_a', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.10 Beto pide 1 plato para compartir con Ana",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{t3_uuid_b}}\", \"mesa_id\": 5, \"pin\": \"{{t3_pin}}\", \"comensal\": \"Beto\", \"items\": [{\"id\": {{t3_prod}}, \"compartido\": [\"Ana\", \"Beto\"]}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('t3_uuid_b', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Encolada (202)', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.11 La cuenta suma todo y reparte el plato compartido (espera al worker)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion}}/cuenta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r2 = x => Math.round(x * 100) / 100;",
+                  "const d = pm.response.json();",
+                  "pm.test('Dos renglones (si falla: worker.py apagado)', () => pm.expect(d.renglones.length).to.eql(2));",
+                  "const total = parseFloat(d.total); const p = r2(total / 3);",
+                  "pm.collectionVariables.set('t3_p', p);",
+                  "pm.test('Total = 3 platos', () => pm.expect(parseFloat(d.renglones[0].sub_total) + parseFloat(d.renglones[1].sub_total)).to.be.closeTo(total, 0.001));",
+                  "pm.test('Ana: 2 platos y media porcion', () => pm.expect(parseFloat(d.por_comensal['Ana'])).to.be.closeTo(r2(2 * p + p / 2), 0.011));",
+                  "pm.test('Beto: media porcion', () => pm.expect(parseFloat(d.por_comensal['Beto'])).to.be.closeTo(r2(p / 2), 0.011));",
+                  "pm.test('El desglose suma el total', () => pm.expect(Object.values(d.por_comensal).reduce((a, v) => a + parseFloat(v), 0)).to.be.closeTo(total, 0.011));",
+                  "pm.test('Todo en texto', () => { pm.expect(d.total).to.be.a('string'); pm.expect(d.saldo).to.be.a('string'); });",
+                  "pm.test('Hay 2 pedidos en cocina y todavia no se cobra', () => { pm.expect(d.pedidos_en_cocina).to.eql(2); pm.expect(d.puede_cobrarse).to.eql(false); });",
+                  "pm.test('Equivalentes en USD, BRL y PYG', () => { pm.expect(d.equivalentes).to.have.all.keys('USD', 'BRL', 'PYG'); });",
+                  "pm.collectionVariables.set('t3_total', d.total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.12 El mozo emite la factura (aun con pedidos en cocina)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion}}/factura",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test('Emitida', () => pm.expect(d.estado_cuenta).to.eql('Emitida'));",
+                  "pm.test('Congela el total', () => pm.expect(d.factura.total).to.eql(pm.collectionVariables.get('t3_total')));",
+                  "pm.test('Saldo = total', () => pm.expect(d.saldo).to.eql(d.total));",
+                  "pm.collectionVariables.set('t3_factura', d.factura.id);",
+                  "pm.collectionVariables.set('t3_cot_usd', (d.factura.cotizaciones && d.factura.cotizaciones.USD) ? d.factura.cotizaciones.USD : '');",
+                  "if (!d.factura.cotizaciones.USD) { console.warn('Sin cotizacion de USD guardada: el cobro en dolares se prueba en pesos.'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.13 Cocina entrega la comanda de Ana",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{t3_uuid_a}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.14 Cocina entrega la comanda de Beto",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{t3_uuid_b}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.15 Ahora si se puede cobrar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion}}/cuenta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Sin pedidos en cocina y cobrable', () => { pm.expect(d.pedidos_en_cocina).to.eql(0); pm.expect(d.puede_cobrarse).to.eql(true); });",
+                  "pm.test('Caja abierta', () => pm.expect(d.caja_abierta).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Pago con tarjeta",
+      "item": [
+        {
+          "name": "1.1 Sin token no se confirma un cobro (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Monto negativo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"monto_cuenta\": -5}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Marca el campo', () => pm.expect(pm.response.json()).to.have.property('monto_cuenta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 No se cobra mas que el saldo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"monto_cuenta\": 999999999}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Dice que supera el saldo', () => pm.expect(pm.response.json().error).to.include('supera el saldo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 El cliente pide la cuenta y dice que paga con tarjeta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/solicitar-cuenta",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 5, \"pin\": \"{{t3_pin}}\", \"metodo_pago\": \"tarjeta\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Queda registrado el medio', () => pm.expect(d.metodo_pago_solicitado).to.eql('Tarjeta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 El mozo ve en la mesa que quieren pagar con tarjeta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const m5 = (Array.isArray(lista) ? lista : lista.results).find(m => m.numero === 5);",
+                  "pm.test('Mesa 5 pide la cuenta con tarjeta', () => { pm.expect(m5.solicita_cuenta).to.eql(true); pm.expect(m5.metodo_pago_solicitado).to.eql('Tarjeta'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Un medio que el sistema no maneja (transferencia) se ignora, no falla",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/solicitar-cuenta",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 5, \"pin\": \"{{t3_pin}}\", \"metodo_pago\": \"transferencia\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sigue Tarjeta', () => pm.expect(pm.response.json().metodo_pago_solicitado).to.eql('Tarjeta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 El mozo confirma un cobro parcial con tarjeta (un plato)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const p = parseFloat(pm.collectionVariables.get('t3_p'));",
+                  "pm.collectionVariables.set('t3_clave_tarjeta', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.request.body.raw = JSON.stringify({monto_cuenta: p, clave: pm.collectionVariables.get('t3_clave_tarjeta')});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json(); const p = parseFloat(pm.collectionVariables.get('t3_p'));",
+                  "pm.collectionVariables.set('t3_pago_tarjeta', d.pago.id);",
+                  "pm.collectionVariables.set('t3_saldo_antes_tarjeta', d.cuenta.saldo);",
+                  "pm.test('Aprobado con tarjeta, en pesos', () => { pm.expect(d.pago.estado).to.eql('Aprobado'); pm.expect(d.pago.metodo).to.eql('Tarjeta'); pm.expect(d.pago.moneda).to.eql('ARS'); });",
+                  "pm.test('Sin propina ni vuelto', () => { pm.expect(d.pago.propina).to.eql('0.00'); pm.expect(d.pago.vuelto).to.eql('0.00'); });",
+                  "pm.test('Descuenta un plato', () => pm.expect(parseFloat(d.pago.monto)).to.be.closeTo(p, 0.011));",
+                  "pm.test('Sigue Emitida con el saldo de dos platos', () => { pm.expect(d.cuenta.estado_cuenta).to.eql('Emitida'); pm.expect(parseFloat(d.cuenta.saldo)).to.be.closeTo(parseFloat(d.cuenta.total) - p, 0.011); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Reintentar con la misma clave no cobra dos veces (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const p = parseFloat(pm.collectionVariables.get('t3_p'));",
+                  "pm.request.body.raw = JSON.stringify({monto_cuenta: p, clave: pm.collectionVariables.get('t3_clave_tarjeta')});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el mismo pago', () => pm.expect(pm.response.json().pago.id).to.eql(Number(pm.collectionVariables.get('t3_pago_tarjeta'))));",
+                  "pm.test('El saldo no cambio', () => pm.expect(pm.response.json().cuenta.saldo).to.eql(pm.collectionVariables.get('t3_saldo_antes_tarjeta')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 La tarjeta NO movio el efectivo de la caja (gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/caja/movimientos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ms = pm.response.json().filter(m => String(m.pago) === String(pm.collectionVariables.get('t3_pago_tarjeta')));",
+                  "pm.test('Ningun movimiento de caja para ese pago', () => pm.expect(ms.length).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 El mozo no puede anular un cobro (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pagos/{{t3_pago_tarjeta}}/anular",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"x\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.11 El admin anula el cobro confirmado por error: la cuenta se reabre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pagos/{{t3_pago_tarjeta}}/anular",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"El postnet rechazo la tarjeta\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Pago anulado con su motivo', () => { pm.expect(d.pago.estado).to.eql('Anulado'); pm.expect(d.pago.motivo_anulacion).to.eql('El postnet rechazo la tarjeta'); });",
+                  "pm.test('El saldo vuelve a ser el total', () => { pm.expect(d.cuenta.estado_cuenta).to.eql('Emitida'); pm.expect(d.cuenta.saldo).to.eql(d.cuenta.total); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.12 No se anula dos veces (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pagos/{{t3_pago_tarjeta}}/anular",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"otra vez\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.13 Se cobra toda la cuenta con tarjeta (sin indicar monto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test('Cuenta Pagada y sin saldo', () => { pm.expect(d.cuenta.estado_cuenta).to.eql('Pagada'); pm.expect(d.cuenta.saldo).to.eql('0.00'); });",
+                  "pm.test('Cobro por el total', () => pm.expect(d.pago.monto).to.eql(d.cuenta.total));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.14 Con la cuenta saldada no se cobra mas (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/facturas/{{t3_factura}}/pagos/tarjeta",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Dice que no hay saldo', () => pm.expect(pm.response.json().error).to.include('saldo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.15 Mesa pagada con tarjeta: el mozo la cierra",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Cerrada, sin cierre forzado', () => { pm.expect(d.estado).to.eql('Cerrado'); pm.expect(d.cierre_forzado).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.16 La factura figura Pagada (gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/facturas/{{t3_factura}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pagada', () => pm.expect(pm.response.json().factura.estado).to.eql('Pagada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.17 Limpieza: leer el arqueo de la caja",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/caja/actual",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('La caja sigue abierta', () => pm.expect(d.abierta).to.eql(true));",
+                  "const m = {}; Object.keys(d.caja.arqueo.efectivo).forEach(k => m[k] = d.caja.arqueo.efectivo[k].esperado);",
+                  "pm.collectionVariables.set('montos_cierre_previo', JSON.stringify({montos: m, mercado_pago: d.caja.arqueo.mercado_pago.esperado}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.18 Limpieza: cerrar la caja con el arqueo exacto (y la jornada, si la abrio esta prueba)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/caja/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"montos\": {\"ARS\": 0, \"USD\": 0, \"BRL\": 0, \"PYG\": 0}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.body.raw = pm.collectionVariables.get('montos_cierre_previo');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('Sin diferencias', () => pm.expect(d.hay_diferencias).to.eql(false));",
+                  "if (pm.collectionVariables.get('t3_jornada_propia') === '1') {",
+                  "  pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}') + '/jornada/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + pm.collectionVariables.get('token_gerente') } }, () => {});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

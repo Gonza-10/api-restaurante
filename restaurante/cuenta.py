@@ -22,7 +22,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from .caja import ReglaCaja, caja_abierta, caja_abierta_bloqueada, cotizacion_para, registrar_movimiento
-from .cobros_calculos import CERO, MONEDA_BASE, CobroInvalido, calcular_cobro_efectivo, convertir_a_ars
+from .cobros_calculos import CERO, MONEDA_BASE, CobroInvalido, calcular_cobro_efectivo, calcular_cobro_tarjeta, convertir_a_ars
 from .cobros_calculos import equivalentes
 from .cotizacion import cotizaciones_vigentes
 from .cuenta_calculos import (
@@ -198,6 +198,45 @@ def pagar_efectivo(factura_id, empleado, moneda, recibido, propina_ars=CERO, mon
     return pago, True
 
 
+def pagar_tarjeta(factura_id, empleado, monto_cuenta=None, clave=None):
+    """Registra un cobro con tarjeta (credito o debito) CONFIRMADO por el mozo: el pago es manual, con el postnet; aca solo se
+    asienta que la plata impacto. Es en pesos, sin vuelto ni propina y no mueve el efectivo de la caja (pero, como todo cobro,
+    pide una caja abierta). `monto_cuenta` (pesos): cuanto de la cuenta cubre; sin indicar, todo el saldo.
+    Devuelve (pago, creado). `creado=False` si la `clave` ya existia (reintento). Levanta ReglaCuenta (409) o CobroInvalido (400)."""
+    with transaction.atomic():
+        factura = Factura.objects.select_for_update().get(pk=factura_id)   # sin select_related (ver _bloquear_sesion)
+        if clave:
+            previo = Pago.objects.filter(clave_idempotencia=clave).first()
+            if previo is not None:
+                if previo.factura_id != factura.id:
+                    raise ReglaCuenta('Esa clave de operacion ya se uso en otra cuenta.')
+                return previo, False
+        if factura.estado == 'Anulada':
+            raise ReglaCuenta('La factura esta anulada.')
+        sesion = factura.pedido_cabecera
+        if sesion.estado != 'Abierto':
+            raise ReglaCuenta('La mesa ya se cerro.')
+        if caja_abierta() is None:
+            raise ReglaCuenta('No hay una caja abierta. Un Admin o Gerente debe abrirla antes de cobrar.')
+        en_cocina = comandas_en_cocina(sesion)
+        if en_cocina:
+            raise ReglaCuenta(
+                'Todavia hay pedidos en preparacion: se cobra cuando la mesa tenga todo lo pedido.',
+                comandas_en_cocina=en_cocina,
+            )
+        # un pago pendiente (Mercado Pago) ya reserva su monto en el saldo: se puede combinar con la tarjeta
+        monto = calcular_cobro_tarjeta(saldo_de_la_cuenta(factura.total, _pagos_como_dicts(factura)), monto_cuenta)
+        pago = Pago.objects.create(
+            factura=factura, metodo_pago=_metodo('Tarjeta'), monto=monto, fecha_hora=timezone.now(), estado='Aprobado',
+            moneda=MONEDA_BASE, monto_recibido=monto, cotizacion=1, monto_propina=CERO, vuelto=CERO, empleado=empleado,
+            clave_idempotencia=clave or None,
+        )
+        _evento(pago, 'Cobrado con tarjeta', None, 'Aprobado', empleado,
+                f'El mozo confirmo el cobro con tarjeta de la mesa {sesion.mesa.numero}: {monto} (ARS).')
+        _actualizar_factura(factura)
+    return pago, True
+
+
 def _actualizar_factura(factura, vuelto_extra=CERO):
     """Despues de cualquier cambio de pagos: marca Pagada cuando lo aprobado cubre el total, o vuelve a Emitida."""
     pagos = _pagos_como_dicts(factura)
@@ -227,7 +266,8 @@ def _sincronizar_comprobante(factura):
 # ---------- anulaciones ----------
 
 def anular_pago(pago_id, empleado, motivo):
-    """Anula un pago en EFECTIVO aprobado (Admin/Gerente). Hace el contramovimiento en la caja abierta."""
+    """Anula un pago aprobado en EFECTIVO o con TARJETA (Admin/Gerente). En efectivo hace el contramovimiento en la caja abierta;
+    la tarjeta no movio la caja, asi que solo se anula el pago (sirve para corregir un cobro confirmado por error)."""
     motivo = (motivo or '').strip()
     if not motivo:
         raise ReglaCuenta('Indicar el motivo de la anulacion.', estado=400)
@@ -235,23 +275,24 @@ def anular_pago(pago_id, empleado, motivo):
         pago = Pago.objects.select_related('metodo_pago', 'factura').get(pk=pago_id)
         factura = Factura.objects.select_for_update().get(pk=pago.factura_id)
         pago = Pago.objects.select_related('metodo_pago').get(pk=pago_id)   # estado actualizado, ya con la factura bloqueada
-        if pago.metodo_pago.nombre != 'Efectivo':
-            raise ReglaCuenta('Solo se pueden anular pagos en efectivo.')
+        if pago.metodo_pago.nombre not in ('Efectivo', 'Tarjeta'):
+            raise ReglaCuenta('Solo se pueden anular pagos en efectivo o con tarjeta.')
+        en_efectivo = pago.metodo_pago.nombre == 'Efectivo'
         if pago.estado != 'Aprobado':
             raise ReglaCuenta(f'El pago esta en estado {pago.estado}: solo se anula uno Aprobado.')
         if factura.pedido_cabecera.estado != 'Abierto':
             raise ReglaCuenta('La mesa ya se cerro: no se puede anular el pago.')
-        caja = caja_abierta_bloqueada()
-        if caja is None:
-            raise ReglaCuenta('No hay una caja abierta para registrar la devolucion.')
-
         mesa = factura.pedido_cabecera.mesa.numero
-        # se devuelve todo lo recibido (en su moneda) y se recupera el vuelto que se habia dado en pesos
-        registrar_movimiento(caja, 'Egreso', 'Anulacion', pago.moneda, pago.monto_recibido, empleado, pago=pago,
-                             controlar_saldo=False, descripcion=f'Anulacion del pago {pago.id} (mesa {mesa}): {motivo}'[:200])
-        if pago.vuelto > 0:
-            registrar_movimiento(caja, 'Ingreso', 'Anulacion', MONEDA_BASE, pago.vuelto, empleado, pago=pago,
-                                 descripcion=f'Vuelto devuelto por la anulacion del pago {pago.id} (mesa {mesa})'[:200])
+        if en_efectivo:
+            caja = caja_abierta_bloqueada()
+            if caja is None:
+                raise ReglaCuenta('No hay una caja abierta para registrar la devolucion.')
+            # se devuelve todo lo recibido (en su moneda) y se recupera el vuelto que se habia dado en pesos
+            registrar_movimiento(caja, 'Egreso', 'Anulacion', pago.moneda, pago.monto_recibido, empleado, pago=pago,
+                                 controlar_saldo=False, descripcion=f'Anulacion del pago {pago.id} (mesa {mesa}): {motivo}'[:200])
+            if pago.vuelto > 0:
+                registrar_movimiento(caja, 'Ingreso', 'Anulacion', MONEDA_BASE, pago.vuelto, empleado, pago=pago,
+                                     descripcion=f'Vuelto devuelto por la anulacion del pago {pago.id} (mesa {mesa})'[:200])
         Pago.objects.filter(pk=pago.pk).update(
             estado='Anulado', fecha_hora_anulacion=timezone.now(), empleado_anulacion=empleado, motivo_anulacion=motivo[:200])
         _evento(pago, 'Anulado', 'Aprobado', 'Anulado', empleado, motivo)

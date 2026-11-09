@@ -14,7 +14,7 @@ from .cobros_calculos import CERO, CobroInvalido
 from .comprobante import fijar_pedido
 from .comprobante_calculos import PedidoInvalido, validar_pedido_de_factura
 from .cuenta import (
-    ReglaCuenta, anular_factura, anular_pago, armar_cuenta, emitir_factura, pagar_efectivo, propinas_por_mozo,
+    ReglaCuenta, anular_factura, anular_pago, armar_cuenta, emitir_factura, pagar_efectivo, pagar_tarjeta, propinas_por_mozo,
 )
 from .mercadopago import modo as modo_mercadopago
 from .models import Factura, Pago, PedidoCabecera
@@ -276,9 +276,51 @@ class PagoEfectivoView(APIView):
         )
 
 
+class PagoTarjetaView(APIView):
+    """POST /facturas/{id}/pagos/tarjeta. Mozo (solo sus mesas), Admin y Gerente. CONFIRMA un cobro con tarjeta de credito o debito.
+    El pago en si es manual: el cliente pide pagar con tarjeta, el mozo le lleva el postnet y, cuando la plata impacto, lo
+    confirma aca. {"monto_cuenta": 20000, "clave": "...", "quiere_factura": true, "nombre_factura": "..."} (todo opcional)
+    - `monto_cuenta` (pesos): cuanto de la cuenta cubre este cobro; sin indicar, todo el saldo. No hay vuelto ni propina.
+    - `clave` (hasta 36 caracteres): reintentar con la misma clave no cobra dos veces (responde 200 con el mismo pago).
+    - `quiere_factura` y `nombre_factura`: igual que en el cobro en efectivo.
+    No mueve el efectivo de la caja. Se puede combinar con efectivo o Mercado Pago. 409 si no hay caja abierta o hay pedidos en
+    preparacion. Un cobro confirmado por error lo anula un Admin o Gerente (POST /pagos/{id}/anular)."""
+    roles_escritura = SALON
+
+    def post(self, request, pk):
+        factura = _factura_del_usuario(request, pk)
+        if factura is None:
+            return _no_existe()
+        datos = _cuerpo(request)
+        monto_cuenta = None
+        if datos.get('monto_cuenta') not in (None, ''):
+            try:
+                monto_cuenta = validar_monto(datos.get('monto_cuenta'), 'monto_cuenta', positivo=True)
+            except CajaInvalida as error:
+                raise _campo('monto_cuenta', error)
+        clave = str(datos.get('clave') or '').strip() or None
+        if clave and len(clave) > 36:
+            raise ValidationError({'clave': 'Admite hasta 36 caracteres.'})
+        pedido = pedido_de_factura(datos)   # se valida antes de cobrar: un error de la casilla no debe dejar un cobro hecho
+
+        try:
+            pago, creado = pagar_tarjeta(factura.id, request.user.empleado, monto_cuenta, clave)
+        except CobroInvalido as error:
+            return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ReglaCuenta, ReglaCaja) as error:
+            return _error(error)
+        aplicar_pedido(factura.id, pedido)
+        pago = Pago.objects.select_related('metodo_pago', 'empleado').get(pk=pago.pk)
+        sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').get(pk=factura.pedido_cabecera_id)
+        return Response(
+            {'pago': en_texto(_pago_json(pago)), 'cuenta': cuenta_json(armar_cuenta(sesion))},
+            status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK,
+        )
+
+
 class PagoAnularView(APIView):
-    """POST /pagos/{id}/anular. Admin y Gerente. {"motivo": "..."} (obligatorio). Solo pagos en efectivo aprobados: devuelve
-    el efectivo en la caja abierta (contramovimiento) y reabre el saldo de la cuenta."""
+    """POST /pagos/{id}/anular. Admin y Gerente. {"motivo": "..."} (obligatorio). Solo pagos aprobados en efectivo o con tarjeta.
+    En efectivo devuelve el dinero en la caja abierta (contramovimiento); la tarjeta no movio la caja. Reabre el saldo de la cuenta."""
     roles_escritura = ADMIN_GERENTE
 
     def post(self, request, pk):

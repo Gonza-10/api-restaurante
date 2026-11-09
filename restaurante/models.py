@@ -233,6 +233,8 @@ class PedidoCabecera(models.Model):
     estado = models.CharField(max_length=20, default='Abierto', db_column='Estado')
     # cuando el cliente pidio la cuenta (NULL = todavia no la pidio)
     fecha_hora_solicita_cuenta = models.DateTimeField(null=True, blank=True, db_column='FechaHoraSolicitaCuenta')
+    # con que medio dijo el cliente que quiere pagar al pedir la cuenta: Efectivo / MercadoPago / Tarjeta (NULL = no lo dijo)
+    metodo_pago_solicitado = models.CharField(max_length=20, null=True, blank=True, db_column='MetodoPagoSolicitado')
     # cierre con saldo pendiente: solo Admin/Gerente y con motivo (hito 3)
     cierre_forzado = models.BooleanField(default=False, db_column='CierreForzado')
     motivo_cierre = models.CharField(max_length=200, null=True, blank=True, db_column='MotivoCierre')

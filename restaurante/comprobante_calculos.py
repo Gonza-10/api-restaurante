@@ -5,7 +5,7 @@ import re
 from decimal import Decimal, ROUND_HALF_UP
 
 CERO = Decimal('0')
-MEDIOS = {'Efectivo': 'Efectivo', 'MercadoPago': 'Mercado Pago'}
+MEDIOS = {'Efectivo': 'Efectivo', 'MercadoPago': 'Mercado Pago', 'Tarjeta': 'Tarjeta'}
 MONEDAS_SIN_DECIMALES = ('PYG',)
 NOMBRE_MAX = 100
 ARCHIVO_MAX = 80

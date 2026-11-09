@@ -40,7 +40,7 @@ from .views_notificaciones import NotificacionesCocinaView
 from .views_cobros import CotizacionesView, CotizacionesActualizarView
 from .views_caja import CajaActualView, CajaAbrirView, CajaCerrarView, CajaMovimientosView, CajaViewSet
 from .views_cuenta import (
-    SesionCuentaView, SesionFacturaView, FacturaViewSetLista, FacturaDetalleView, PagoEfectivoView, PagoAnularView,
+    SesionCuentaView, SesionFacturaView, FacturaViewSetLista, FacturaDetalleView, PagoEfectivoView, PagoTarjetaView, PagoAnularView,
     FacturaAnularView, PropinasView, CuentaClienteView,
 )
 from .views_mp import (
@@ -136,6 +136,7 @@ urlpatterns = [
     path('facturas', FacturaViewSetLista.as_view(), name='facturas'),
     path('facturas/<int:pk>', FacturaDetalleView.as_view(), name='factura-detalle'),
     path('facturas/<int:pk>/pagos/efectivo', PagoEfectivoView.as_view(), name='pago-efectivo'),
+    path('facturas/<int:pk>/pagos/tarjeta', PagoTarjetaView.as_view(), name='pago-tarjeta'),
     path('facturas/<int:pk>/anular', FacturaAnularView.as_view(), name='factura-anular'),
     path('pagos/<int:pk>/anular', PagoAnularView.as_view(), name='pago-anular'),
     path('propinas', PropinasView.as_view(), name='propinas'),

@@ -50,6 +50,7 @@ from .limites import superado, registrar_fallo, limpiar
 from .jornadas import jornada_abierta
 from .reservas import ReservaNoVigente, cumplir_reserva, reserva_bloqueante, reservas_bloqueantes_por_mesa, vencer_reservas
 from .reservas_calculos import mensaje_mesa_reservada
+from .cobros_calculos import metodo_pago_solicitado
 from .serializers_reservas import reserva_resumen
 from .especiales import precios_especiales_vigentes
 from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
@@ -992,7 +993,10 @@ def _comandas_de_sesion(sesion):
 
 
 class SolicitarCuentaView(APIView):
-    """El cliente avisa al mozo que quiere la cuenta. Es idempotente: pedirla dos veces conserva la primera hora."""
+    """El cliente avisa al mozo que quiere la cuenta. Es idempotente: pedirla dos veces conserva la primera hora.
+    Cuerpo: numero_mesa, pin y, opcional, `metodo_pago` ('efectivo', 'tarjeta' o 'mercadopago'): con que medio quiere pagar. Es
+    un aviso para el mozo (se ve en la mesa como `metodo_pago_solicitado`) y se puede cambiar volviendo a pedir la cuenta. Un valor
+    que no sea uno de esos tres (por ejemplo 'transferencia') se ignora y no hace fallar la solicitud."""
     authentication_classes = []  # un token vencido no debe impedir pedir la cuenta
     roles_lectura = None
     roles_escritura = None  # publico, protegido por el PIN de la mesa
@@ -1004,14 +1008,22 @@ class SolicitarCuentaView(APIView):
         if error is not None:
             return error
 
+        cambios = []
         if sesion.fecha_hora_solicita_cuenta is None:
             sesion.fecha_hora_solicita_cuenta = timezone.now()
-            sesion.save(update_fields=['fecha_hora_solicita_cuenta'])
+            cambios.append('fecha_hora_solicita_cuenta')
+        metodo = metodo_pago_solicitado(request.data.get('metodo_pago') if hasattr(request.data, 'get') else None)
+        if metodo is not None and metodo != sesion.metodo_pago_solicitado:
+            sesion.metodo_pago_solicitado = metodo
+            cambios.append('metodo_pago_solicitado')
+        if cambios:
+            sesion.save(update_fields=cambios)
 
         return Response({
             'mensaje': 'Cuenta solicitada. El mozo ya fue avisado.',
             'solicita_cuenta': True,
             'fecha_hora_solicita_cuenta': fecha_iso(sesion.fecha_hora_solicita_cuenta),
+            'metodo_pago_solicitado': sesion.metodo_pago_solicitado,
         })
 
 

@@ -109,6 +109,35 @@ def calcular_cobro_efectivo(recibido_ars, saldo, propina=CERO, monto_cuenta=None
     return {'aplicado': aplicado, 'propina': propina, 'vuelto': vuelto}
 
 
+METODOS_SOLICITABLES = {'efectivo': 'Efectivo', 'mercadopago': 'MercadoPago', 'tarjeta': 'Tarjeta'}
+
+
+def metodo_pago_solicitado(texto):
+    """Medio con el que el cliente dice que quiere pagar, normalizado a 'Efectivo', 'MercadoPago' o 'Tarjeta'. Admite mayusculas,
+    espacios, guiones y 'mercado pago'. Cualquier otra cosa (vacio, 'transferencia', 'ninguno'...) devuelve None: es solo un
+    aviso para el mozo y no debe hacer fallar la solicitud de la cuenta."""
+    if not isinstance(texto, str):
+        return None
+    clave = ''.join(c for c in texto.lower() if c.isalnum())
+    return METODOS_SOLICITABLES.get(clave)
+
+
+def calcular_cobro_tarjeta(saldo, monto_cuenta=None):
+    """Cuanto de la cuenta cubre un cobro con tarjeta confirmado por el mozo. Sin `monto_cuenta` se cobra todo el saldo.
+    No hay vuelto ni propina. Lanza CobroInvalido si el saldo es cero o el monto no sirve."""
+    saldo = redondear_dinero(saldo)
+    if saldo <= 0:
+        raise CobroInvalido('La cuenta ya no tiene saldo para cobrar.')
+    if monto_cuenta is None:
+        return saldo
+    monto = redondear_dinero(monto_cuenta)
+    if monto <= 0:
+        raise CobroInvalido('El monto a cobrar debe ser mayor a cero.')
+    if monto > saldo:
+        raise CobroInvalido(f'El monto (${monto}) supera el saldo de la cuenta (${saldo}).')
+    return monto
+
+
 # ---------- cotizacion del BCRA ----------
 
 def _valor_positivo(valor):

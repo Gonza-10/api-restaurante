@@ -113,6 +113,7 @@ MP_SYNC_INTERVALO_SEG=15     # cada cuanto el worker de Mercado Pago confirma lo
    | 21 | `21_AE4_Extras_Migraciones.sql` | Cobros, hito 5: `RecetaExtra` (los extras que ofrece cada receta: insumo, cuánto gasta y cuánto cuesta una unidad, máximo por plato, `Activo` y `Disponible`; `UQ_RecetaExtra`: un insumo se ofrece una sola vez por receta) y `PedidoDetalleExtra` (los extras de cada renglón del pedido, con el recargo congelado; `UQ_PedidoDetalleExtra`). Requiere el 12 y el 14 |
    | 22 | `22_AE4_Comprobante_Auditoria_Migraciones.sql` | Cobros, hito 6: `Factura.NombreFactura` (a nombre de quién se emite el comprobante PDF; la casilla «quiero factura» ya existía como `SolicitoTicket`) y dos índices por fecha, `IX_PagoEvento_FechaHora` e `IX_MovimientoCaja_FechaHora`, para la línea de tiempo de auditoría. No crea tablas. Requiere el 18 y el 19 |
    | 23 | `23_AE4_Reservas_Migraciones.sql` | Reservas: en `Reserva` suma el turno (`IdTurno`), la cantidad de personas, notas, origen (Llamada, Mensaje u Otro), quién y cuándo la canceló, cuándo se resolvió y qué sesión de mesa la cumplió; estados `Confirmada`, `Cancelada`, `Cumplida` y `No se presentó`; y un índice único que impide dos reservas confirmadas para la misma mesa, fecha y turno. Requiere el 00 y el 08 |
+   | 24 | `24_AE4_PagoTarjeta_Migraciones.sql` | Pago con tarjeta: agrega el método `Tarjeta` a `MetodoPago` y `PedidoCabecera.MetodoPagoSolicitado` (con qué medio dijo el cliente que quiere pagar al pedir la cuenta: Efectivo, MercadoPago o Tarjeta). Requiere el 19 |
    | 99 | `99_Seed_AE4.sql` | Datos de prueba reproducibles: 4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo |
 
 4. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
@@ -543,6 +544,16 @@ Las cargan **Admin y Gerente** a partir de llamadas y mensajes (el mozo solo las
 | `GET /reservas/disponibilidad?fecha=&turno=&personas=` | Mozo, Admin, Gerente | Mesas libres para esa jornada y la sugerida |
 
 - **Probarlo:** `python Tests\Scripts\probar_reservas_calculos.py` (47 chequeos: horarios de los turnos, turno que cruza la medianoche, tolerancia, teléfono, elección de mesa y mensajes; no necesita nada corriendo) y la colección `Savage_Grill_Reservas` de Postman (requiere el script SQL 23 y `runserver`; cubre alta, validaciones, disponibilidad, edición, cancelación y apertura de mesa por la reserva). El vencimiento automático depende del reloj y lo cubre el script de cálculos.
+
+## Cobros (hito 7): pago con tarjeta
+
+Manual y tercerizado: no hay pasarela ni API. El cliente pide pagar con tarjeta de crédito o débito, el mozo recibe el aviso, le lleva el postnet y, **cuando la plata impactó, confirma el cobro en el sistema**.
+
+- **Aviso al mozo:** `POST /solicitar-cuenta` acepta `metodo_pago` (`efectivo`, `tarjeta` o `mercadopago`). Es solo un aviso: se guarda en la sesión y `GET /mesas` lo devuelve como `metodo_pago_solicitado` (junto con `solicita_cuenta`), para mostrarlo en «Avisos del salón». Se puede cambiar volviendo a pedir la cuenta. Un valor que el sistema no maneja (por ejemplo `transferencia`) se ignora y no hace fallar la solicitud.
+- **Confirmar el cobro:** `POST /facturas/{id}/pagos/tarjeta` (Mozo en sus mesas, Admin, Gerente). Cuerpo opcional: `monto_cuenta` (pesos; sin indicar, todo el saldo), `clave` (reintento sin cobrar dos veces) y `quiere_factura` / `nombre_factura`, igual que en efectivo. Responde `{pago, cuenta}` con el mismo formato que el cobro en efectivo (`pago.metodo` = `Tarjeta`).
+- **Reglas:** el pago nace `Aprobado`, en pesos, sin vuelto ni propina. Se puede pagar en partes y combinar con efectivo o Mercado Pago. Como todo cobro, pide caja abierta y que no haya pedidos en preparación (409). No pasa por el arqueo de la caja: **no genera movimientos de efectivo**, y el cierre de la terminal del postnet queda fuera del sistema.
+- **Corregir un error:** un Admin o Gerente anula un cobro con tarjeta confirmado por error con `POST /pagos/{id}/anular` (con motivo); la cuenta se reabre.
+- **Probarlo:** `python Tests\Scripts\probar_tarjeta_calculos.py` (25 chequeos: medio solicitado y monto del cobro; no necesita nada corriendo) y la colección `Savage_Grill_Tarjeta` de Postman (requiere los scripts SQL 19 y 24, `runserver`, `worker.py`, RabbitMQ y Redis; usa la mesa 5 y al terminar deja la caja cerrada).
 
 ## Estructura del repositorio
 
