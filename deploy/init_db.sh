@@ -4,7 +4,11 @@
 # Corre dentro del contenedor "sql_init" (misma imagen que SQL Server, que ya trae sqlcmd).
 set -euo pipefail
 
-SQLCMD=$(ls /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd 2>/dev/null | head -1)
+# Se busca con un bucle y no con "ls | head": ls devuelve error 2 si falta alguno de los dos y con pipefail eso cortaba el script.
+SQLCMD=""
+for candidato in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do
+    if [ -x "$candidato" ]; then SQLCMD="$candidato"; break; fi
+done
 [ -n "$SQLCMD" ] || { echo "No se encontro sqlcmd en la imagen"; exit 1; }
 CONFIAR=""
 case "$SQLCMD" in *tools18*) CONFIAR="-C" ;; esac   # tools18 exige confiar en el certificado autofirmado de SQL Server
