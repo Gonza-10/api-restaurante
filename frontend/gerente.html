@@ -1,467 +1,270 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Gerencial - Savage Grill</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Ocultar el botón flotante global de app.js solo en esta pantalla para usar el nuestro integrado */
-        body > .btn-tema { display: none !important; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Gerencial - Savage Grill</title>
+  <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+  <style>
+    body { margin:0; background:var(--bg-dark); color:var(--text-main); }
+    body > .btn-tema { display:none!important; }
+    :root { --g-line:var(--glass-border); --g-card:#191919; --g-accent:var(--primary-orange); }
+    * { box-sizing:border-box; }
+    html,body,.g-shell,.g-sidebar,.g-main,.g-cards,.g-modal-body,.g-scroll { scrollbar-width:thin; scrollbar-color:#634433 transparent; }
+    ::-webkit-scrollbar { width:7px; height:7px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#634433; border-radius:10px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--primary-orange); }
+    body.light-mode { --g-card:#fff; }
+    body.light-mode .g-shell,body.light-mode .g-main { scrollbar-color:#bcada2 transparent; }
+    .g-shell { min-height:100vh; display:grid; grid-template-columns:295px minmax(0,1fr); }
+    .g-sidebar { background:#0b0b0b; border-right:1px solid var(--g-line); padding:28px 20px 22px; display:flex; flex-direction:column; min-width:0; height:100vh; position:sticky; top:0; overflow-y:auto; }
+    body.light-mode .g-sidebar { background:#fff; }
+    .g-brand { text-decoration:none; color:var(--text-main); font-size:27px; letter-spacing:-1px; margin:0; line-height:1.2; font-weight:900; font-family:'Elemental End',sans-serif; }
+    .g-brand span { color:var(--g-accent); }
+    .g-caption { color:var(--text-muted); text-transform:uppercase; letter-spacing:1.6px; font-size:11px; font-weight:800; margin:7px 0 36px; }
+    .g-nav-label { color:var(--text-muted); font-size:10px; letter-spacing:1.4px; text-transform:uppercase; font-weight:800; padding:0 14px; margin:0 0 12px; }
+    .g-nav { display:grid; gap:8px; }
+    .g-nav-btn { width:100%; min-height:53px; display:flex; align-items:center; gap:13px; text-align:left; background:transparent; color:var(--text-muted); border:1px solid transparent; border-radius:13px; font:inherit; font-size:14px; font-weight:800; cursor:pointer; padding:13px 15px; transition:background .17s, color .17s, border-color .17s; }
+    .g-nav-btn svg { color:var(--g-accent); width:19px; height:19px; flex-shrink:0; }
+    .g-nav-btn:hover { color:var(--text-main); background:rgba(255,122,0,.065); }
+    .g-nav-btn.active { color:var(--g-accent); background:rgba(255,122,0,.13); border-color:rgba(255,122,0,.33); }
+    .g-nav-btn:focus-visible,.g-btn:focus-visible,.g-input:focus-visible,.sg-select-button:focus-visible { outline:2px solid var(--g-accent); outline-offset:2px; }
+    .g-sidebar-footer { border-top:1px solid var(--g-line); padding-top:20px; margin-top:auto; display:grid; gap:14px; }
+    .g-theme { width:100%; border-radius:12px; border:1px solid var(--g-line); background:rgba(255,255,255,.045); color:var(--text-main); padding:13px 15px; font:inherit; font-size:14px; font-weight:800; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; }
+    body.light-mode .g-theme { background:#f8fafc; }
+    .g-profile { display:flex; align-items:center; gap:12px; font-size:14px; font-weight:800; min-width:0; }
+    .g-avatar { width:39px; height:39px; display:grid; place-items:center; border:1px solid var(--g-accent); border-radius:50%; background:rgba(255,122,0,.1); color:var(--g-accent); flex-shrink:0; }
+    .g-profile span:last-child { overflow-wrap:anywhere; }
+    .g-logout { background:rgba(222,52,46,.12); border:1px solid rgba(242,84,69,.32); color:#fa675b; border-radius:12px; padding:13px; font:inherit; font-weight:850; cursor:pointer; }
+    .g-logout:hover { background:rgba(222,52,46,.22); }
+    .g-main { min-width:0; padding:35px clamp(22px,3.2vw,55px) 80px; }
+    .g-view[hidden],.g-modal[hidden],.sg-select-list[hidden] { display:none!important; }
+    .g-view-title { font-size:clamp(25px,2.35vw,34px); margin:0 0 7px; line-height:1.15; letter-spacing:-.7px; }
+    .g-lead { font-size:15px; color:var(--text-muted); line-height:1.6; margin:0 0 30px; }
+    .g-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:21px; }
+    .g-panel { border:1px solid var(--g-line); background:rgba(255,255,255,.024); padding:25px; border-radius:18px; min-width:0; }
+    body.light-mode .g-panel { background:#fff; box-shadow:0 5px 25px rgba(0,0,0,.045); }
+    .g-panel h3 { font-size:21px; color:var(--g-accent); margin:0 0 9px; }
+    .g-muted { color:var(--text-muted); font-size:13px; line-height:1.65; }
+    .g-panel-head { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; }
+    .g-col-6 { grid-column:span 6; } .g-col-12 { grid-column:span 12; }
+    .g-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px 18px; margin-top:25px; }
+    .g-field { display:grid; gap:8px; min-width:0; }
+    .g-field label { font-size:13px; color:var(--text-muted); font-weight:800; }
+    .g-field.wide { grid-column:1/-1; }
+    .g-input { width:100%; min-height:48px; border:1px solid var(--g-line); border-radius:11px; background:#0a0a0a; color:var(--text-main); padding:12px 14px; font:inherit; font-size:14px; outline:none; }
+    .g-input:focus { border-color:var(--g-accent); box-shadow:0 0 0 3px rgba(255,122,0,.1); }
+    body.light-mode .g-input { background:#f8fafc; border-color:#dce0e7; color:#181818; }
+    .g-input::placeholder { color:#858084; }
+    .g-btn { border:1px solid var(--g-line); padding:12px 17px; min-height:43px; background:rgba(255,255,255,.02); color:var(--text-main); font:inherit; font-weight:800; font-size:13px; border-radius:11px; cursor:pointer; transition:transform .17s,background .17s,border-color .17s; }
+    .g-btn:hover:not(:disabled) { background:rgba(255,122,0,.075); border-color:rgba(255,122,0,.45); transform:translateY(-1px); }
+    .g-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .g-btn-primary { background:var(--g-accent); color:white; border-color:var(--g-accent); }
+    .g-btn-primary:hover:not(:disabled) { background:#e96f00; }
+    .g-btn-danger { border-color:rgba(237,75,65,.45); color:#ff786e; }
+    .g-btn-sm { padding:9px 11px; min-height:36px; font-size:12px; }
+    .g-form-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .g-alert { border:1px solid var(--g-line); border-radius:10px; padding:11px 13px; margin-top:13px; font-size:13px; }
+    .g-alert[hidden] { display:none; }
+    .g-alert.error { background:rgba(225,74,67,.095); color:#ff9e92; border-color:rgba(225,74,67,.28); }
+    .g-alert.success { background:rgba(21,145,93,.11); color:#55d89f; border-color:rgba(21,145,93,.26); }
+    .g-alert.info { background:rgba(255,122,0,.075); color:var(--text-main); }
+    body.light-mode .g-alert.error { color:#a83126; }body.light-mode .g-alert.success { color:#16734b; }
+    .g-toolbar { display:flex; align-items:center; gap:11px; flex-wrap:wrap; margin-bottom:20px; }
+    .g-toolbar .g-input { flex:1 1 205px; }
+    .g-toolbar select { flex:0 1 auto; min-width:135px; }
+    .g-summary { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 19px; }
+    .g-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--g-line); border-radius:50px; padding:7px 12px; font-size:12px; color:var(--text-muted); }
+    .g-chip strong { color:var(--text-main); }
+    .g-employees { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,315px),1fr)); gap:14px; }
+    .g-employee { padding:19px; border:1px solid var(--g-line); background:rgba(255,255,255,.018); border-radius:14px; min-width:0; }
+    .g-employee.inactive { opacity:.72; }
+    body.light-mode .g-employee { background:#fafafa; }
+    .g-employee-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .g-employee h4 { margin:0 0 5px; font-size:17px; overflow-wrap:anywhere; }
+    .g-employee .g-username { font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+    .g-badge { border:1px solid rgba(255,122,0,.35); border-radius:8px; padding:5px 8px; color:var(--g-accent); background:rgba(255,122,0,.075); font-size:11px; font-weight:850; white-space:nowrap; }
+    .g-badge.off { color:#e5a2a0; border-color:rgba(228,81,73,.3); background:rgba(228,81,73,.08); }
+    .g-employee-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--text-muted); font-size:12px; margin-top:11px; }
+    .g-employee-actions { display:flex; gap:8px; flex-wrap:wrap; padding-top:14px; margin-top:15px; border-top:1px solid var(--g-line); }
+    .g-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin:20px 0 22px; }
+    .g-kpi { border:1px solid var(--g-line); background:linear-gradient(130deg,rgba(255,122,0,.055),rgba(255,255,255,.015)); border-radius:16px; padding:21px; min-width:0; }
+    body.light-mode .g-kpi { background:#fff; }
+    .g-kpi-label { font-size:13px; color:var(--text-muted); font-weight:850; }
+    .g-kpi-value { display:block; margin-top:12px; color:var(--g-accent); font-size:clamp(21px,2.4vw,29px); font-weight:900; letter-spacing:-1px; overflow-wrap:anywhere; }
+    .g-kpi-note { font-size:11px; color:var(--text-muted); margin-top:10px; line-height:1.5; }
+    .g-dashboard-actions { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+    .g-bars { display:grid; gap:13px; min-height:260px; align-content:center; }
+    .g-bar-row { display:grid; grid-template-columns:minmax(70px,120px) 1fr auto; gap:13px; align-items:center; font-size:12px; }
+    .g-bar-label { color:var(--text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .g-track { background:rgba(255,255,255,.065); border:1px solid rgba(255,255,255,.025); border-radius:12px; height:14px; overflow:hidden; }
+    body.light-mode .g-track { background:#ececec; }
+    .g-fill { background:linear-gradient(90deg,#a44605,var(--g-accent)); height:100%; min-width:0; border-radius:inherit; transition:width .35s; }
+    .g-bar-number { font-weight:850; color:var(--text-main); min-width:21px; text-align:right; }
+    .g-metric-hint { margin-top:12px; font-size:12px; color:var(--text-muted); line-height:1.6; }
+    .g-empty { padding:30px 15px; text-align:center; color:var(--text-muted); font-size:13px; line-height:1.6; }
+    .g-modal { position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.78); display:grid; place-items:center; padding:15px; }
+    .g-modal-dialog { background:#171717; border:1px solid rgba(255,122,0,.24); border-radius:19px; width:min(100%,610px); max-height:min(92vh,840px); overflow:auto; padding:27px; box-shadow:0 30px 90px rgba(0,0,0,.55); }
+    body.light-mode .g-modal-dialog { background:#fff; }
+    .g-modal-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    .g-modal-head h3 { margin:0; font-size:23px; color:var(--g-accent); }
+    .g-modal-close { border:0; background:transparent; font-size:27px; line-height:1; color:var(--text-muted); cursor:pointer; }
+    .g-modal-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:11px; margin-top:20px; }
+    /* Selector personalizado: mismo comportamiento y apariencia que Administración. */
+    .sg-select-shell { position:relative; display:block; width:100%; min-width:0; }
+    .sg-select-shell .sg-select-native { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:0!important; border:0!important; opacity:0!important; clip-path:inset(50%); overflow:hidden; pointer-events:none; }
+    .sg-select-button { width:100%; min-height:48px; padding:11px 14px; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--text-main); font:inherit; font-size:14px; font-weight:500; background:#0b0b0b; border:1px solid var(--g-line); border-radius:11px; cursor:pointer; }
+    .sg-select-button:hover,.sg-select-button[aria-expanded="true"] { border-color:rgba(255,122,0,.75); }
+    .sg-select-button[aria-expanded="true"] { outline:2px solid var(--g-accent); outline-offset:2px; }
+    .sg-select-button:disabled { opacity:.5; cursor:not-allowed; }
+    .sg-select-value { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .sg-select-button.sg-select-placeholder .sg-select-value { color:var(--text-muted); }
+    .sg-select-arrow { flex-shrink:0; width:10px; height:10px; border-right:2px solid var(--g-accent); border-bottom:2px solid var(--g-accent); transform:translateY(-2px) rotate(45deg); margin-right:4px; transition:transform .18s; }
+    .sg-select-button[aria-expanded="true"] .sg-select-arrow { transform:translateY(3px) rotate(225deg); }
+    .sg-select-list { position:fixed; z-index:5200; box-sizing:border-box; max-height:min(300px,55vh); overflow-y:auto; overscroll-behavior:contain; border:1px solid rgba(255,122,0,.58); border-radius:12px; background:#151313; color:#f5f5f5; padding:6px; box-shadow:0 18px 45px rgba(0,0,0,.65); scrollbar-width:thin; scrollbar-color:#805039 transparent; }
+    .sg-select-option { display:flex; align-items:center; gap:9px; width:100%; border:0; border-radius:8px; color:inherit; padding:12px 13px; line-height:1.35; font-size:14px; font-weight:550; overflow-wrap:anywhere; cursor:pointer; }
+    .sg-select-option[aria-disabled="true"] { opacity:.4; cursor:not-allowed; }
+    .sg-select-option[aria-selected="true"] { color:#ffb16c; background:rgba(255,122,0,.13); }
+    .sg-select-option.sg-select-highlight:not([aria-disabled="true"]),.sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.23); color:#fff; }
+    body.light-mode .sg-select-button { background:#f8fafc; color:#181818; border-color:#d6dce5; }
+    body.light-mode .sg-select-list { background:#fff; color:#181818; box-shadow:0 18px 45px rgba(0,0,0,.17); }
+    body.light-mode .sg-select-option[aria-selected="true"] { color:#a14b07; }
+    body.light-mode .sg-select-option:hover:not([aria-disabled="true"]) { color:#181818; }
+    .g-toolbar .sg-select-shell { flex:0 1 190px; width:190px; }
+    @media (max-width:1180px) { .g-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:920px) { .g-shell { grid-template-columns:235px minmax(0,1fr); } .g-sidebar { padding:24px 13px; } .g-main { padding:28px 20px 65px; } .g-col-6 { grid-column:span 12; } }
+    @media (max-width:680px) { .g-shell { grid-template-columns:minmax(0,1fr); } .g-sidebar { position:relative; height:auto; padding:18px; } .g-caption { margin-bottom:12px; } .g-nav { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; } .g-nav-label { display:none; } .g-nav-btn { font-size:12px; padding:9px; min-height:58px; flex-direction:column; text-align:center; gap:5px; justify-content:center; } .g-sidebar-footer { grid-template-columns:auto 1fr auto; margin-top:10px; padding-top:12px; align-items:center; } .g-profile { font-size:12px; } .g-profile .g-avatar { display:none; } .g-logout { font-size:12px; } .g-panel { padding:17px; } .g-form { grid-template-columns:1fr; } .g-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .g-kpi { padding:15px; } .g-toolbar .sg-select-shell { width:100%; flex:1 1 140px; } }
+    @media (max-width:400px) { .g-kpis { grid-template-columns:1fr; } }
 
-        .admin-layout {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            min-height: 100vh;
-        }
-        .sidebar {
-            background: rgba(10, 10, 10, 0.95);
-            border-right: 1px solid var(--glass-border);
-            padding: 30px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        body.light-mode .sidebar {
-            background: #ffffff;
-            border-color: #e2e8f0;
-        }
-        .sidebar-menu {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 30px;
-        }
-        .menu-item {
-            padding: 14px 20px;
-            border-radius: 12px;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: transparent;
-            border: 1px solid transparent;
-            font-size: 15px;
-        }
-        .menu-item:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.03);
-        }
-        body.light-mode .menu-item:hover {
-            background: rgba(0,0,0,0.03);
-        }
-        .menu-item.active {
-            color: var(--primary-orange);
-            background: rgba(255, 122, 0, 0.1);
-            border-color: rgba(255, 122, 0, 0.2);
-        }
-        .menu-icon {
-            color: var(--primary-orange);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .main-content {
-            padding: 40px;
-            overflow-y: auto;
-            position: relative; 
-        }
-        
-        /* Estilos de Formularios adaptativos */
-        .gerente-form {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 25px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        body.light-mode .gerente-form {
-            background: #ffffff;
-            border-color: #e2e8f0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .form-group { display: flex; flex-direction: column; gap: 8px; }
-        .form-group.full-width { grid-column: 1 / -1; }
-        .form-label { font-size: 13px; font-weight: bold; color: var(--text-muted); }
-        .form-input, .form-select {
-            padding: 14px;
-            border-radius: 10px;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            outline: none;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        body.light-mode .form-input, body.light-mode .form-select {
-            background: #f8fafc;
-            border-color: #e2e8f0;
-            color: #1a1a1a;
-        }
-        .form-input:focus, .form-select:focus { border-color: var(--primary-orange); }
-
-        /* Select Naranja Personalizado */
-        .form-select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FF7A00%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat, repeat;
-            background-position: right .7em top 50%, 0 0;
-            background-size: .65em auto, 100%;
-        }
-        .form-select option {
-            background-color: #121212;
-            color: #ffffff;
-            padding: 12px;
-        }
-        body.light-mode .form-select option {
-            background-color: #ffffff;
-            color: #1a1a1a;
-        }
-        .form-select option:checked { background-color: var(--primary-orange); color: white; }
-
-        .empleados-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .empleado-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        body.light-mode .empleado-card {
-            background: #ffffff;
-            border-color: #e2e8f0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        body.light-mode .stat-card {
-            background: #ffffff;
-            border-color: #e2e8f0;
-        }
-        .stat-value { font-size: 32px; font-weight: 900; color: var(--primary-orange); }
-        .stat-label { font-size: 14px; color: var(--text-muted); font-weight: bold; }
-    </style>
+    /* Confirmaciones Savage Grill: sin diálogos nativos del navegador. */
+    .g-confirm-overlay { z-index:6500; background:rgba(0,0,0,.79); backdrop-filter:blur(5px); }
+    .g-confirm-dialog { width:min(100%,460px); border:1px solid rgba(255,122,0,.38); border-radius:19px; padding:29px; box-shadow:0 30px 95px rgba(0,0,0,.72); }
+    .g-confirm-icon { display:grid;place-items:center; width:46px;height:46px;border:1px solid rgba(255,122,0,.40);border-radius:13px;background:rgba(255,122,0,.10);color:var(--g-accent);margin-bottom:17px; }
+    .g-confirm-icon.danger { color:#ff8b83;border-color:rgba(231,76,60,.45);background:rgba(231,76,60,.10); }
+    .g-confirm-title { color:var(--text-main)!important;font-size:23px!important;line-height:1.2;margin:0 0 12px!important; }
+    .g-confirm-copy { color:var(--text-muted);margin:0;line-height:1.6;font-size:14px;overflow-wrap:anywhere; }
+    .g-confirm-actions { display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:26px;flex-wrap:wrap; }
+    .g-confirm-actions .g-btn { min-width:112px; }
+    .g-confirm-actions .g-btn-danger-filled { color:#fff;background:#ba3830;border-color:#ba3830; }
+    .g-confirm-actions .g-btn-danger-filled:hover { background:#d84e43; }
+    .g-confirm-overlay :focus-visible { outline:2px solid var(--g-accent);outline-offset:3px; }
+    @media(max-width:440px) { .g-confirm-dialog { padding:22px; } .g-confirm-actions .g-btn { flex:1 1 auto; } }
+  </style>
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <link rel="stylesheet" href="savage-gerencia-responsive.css">
+    <script defer src="savage-theme.js"></script>
+    <script defer src="savage-gerencia-responsive.js"></script>
 </head>
-<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
-
-    <div class="admin-layout">
-        <!-- BARRA LATERAL -->
-        <aside class="sidebar">
-            <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; margin: 0; font-size: 24px; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
-            <div style="font-size: 12px; color: var(--text-muted); font-weight: bold; letter-spacing: 1px;">PORTAL GERENCIAL</div>
-
-            <div class="sidebar-menu">
-                <button class="menu-item active" onclick="cambiarPestana('personal', this)">
-                    <span class="menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
-                    Gestión de Personal
-                </button>
-                <button class="menu-item" onclick="cambiarPestana('reportes', this)">
-                    <span class="menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>
-                    Reportes y Métricas
-                </button>
-                <button class="menu-item" onclick="window.location.href='admin.html'">
-                    <span class="menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg></span>
-                    Gestionar Menú
-                </button>
-            </div>
-
-            <!-- ZONA DE CONTROL INFERIOR: Modo Oscuro, Perfil y Cerrar Sesión -->
-            <div style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                
-                <!-- 1. Toggle Modo Oscuro Integrado -->
-                <button id="btn-toggle-tema" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                    <span>Modo: Oscuro</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                </button>
-
-                <!-- 2. Perfil de Usuario -->
-                <div style="display: flex; align-items: center; gap: 12px; padding: 5px 0;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 122, 0, 0.15); border: 1px solid var(--primary-orange); display: flex; align-items: center; justify-content: center; color: var(--primary-orange); flex-shrink: 0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    </div>
-                    <div style="font-size: 14px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="info-usuario">
-                        Gerente
-                    </div>
-                </div>
-
-                <!-- 3. Botón Cerrar Sesión -->
-                <button onclick="cerrarSesion()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#e74c3c'; this.style.color='white';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c';">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Cerrar Sesión
-                </button>
-            </div>
-        </aside>
-
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="main-content">
-            
-            <!-- VISTA 1: GESTIÓN DE PERSONAL -->
-            <div id="vista-personal">
-                <h2 style="margin: 0 0 5px 0; font-size: 28px;">Gestión de Personal</h2>
-                <p style="color: var(--text-muted); margin: 0 0 30px 0;">Administrá los accesos y roles del equipo de Savage Grill.</p>
-
-                <form id="form-empleado" class="gerente-form">
-                    <div class="form-group full-width">
-                        <h3 style="margin: 0; color: var(--primary-orange);">Alta de Nuevo Empleado</h3>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Nombre</label>
-                        <input type="text" id="emp-nombre" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Apellido</label>
-                        <input type="text" id="emp-apellido" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Usuario de Acceso</label>
-                        <input type="text" id="emp-usuario" class="form-input" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Contraseña Temporal</label>
-                        <input type="password" id="emp-pass" class="form-input" required>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label class="form-label">Rol Asignado</label>
-                        <select id="emp-rol" class="form-select" required>
-                            <option value="">Cargando roles...</option>
-                        </select>
-                    </div>
-
-                    <div id="msj-empleado" class="message" style="display: none; grid-column: span 2; margin: 0;"></div>
-
-                    <!-- Botón con animación fluida (elevar sin escalar ancho) -->
-                    <button type="submit" style="grid-column: 1 / -1; width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; background: var(--primary-orange); color: white; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255,122,0,0.2);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 20px rgba(255,122,0,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255,122,0,0.2)';">
-                        Registrar Empleado
-                    </button>
-                </form>
-
-                <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 20px;">Plantilla Activa</h3>
-                <div id="lista-empleados" class="empleados-grid">
-                    <p style="color: var(--text-muted);">Cargando personal...</p>
-                </div>
-            </div>
-
-            <!-- VISTA 2: REPORTES Y MÉTRICAS -->
-            <div id="vista-reportes" style="display: none;">
-                <h2 style="margin: 0 0 5px 0; font-size: 28px;">Dashboard Operativo</h2>
-                <p style="color: var(--text-muted); margin: 0 0 30px 0;">Métricas y rendimiento del restaurante (Módulo en construcción - Próximo Sprint).</p>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-label">Mesas Atendidas Hoy</span>
-                        <span class="stat-value">--</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Facturación Estimada</span>
-                        <span class="stat-value">$ --</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Plato Más Vendido</span>
-                        <span class="stat-value" style="font-size: 22px;">--</span>
-                    </div>
-                </div>
-
-                <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--glass-border); border-radius: 16px; height: 300px; display: flex; justify-content: center; align-items: center; color: var(--text-muted);">
-                    [ Área reservada para Gráficos Estadísticos ]
-                </div>
-            </div>
-
-        </main>
+<body>
+<div class="g-shell">
+  <header class="g-mobilebar" aria-label="Barra de Gerencia">
+    <div class="g-mobilebar-top">
+      <div class="g-mobile-brand sg-brand-unified" aria-label="Savage Grill, Gerencia">SAVAGE<span>GRILL.</span><small class="sg-role-unified">GERENCIA</small></div>
+      <div class="g-mobile-actions">
+        <div id="g-theme-mobile-slot"></div>
+        <button id="g-menu-open" class="g-menu-trigger" type="button" aria-label="Abrir menú de Gerencia" aria-controls="g-nav-drawer" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menú</span>
+        </button>
+      </div>
     </div>
+    <div class="g-mobile-current"><span>SECCIÓN ACTUAL</span><strong id="g-mobile-view">Gestión de personal</strong></div>
+  </header>
+  <div class="g-mobile-overlay" id="g-mobile-overlay" hidden aria-hidden="true"></div>
+  <aside class="g-sidebar" id="g-nav-drawer" aria-label="Navegación gerencial">
+    <div class="g-mobile-drawer-head"><span>Secciones de Gerencia</span><button id="g-menu-close" type="button" aria-label="Cerrar menú de Gerencia">×</button></div>
+    <a class="g-brand sg-brand-unified" href="gerente.html" aria-label="Savage Grill - Gerencia">SAVAGE<span>GRILL.</span></a>
+    <div class="g-caption sg-role-unified">GERENCIA</div>
+    <p class="g-nav-label">Gestión y análisis</p>
+    <nav class="g-nav">
+      <button class="g-nav-btn active" type="button" data-vista="personal" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2M16 3a4 4 0 0 1 0 8M18 15a4 4 0 0 1 5 4v2"/></svg>Gestión de personal</button>
+      <button class="g-nav-btn" type="button" data-vista="reportes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20v-7m6 7V5m6 15v-10m5 10V8"/></svg>Reportes y métricas</button>
+      <button class="g-nav-btn" type="button" id="g-ir-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18H4zM8 7h8M8 12h8M8 17h4"/></svg>Administración general</button>
+    </nav>
+    <div class="g-sidebar-footer">
+      <div class="g-theme-wrap"><span>Apariencia</span><div id="g-theme-desktop-slot"><div data-savage-theme="inline"></div></div></div>
+      <button class="g-theme" id="g-btn-tema" type="button" hidden aria-hidden="true" tabindex="-1"><span>Modo: Oscuro</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
+      <div class="g-profile"><div class="g-avatar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></div><span id="info-usuario">Gerente</span></div>
+      <button class="g-logout sg-logout-unificado sg-logout-lateral" id="g-cerrar-sesion" type="button"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
+    </div>
+  </aside>
+  <main class="g-main">
+    <section id="vista-personal" class="g-view">
+      <h1 class="g-view-title">Gestión de Personal</h1><p class="g-lead">Administrá las cuentas, roles y accesos del equipo desde un único lugar.</p>
+      <div class="g-grid">
+        <section class="g-panel g-col-12" aria-labelledby="g-alta-titulo">
+          <h3 id="g-alta-titulo">Registrar nuevo empleado</h3>
+          <p class="g-muted">Los accesos se crean en el servidor y los permisos dependen del rol asignado.</p>
+          <form class="g-form" id="form-empleado" autocomplete="off">
+            <div class="g-field"><label for="emp-nombre">Nombre *</label><input class="g-input" id="emp-nombre" maxlength="80" required autocomplete="given-name"></div>
+            <div class="g-field"><label for="emp-apellido">Apellido *</label><input class="g-input" id="emp-apellido" maxlength="80" required autocomplete="family-name"></div>
+            <div class="g-field"><label for="emp-usuario">Usuario de acceso *</label><input class="g-input" id="emp-usuario" maxlength="50" required autocomplete="off"></div>
+            <div class="g-field"><label for="emp-pass">Contraseña inicial *</label><input class="g-input" id="emp-pass" type="password" minlength="8" required autocomplete="new-password"></div>
+            <div class="g-field wide"><label for="emp-rol">Rol asignado *</label><select class="g-input" id="emp-rol" required><option value="">Cargando roles...</option></select></div>
+            <div class="g-form-actions"><button type="submit" class="g-btn g-btn-primary" id="g-crear-empleado">Registrar empleado</button><span class="g-muted">Mínimo 8 caracteres para la contraseña inicial.</span></div>
+          </form>
+          <div class="g-alert" id="msj-empleado" hidden role="status"></div>
+        </section>
+        <section class="g-panel g-col-12" aria-labelledby="g-plantilla-titulo">
+          <div class="g-panel-head"><div><h3 id="g-plantilla-titulo">Plantilla de empleados</h3><p class="g-muted">Consultá cuentas activas e inactivas, filtrá y editá datos.</p></div><button type="button" class="g-btn" id="g-refrescar-personal">Actualizar lista</button></div>
+          <div class="g-toolbar"><input class="g-input" id="g-buscar-empleado" placeholder="Buscar nombre, usuario o rol..." aria-label="Buscar empleado"><select class="g-input" id="g-filtrar-estado" aria-label="Filtrar empleados por estado"><option value="todos">Todos los estados</option><option value="activo">Activos</option><option value="inactivo">Inactivos</option></select><select class="g-input" id="g-filtrar-rol" aria-label="Filtrar empleados por rol"><option value="">Todos los roles</option></select></div>
+          <div class="g-summary" id="g-resumen-personal" aria-live="polite"></div><div class="g-alert" id="g-personal-alerta" hidden role="status"></div>
+          <div id="lista-empleados" class="g-employees"><div class="g-empty">Consultando empleados...</div></div>
+        </section>
+      </div>
+    </section>
+    <section id="vista-reportes" class="g-view" hidden>
+      <h1 class="g-view-title">Dashboard Operativo</h1><p class="g-lead">Indicadores calculados a partir de sesiones y pedidos reales del sistema. No equivalen a facturación cobrada.</p>
+      <div class="g-dashboard-actions"><div class="g-toolbar" style="margin:0"><label for="g-periodo" class="g-muted">Período</label><select class="g-input" id="g-periodo"><option value="hoy">Hoy</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option></select><button type="button" class="g-btn" id="g-actualizar-dashboard">Actualizar datos</button></div><span id="g-fecha-reporte" class="g-muted"></span></div>
+      <div class="g-alert" id="g-reporte-alerta" hidden role="status"></div>
+      <div class="g-kpis">
+        <article class="g-kpi"><span class="g-kpi-label">Sesiones abiertas en el período</span><strong id="g-kpi-sesiones" class="g-kpi-value">—</strong><div class="g-kpi-note">Según fecha de apertura de mesa.</div></article>
+        <article class="g-kpi"><span class="g-kpi-label">Sesiones cerradas en el período</span><strong id="g-kpi-cerradas" class="g-kpi-value">—</strong><div class="g-kpi-note">Según fecha de cierre.</div></article>
+        <article class="g-kpi"><span class="g-kpi-label">Consumo registrado</span><strong id="g-kpi-consumo" class="g-kpi-value">—</strong><div class="g-kpi-note">Total de pedidos; no confirma cobro.</div></article>
+        <article class="g-kpi"><span class="g-kpi-label">Mesas actualmente abiertas</span><strong id="g-kpi-abiertas" class="g-kpi-value">—</strong><div class="g-kpi-note">Estado actual de sesiones en SQL Server.</div></article>
+      </div>
+      <div class="g-grid">
+        <section class="g-panel g-col-6"><h3>Actividad de mesas</h3><p class="g-muted">Sesiones abiertas por día, dentro del período elegido.</p><div class="g-bars" id="g-grafico-sesiones"><div class="g-empty">Sin datos cargados.</div></div></section>
+        <section class="g-panel g-col-6"><h3>Productos más pedidos</h3><p class="g-muted">Unidades registradas en los detalles de las sesiones del período.</p><div class="g-bars" id="g-grafico-productos"><div class="g-empty">Sin datos cargados.</div></div></section>
+        <section class="g-panel g-col-12"><h3>Lectura de los indicadores</h3><p class="g-muted">Los datos proceden de <strong>sesiones-mesa</strong> y sus detalles de pedido; no son ventas liquidadas ni informes contables. Una sesión abierta también puede tener consumo. Las comandas rechazadas, anulaciones, cubiertos y pagos requieren criterios oficiales del backend antes de ofrecer indicadores de facturación neta, ticket promedio cobrado o rentabilidad.</p><p id="g-alcance-consulta" class="g-muted"></p></section>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="g-modal" id="g-modal-editar" hidden role="dialog" aria-modal="true" aria-labelledby="g-modal-titulo">
+  <div class="g-modal-dialog"><div class="g-modal-head"><h3 id="g-modal-titulo">Editar empleado</h3><button type="button" class="g-modal-close" id="g-cerrar-edicion" aria-label="Cerrar edición">×</button></div>
+    <p class="g-muted">Los cambios afectan el acceso del empleado. No se muestra ni recupera la contraseña actual.</p>
+    <form class="g-form" id="g-form-editar" autocomplete="off"><input type="hidden" id="g-editar-id">
+      <div class="g-field"><label for="g-editar-nombre">Nombre *</label><input class="g-input" id="g-editar-nombre" maxlength="80" required></div>
+      <div class="g-field"><label for="g-editar-apellido">Apellido *</label><input class="g-input" id="g-editar-apellido" maxlength="80" required></div>
+      <div class="g-field"><label for="g-editar-usuario">Usuario *</label><input class="g-input" id="g-editar-usuario" maxlength="50" required></div>
+      <div class="g-field"><label for="g-editar-rol">Rol *</label><select class="g-input" id="g-editar-rol" required><option value="">Cargando roles...</option></select></div>
+      <div class="g-field wide"><label for="g-editar-pass">Nueva contraseña (opcional)</label><input class="g-input" id="g-editar-pass" type="password" minlength="8" placeholder="Dejar vacío para conservarla" autocomplete="new-password"></div>
+      <div class="g-form-actions" style="justify-content:flex-end"><button type="button" class="g-btn" id="g-cancelar-edicion">Cancelar</button><button type="submit" class="g-btn g-btn-primary" id="g-guardar-edicion">Guardar cambios</button></div>
+    </form><div class="g-alert" id="g-edicion-alerta" hidden role="status"></div>
+  </div>
+</div>
 
-    <!-- SCRIPT PRINCIPAL -->
-    <script src="app.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const usuario = obtenerUsuarioActual();
-            if (!usuario || usuario.rol !== 'Gerente') {
-                alert("Acceso Restringido. Esta área es exclusiva para la Gerencia.");
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            document.getElementById('info-usuario').textContent = `${usuario.nombre} ${usuario.apellido} (Gerente)`;
-            
-            cargarRoles();
-            cargarEmpleados();
-
-            // ==========================================
-            // Control Local del Modo Oscuro
-            // ==========================================
-            const btnToggleTema = document.getElementById('btn-toggle-tema');
-            const spanTextoTema = btnToggleTema.querySelector('span');
-
-            const actualizarUIBotonTema = () => {
-                if (document.body.classList.contains('light-mode')) {
-                    spanTextoTema.textContent = 'Modo: Claro';
-                    btnToggleTema.style.background = 'rgba(0,0,0,0.05)';
-                    btnToggleTema.style.color = '#1a1a1a';
-                } else {
-                    spanTextoTema.textContent = 'Modo: Oscuro';
-                    btnToggleTema.style.background = 'rgba(255,255,255,0.05)';
-                    btnToggleTema.style.color = 'var(--text-main)';
-                }
-            };
-
-            const temaGuardadoPanel = localStorage.getItem('savage-tema');
-            if (temaGuardadoPanel === 'light') document.body.classList.add('light-mode');
-            actualizarUIBotonTema();
-
-            btnToggleTema.onclick = () => {
-                document.body.classList.toggle('light-mode');
-                actualizarUIBotonTema();
-                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-            };
-        });
-
-        function cambiarPestana(vista, btn) {
-            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            document.getElementById('vista-personal').style.display = vista === 'personal' ? 'block' : 'none';
-            document.getElementById('vista-reportes').style.display = vista === 'reportes' ? 'block' : 'none';
-        }
-
-        async function cargarRoles() {
-            try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/roles');
-                if (resp.ok) {
-                    const roles = await resp.json();
-                    document.getElementById('emp-rol').innerHTML = `<option value="" disabled selected>Seleccioná un rol...</option>` + 
-                        roles.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
-                }
-            } catch (e) {
-                console.error("Error cargando roles");
-            }
-        }
-
-        async function cargarEmpleados() {
-            const contenedor = document.getElementById('lista-empleados');
-            try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/empleados?incluir_inactivos=true');
-                if (resp.ok) {
-                    const empleados = await resp.json();
-                    contenedor.innerHTML = '';
-                    
-                    empleados.forEach(emp => {
-                        const colorRol = emp.rol === 'Gerente' ? '#e74c3c' : (emp.rol === 'Mozo' ? '#3498db' : '#2ecc71');
-                        
-                        contenedor.innerHTML += `
-                            <div class="empleado-card" style="${!emp.activo ? 'opacity: 0.5;' : ''}">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <div>
-                                        <div style="font-weight: bold; font-size: 18px; color: var(--text-main);">${emp.nombre} ${emp.apellido}</div>
-                                        <div style="color: var(--text-muted); font-size: 13px; font-family: monospace;">@${emp.usuario}</div>
-                                    </div>
-                                    <span style="background: ${colorRol}20; color: ${colorRol}; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid ${colorRol}40;">
-                                        ${emp.rol}
-                                    </span>
-                                </div>
-                                <div style="margin-top: 10px; display: flex; gap: 10px;">
-                                    <button onclick="cambiarEstadoEmpleado(${emp.id}, ${!emp.activo})" style="flex: 1; background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); padding: 8px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold;">
-                                        ${emp.activo ? 'Desactivar Acceso' : 'Reactivar Acceso'}
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-            } catch (e) {
-                contenedor.innerHTML = '<p style="color: var(--error);">Error al cargar el personal.</p>';
-            }
-        }
-
-        document.getElementById('form-empleado').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msj = document.getElementById('msj-empleado');
-            
-            const payload = {
-                nombre: document.getElementById('emp-nombre').value.trim(),
-                apellido: document.getElementById('emp-apellido').value.trim(),
-                usuario: document.getElementById('emp-usuario').value.trim(),
-                contrasena: document.getElementById('emp-pass').value,
-                rol: parseInt(document.getElementById('emp-rol').value),
-                activo: true
-            };
-
-            try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/empleados', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (resp.ok || resp.status === 201) {
-                    msj.textContent = "Empleado registrado con éxito.";
-                    msj.className = "message success";
-                    msj.style.display = "flex";
-                    document.getElementById('form-empleado').reset();
-                    cargarEmpleados();
-                } else {
-                    const err = await resp.json();
-                    msj.textContent = err.error || "No se pudo registrar el empleado.";
-                    msj.className = "message error";
-                    msj.style.display = "flex";
-                }
-            } catch (error) {
-                msj.textContent = "Error de conexión con el servidor.";
-                msj.className = "message error";
-                msj.style.display = "flex";
-            }
-        });
-
-        async function cambiarEstadoEmpleado(id, activar) {
-            try {
-                const resp = await apiFetch(`http://localhost:8080/api/v1/empleados/${id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ activo: activar })
-                });
-                
-                if (resp.ok) {
-                    cargarEmpleados();
-                } else {
-                    const err = await resp.json();
-                    alert(err.error || "No se pudo modificar el estado.");
-                }
-            } catch (e) {
-                alert("Error de conexión.");
-            }
-        }
-    </script>
+<!-- Confirmación propia de Savage Grill: ediciones y cambios de estado -->
+<div class="g-modal g-confirm-overlay" id="g-modal-confirmar" hidden role="dialog" aria-modal="true" aria-labelledby="g-confirmar-titulo" aria-describedby="g-confirmar-texto">
+  <div class="g-modal-dialog g-confirm-dialog" tabindex="-1">
+    <div class="g-confirm-icon" id="g-confirmar-icono" aria-hidden="true">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17h.01M12 7v6"/><circle cx="12" cy="12" r="10"/></svg>
+    </div>
+    <h3 class="g-confirm-title" id="g-confirmar-titulo">Confirmar acción</h3>
+    <p class="g-confirm-copy" id="g-confirmar-texto"></p>
+    <div class="g-confirm-actions">
+      <button class="g-btn" id="g-confirmar-cancelar" type="button">Cancelar</button>
+      <button class="g-btn g-btn-primary" id="g-confirmar-aceptar" type="button">Confirmar</button>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+<script src="gerente-panel.js"></script>
 </body>
 </html>

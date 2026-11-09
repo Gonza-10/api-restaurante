@@ -148,7 +148,6 @@ if (formulario) {
                 const textoBoton = estaActivo ? 'Ocultar Plato' : 'Reactivar Plato';
                 const colorBoton = estaActivo ? 'var(--text-muted)' : '#4CAF50';
                 
-                // Formateo de etiquetas de seguridad alimentaria
                 let badges = '';
                 if (item.vegetariano) badges += '<span style="background: #2ecc71; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">VEG</span>';
                 if (item.sin_tacc) badges += '<span style="background: #f39c12; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">SIN TACC</span>';
@@ -192,20 +191,115 @@ if (formulario) {
         }
     }
 
-    window.cambiarEstadoProducto = async function(idProducto, nuevoEstadoBoolean) {
-        try {
-            const respuesta = await apiFetch(`${API_URL}/${idProducto}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ activo: nuevoEstadoBoolean })
-            });
+    // Activar/ocultar productos de la carta. Es distinto de marcar un
+    // producto como "agotado" (esa operacion pertenece a Cocina).
+    // Evitamos alert() genericas: si la API rechaza PATCH, mostramos
+    // exactamente el error HTTP y el mensaje del servidor.
+    const cambiosEstadoEnCurso = new Set();
 
-            if (respuesta.ok) {
-                obtenerRegistros();
-            } else {
-                alert("Aviso: No se pudo cambiar el estado del producto.");
+    function mensajeEstadoProducto(texto, tipo = 'error') {
+        if (!contenedorLista) return;
+        let aviso = document.getElementById('sg-producto-estado-mensaje');
+        if (!aviso) {
+            aviso = document.createElement('p');
+            aviso.id = 'sg-producto-estado-mensaje';
+            aviso.setAttribute('role', 'status');
+            aviso.setAttribute('aria-live', 'polite');
+            contenedorLista.parentElement.insertBefore(aviso, contenedorLista);
+        }
+        aviso.className = `sg-admin-msg ${tipo}`;
+        aviso.hidden = !texto;
+        aviso.textContent = texto || '';
+        aviso.style.marginBottom = texto ? '15px' : '';
+    }
+
+    async function detalleErrorProducto(respuesta) {
+        const texto = await respuesta.text().catch(() => '');
+        let datos = null;
+        try { datos = JSON.parse(texto); } catch (_) { /* respuesta HTML o vacia */ }
+        const partes = [];
+        const format = (valor) => {
+            if (Array.isArray(valor)) return valor.map(format).join('; ');
+            if (valor && typeof valor === 'object') return Object.entries(valor)
+                .map(([k,v]) => `${k}: ${format(v)}`).join('; ');
+            return String(valor ?? '');
+        };
+        if (datos && typeof datos === 'object') {
+            for (const campo of ['error', 'detail', 'mensaje', 'texto']) {
+                if (datos[campo] != null) partes.push(format(datos[campo]));
             }
+            for (const [campo, valor] of Object.entries(datos)) {
+                if (!['error','detail','mensaje','texto'].includes(campo)) {
+                    partes.push(`${campo}: ${format(valor)}`);
+                }
+            }
+        } else if (texto && !/^\s*<!doctype|^\s*<html/i.test(texto)) {
+            partes.push(texto.replace(/<[^>]*>/g, '').trim().slice(0, 280));
+        }
+        return `HTTP ${respuesta.status}${partes.length ? ` — ${partes.join(' | ')}` : ''}`;
+    }
+
+    window.cambiarEstadoProducto = async function(idProducto, nuevoEstadoBoolean) {
+        const id = Number(idProducto);
+        if (!Number.isInteger(id) || id <= 0 || cambiosEstadoEnCurso.has(id)) return;
+        const producto = (window.productosAdmin || []).find(p => Number(p.id) === id);
+        const nombre = producto?.nombre || `producto #${id}`;
+        const ocultar = !nuevoEstadoBoolean;
+        const textoAccion = ocultar ? 'Ocultar plato' : 'Reactivar plato';
+        const descripcion = ocultar
+            ? `¿Querés ocultar "${nombre}" del catálogo? No se eliminará el producto ni su historial.`
+            : `¿Querés volver a mostrar "${nombre}" en la carta? Solo aparecerá para el cliente si también está disponible por stock.`;
+
+        // Se aprovecha el mismo modal de Savage Grill ya usado en Administracion.
+        const confirmado = typeof window.savageAdminConfirmar === 'function'
+            ? await window.savageAdminConfirmar({
+                titulo: textoAccion,
+                texto: descripcion,
+                aceptar: ocultar ? 'Ocultar plato' : 'Reactivar plato',
+                variante: ocultar ? 'danger' : 'success',
+                icono: ocultar ? '!' : '✓'
+            })
+            : window.confirm(descripcion);
+        if (!confirmado) return;
+
+        cambiosEstadoEnCurso.add(id);
+        mensajeEstadoProducto('Actualizando visibilidad del producto...', '');
+        try {
+            // PATCH parcial del campo "activo"; NO usar /agotar o /reactivar:
+            // esos endpoints corresponden al bloqueo manual de Cocina.
+            const url = `${API_URL}/${id}`;
+            const respuesta = await apiFetch(url, {
+                method: 'PATCH',
+                body: JSON.stringify({ activo: Boolean(nuevoEstadoBoolean) })
+            });
+            if (!respuesta.ok) {
+                const descripcionError = await detalleErrorProducto(respuesta);
+                console.error('[Savage Grill] Fallo al cambiar activo del producto', {
+                    producto: id, accion: textoAccion, status: respuesta.status,
+                    detalle: descripcionError
+                });
+                throw new Error(descripcionError);
+            }
+            const confirmadoServidor = await respuesta.json().catch(() => null);
+            if (confirmadoServidor && typeof confirmadoServidor.activo === 'boolean'
+                    && confirmadoServidor.activo !== Boolean(nuevoEstadoBoolean)) {
+                throw new Error('El servidor respondió OK, pero no aplicó el nuevo estado del producto.');
+            }
+            await obtenerRegistros();
+            const actualizado = (window.productosAdmin || []).find(p => Number(p.id) === id);
+            if (actualizado && typeof actualizado.activo === 'boolean'
+                    && actualizado.activo !== Boolean(nuevoEstadoBoolean)) {
+                throw new Error('La API respondió OK, pero la consulta del catálogo todavía muestra el estado anterior. Revisá la caché del backend.');
+            }
+            mensajeEstadoProducto(
+                ocultar ? `"${nombre}" fue ocultado de la carta.` : `"${nombre}" fue reactivado en la carta.`,
+                'success'
+            );
         } catch (error) {
-            console.error("Fallo de red al actualizar estado.");
+            console.error('[Savage Grill] No se pudo cambiar el estado del producto:', error);
+            mensajeEstadoProducto(`No se pudo ${ocultar ? 'ocultar' : 'reactivar'} "${nombre}". ${error.message || 'Error de conexión con la API.'}`);
+        } finally {
+            cambiosEstadoEnCurso.delete(id);
         }
     };
 
@@ -221,7 +315,7 @@ if (formulario) {
         document.getElementById('editar-sintacc').checked = Boolean(prod.sin_tacc);
         document.getElementById('editar-descripcion').value = prod.descripcion || "";
         document.getElementById('editar-imagen-url').value = prod.imagen_url && prod.imagen_url.startsWith('http') ? prod.imagen_url : "";
-        document.getElementById('editar-imagen-archivo').value = ""; // limpia el input file
+        document.getElementById('editar-imagen-archivo').value = ""; 
         
         document.getElementById('editar-error').style.display = 'none';
         document.getElementById('modal-editar').style.display = 'flex';
@@ -256,14 +350,12 @@ if (formulario) {
             if (urlImg) payload.imagen_url = urlImg;
 
             try {
-                // 1. Guardar datos JSON
                 const respuesta = await apiFetch(`${API_URL}/${idProd}`, {
                     method: 'PATCH',
                     body: JSON.stringify(payload)
                 });
 
                 if (respuesta.ok) {
-                    // 2. Si hay archivo local, subirlo también
                     const archivoInput = document.getElementById('editar-imagen-archivo');
                     if (archivoInput.files.length > 0) {
                         const formData = new FormData();
@@ -311,7 +403,6 @@ if (formulario) {
         btnSubmit.innerHTML = 'Guardando...';
 
         try {
-            // 1. Creamos el producto base
             const respuesta = await apiFetch(API_URL, {
                 method: 'POST',
                 body: JSON.stringify(payload)
@@ -320,7 +411,6 @@ if (formulario) {
             if (respuesta.status === 201) {
                 const resultado = await respuesta.json();
                 
-                // 2. Si eligió un archivo, lo subimos a la URL del nuevo producto
                 const archivoInput = document.getElementById('campo-imagen-archivo');
                 if (archivoInput.files.length > 0) {
                     const formData = new FormData();
@@ -430,5 +520,131 @@ async function confirmarPedido() {
             btnModal.textContent = textoOriginalBtn;
             btnModal.style.pointerEvents = 'auto';
         }, 3000);
+    }
+}
+
+/* ==========================================================================
+   GESTIÓN DE JORNADAS (GERENCIA) - NUEVA FUNCIONALIDAD
+   ========================================================================== */
+const API_JORNADA_BASE = 'http://localhost:8080/api/v1/jornada';
+
+window.cargarEstadoJornada = async function() {
+    const badge = document.getElementById('estado-jornada-badge');
+    if (!badge) return; // Si no estamos en la pantalla que tiene el badge, salir
+
+    try {
+        const resp = await apiFetch(`${API_JORNADA_BASE}/actual`, { method: 'GET' });
+        const data = await resp.json();
+        
+        const info = document.getElementById('info-jornada');
+        const btnAbrir = document.getElementById('btn-abrir-jornada');
+        const btnCerrar = document.getElementById('btn-cerrar-jornada');
+        const alertaCierre = document.getElementById('alerta-cierre');
+
+        if (data.abierta) {
+            badge.textContent = 'ABIERTO';
+            badge.style.background = '#2ecc71';
+            info.textContent = `Turno: ${data.jornada.turno_nombre} | Iniciado: ${new Date(data.jornada.fecha_hora_apertura).toLocaleTimeString()}`;
+            
+            btnAbrir.style.display = 'none';
+            btnCerrar.style.display = 'block';
+            alertaCierre.style.display = data.jornada.sugerir_cierre ? 'block' : 'none';
+        } else {
+            badge.textContent = 'CERRADO';
+            badge.style.background = '#e74c3c';
+            
+            let textoSugerido = data.turno_sugerido ? `(Sugerido: ${data.turno_sugerido.nombre})` : '(No hay turno activo)';
+            info.textContent = `El local no está tomando pedidos. ${textoSugerido}`;
+            
+            btnAbrir.style.display = 'block';
+            btnCerrar.style.display = 'none';
+            alertaCierre.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Error al cargar la jornada:", error);
+        if(document.getElementById('info-jornada')) {
+            document.getElementById('info-jornada').textContent = "Error al conectar con el servidor.";
+        }
+    }
+}
+
+window.abrirJornada = async function() {
+    try {
+        // Primer intento: abrir con el turno sugerido automáticamente
+        let resp = await apiFetch(`${API_JORNADA_BASE}/abrir`, {
+            method: 'POST',
+            body: JSON.stringify({}) 
+        });
+
+        // Si el back responde 400, no hay turno sugerido (estamos fuera de horario)
+        if (resp.status === 400) {
+            const turnosResp = await apiFetch('http://localhost:8080/api/v1/turnos', { method: 'GET' });
+            const turnos = await turnosResp.json();
+            
+            let mensaje = "Estás fuera de horario. Ingresá SOLO EL NÚMERO (ID) del turno:\n\n";
+            turnos.forEach(t => {
+                mensaje += `ID: ${t.id} - ${t.nombre} (${t.hora_apertura} a ${t.hora_cierre})\n`;
+            });
+
+            let turnoElegido = prompt(mensaje);
+            if (!turnoElegido) return; // Si cancela, salimos
+
+            let turnoId = parseInt(turnoElegido.trim());
+            if (isNaN(turnoId)) {
+                alert("Error: Tenés que ingresar solamente el número (ejemplo: 1 o 2).");
+                return;
+            }
+
+            // Segundo intento forzando el ID
+            resp = await apiFetch(`${API_JORNADA_BASE}/abrir`, {
+                method: 'POST',
+                body: JSON.stringify({ turno: turnoId })
+            });
+        }
+
+        if (resp.status === 409) {
+            alert("Ya hay una jornada abierta en este momento.");
+            return;
+        }
+
+        if (resp.ok) {
+            alert("¡Jornada iniciada con éxito!");
+            window.cargarEstadoJornada(); 
+        } else {
+            // ACÁ ESTÁ EL CAMBIO: Leemos el mensaje exacto del servidor de David
+            const errorData = await resp.json();
+            console.error("Motivo del rechazo:", errorData);
+            
+            // Mostramos el error real en pantalla
+            let mensajeError = errorData.error || errorData.turno || JSON.stringify(errorData);
+            alert("El servidor rechazó la apertura: " + mensajeError);
+        }
+    } catch (error) {
+        console.error("Error abriendo jornada:", error);
+    }
+}
+
+window.cerrarJornada = async function() {
+    if(!confirm("¿Estás seguro de cerrar la jornada actual? Las mesas abiertas deberán cobrarse igual.")) return;
+
+    try {
+        const resp = await apiFetch(`${API_JORNADA_BASE}/cerrar`, {
+            method: 'POST'
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok) {
+            let msj = "Jornada cerrada correctamente.";
+            if (data.advertencias && data.advertencias.length > 0) {
+                msj += "\n\nAtención:\n- " + data.advertencias.join("\n- ");
+            }
+            alert(msj);
+            window.cargarEstadoJornada();
+        } else {
+            alert(data.error || "Error al cerrar la jornada.");
+        }
+    } catch (error) {
+        console.error("Error cerrando jornada:", error);
     }
 }

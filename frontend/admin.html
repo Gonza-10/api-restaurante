@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Menú - Savage Grill</title>
+    <title>Administración - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <link rel="stylesheet" href="savage-calendar.css">
+    <script src="savage-calendar.js" defer></script>
     <style>
         /* ESTILOS EXCLUSIVOS PARA EL FORMULARIO ADMIN Y MODAL */
         .admin-form-group {
@@ -139,39 +142,728 @@
             height: 16px;
             cursor: pointer;
         }
+        /* PANEL ADMINISTRATIVO. El formulario y las tarjetas existentes se preservan. */
+        .sg-admin-layout { display:grid; grid-template-columns: 275px minmax(0,1fr); min-height:100vh; }
+        .sg-admin-sidebar { position:sticky; top:0; height:100vh; padding:26px 18px; background:rgba(10,10,10,.96); border-right:1px solid var(--glass-border); display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+        .sg-admin-main { min-width:0; padding:28px 32px 55px; }
+        .sg-admin-brand { font-size:25px; margin:0 0 4px; }
+        .sg-admin-caption { color:var(--text-muted); font-weight:800; font-size:11px; letter-spacing:1.5px; margin-bottom:16px; }
+        .sg-admin-group { color:var(--text-muted); font-size:10px; font-weight:900; letter-spacing:1.3px; margin:19px 10px 7px; }
+        .sg-admin-nav { width:100%; min-height:46px; text-align:left; border:1px solid transparent; padding:11px 14px; border-radius:12px; background:transparent; color:var(--text-muted); font-weight:750; cursor:pointer; font-size:14px; transition:all .18s; }
+        .sg-admin-nav:hover:not(:disabled), .sg-admin-nav:focus-visible { background:rgba(255,122,0,.08); color:var(--text-main); outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-admin-nav.active { background:rgba(255,122,0,.1); border-color:rgba(255,122,0,.23); color:var(--primary-orange); }
+        .sg-admin-nav:disabled { opacity:.48; cursor:not-allowed; }
+        .sg-admin-profile { border-top:1px solid var(--glass-border); padding:15px 8px 4px; margin-top:auto; color:var(--text-main); font-size:13px; font-weight:700; }
+        .sg-admin-side-btn { border:1px solid rgba(231,76,60,.35); background:rgba(231,76,60,.08); color:#f5756b; border-radius:10px; padding:11px; cursor:pointer; font-weight:800; }
+        .sg-admin-view[hidden] { display:none !important; }
+        .sg-admin-page-title { font-size:28px; color:var(--text-main); font-weight:900; margin:0 0 8px; }
+        .sg-admin-help { margin:0 0 24px; color:var(--text-muted); line-height:1.55; font-size:14px; }
+        .sg-admin-box { border:1px solid var(--glass-border); border-radius:16px; background:rgba(255,255,255,.025); padding:24px; margin-bottom:24px; }
+        .sg-admin-box h2 { margin:0 0 22px; font-size:19px; color:var(--primary-orange); font-weight:850; }
+        .sg-admin-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+        .sg-admin-field { display:flex; flex-direction:column; gap:7px; min-width:0; }
+        .sg-admin-field label { font-size:13px; font-weight:800; color:var(--text-muted); }
+        .sg-admin-field input,.sg-admin-field textarea { width:100%; padding:12px 13px; background:rgba(0,0,0,.45); color:var(--text-main); border:1px solid var(--glass-border); border-radius:10px; font:inherit; font-size:14px; }
+        .sg-admin-field textarea { resize:vertical; min-height:86px; }
+        .sg-admin-field input:focus-visible,.sg-admin-field textarea:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-admin-span2 { grid-column:1 / -1; }
+        .sg-admin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+        .sg-admin-primary { background:var(--primary-orange); color:white; padding:13px 19px; font:inherit; font-size:14px; font-weight:850; border:0; border-radius:10px; cursor:pointer; }
+        .sg-admin-primary:disabled { opacity:.55; cursor:wait; }
+        .sg-admin-secondary { background:transparent; color:var(--text-main); border:1px solid var(--glass-border); border-radius:10px; padding:11px 15px; cursor:pointer; font:inherit; font-size:13px; font-weight:750; }
+        .sg-admin-secondary:focus-visible,.sg-admin-primary:focus-visible,.sg-admin-side-btn:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-admin-danger { color:#f5756b; border-color:rgba(231,76,60,.45); }
+        .sg-admin-msg { white-space:pre-wrap; font-size:13px; margin:0; padding:10px 13px; border-radius:9px; }
+        .sg-admin-msg.error { color:#ff8b87; background:rgba(231,76,60,.09); }
+        .sg-admin-msg.success { color:#65db9e; background:rgba(46,204,113,.09); }
+        .sg-admin-toolbar { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:20px; }
+        .sg-admin-toolbar input[type="search"] { padding:11px 12px; background:rgba(0,0,0,.4); border:1px solid var(--glass-border); color:var(--text-main); border-radius:9px; font:inherit; flex:1 1 240px; min-width:0; }
+        .sg-admin-toolbar label { display:flex; gap:8px; align-items:center; font-size:13px; color:var(--text-main); }
+        .sg-admin-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(265px,1fr)); gap:16px; }
+        .sg-admin-card { display:flex; flex-direction:column; gap:10px; padding:20px; background:rgba(255,255,255,.025); border:1px solid var(--glass-border); border-radius:14px; overflow-wrap:anywhere; }
+        .sg-admin-card h3 { font-size:17px; margin:0; color:var(--text-main); }
+        .sg-admin-card p { margin:0; font-size:13px; color:var(--text-muted); line-height:1.45; }
+        .sg-admin-card p strong { color:var(--text-main); }
+        .sg-admin-card-footer { display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; padding-top:10px; }
+        .sg-admin-status { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; align-self:flex-start; white-space:nowrap; overflow-wrap:normal; word-break:normal; line-height:1.2; font-size:11px; font-weight:800; padding:4px 9px; border-radius:9px; }
+        .sg-admin-status.inactivo { color:#ffc9c5; border:1px solid #d5645b; }
+        .sg-admin-status.activo { color:#9cfdc4; border:1px solid #348a57; }
+        .sg-admin-main #vista-menu .login-page { width:100%; min-height:0; padding:0; }
+        .sg-admin-main #vista-menu .login-shell { width:100%; min-height:550px; }
+        .sg-admin-main #vista-menu .catalogo-section { width:100%; }
+        .sg-admin-main #vista-menu .hero-panel { padding:36px 32px; }
+        .sg-admin-main #vista-menu .form-panel { padding:26px; }
+        body.light-mode .sg-admin-sidebar { background:#fff; border-color:#e2e8f0; }
+        body.light-mode .sg-admin-box,body.light-mode .sg-admin-card { background:#fff; border-color:#e2e8f0; }
+        body.light-mode .sg-admin-field input,body.light-mode .sg-admin-field textarea,body.light-mode .sg-admin-toolbar input { background:#f8fafc; border-color:#d6dce5; color:#181818; }
+        @media (max-width:1150px) { .sg-admin-main #vista-menu .login-shell { grid-template-columns:1fr; } .sg-admin-main #vista-menu .hero-panel { min-height:265px; } }
+        @media (max-width:760px) { .sg-admin-layout { grid-template-columns:1fr; } .sg-admin-sidebar { position:static; height:auto; gap:5px; padding:15px; } .sg-admin-main { padding:24px 14px 45px; } .sg-admin-sidebar .sg-admin-caption { margin-bottom:2px; } .sg-admin-sidebar .sg-admin-group { margin-top:8px; } .sg-admin-sidebar .sg-admin-profile { margin-top:8px; } .sg-admin-form { grid-template-columns:1fr; } .sg-admin-span2 { grid-column:1; } .sg-admin-main #vista-menu .form-panel { padding:16px; } }
+
+        /* Etapa 2: navegación y pie, iguales al panel Gerencial. */
+        body > .btn-tema { display:none !important; } /* app.js conserva el tema global; aquí usamos el control integrado */
+        /* Modal de confirmación interno para evitar la alerta nativa del navegador */
+        .sg-admin-confirm-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); z-index:3200; display:flex; align-items:center; justify-content:center; padding:18px; }
+        .sg-admin-confirm-backdrop[hidden] { display:none !important; }
+        .sg-admin-confirm-dialog { width:min(460px, 96vw); border:1px solid var(--glass-border); border-radius:18px; background:linear-gradient(180deg, rgba(24,24,24,.96), rgba(12,12,12,.98)); box-shadow:0 20px 60px rgba(0,0,0,.45); padding:26px 24px 22px; }
+        body.light-mode .sg-admin-confirm-dialog { background:linear-gradient(180deg, #ffffff, #f8fafc); border-color:#e2e8f0; }
+        .sg-admin-confirm-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:14px; }
+        .sg-admin-confirm-icon { width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 46px; background:rgba(255,122,0,.14); color:var(--primary-orange); border:1px solid rgba(255,122,0,.25); }
+        .sg-admin-confirm-title { margin:0; font-size:23px; line-height:1.1; color:var(--text-main); font-weight:900; }
+        .sg-admin-confirm-text { margin:8px 0 0; color:var(--text-muted); line-height:1.6; font-size:14px; }
+        .sg-admin-confirm-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:22px; flex-wrap:wrap; }
+        .sg-admin-confirm-cancel,.sg-admin-confirm-ok { min-width:130px; border-radius:12px; padding:12px 16px; font:inherit; font-weight:850; cursor:pointer; transition:all .18s; }
+        .sg-admin-confirm-cancel { background:transparent; color:var(--text-main); border:1px solid var(--glass-border); }
+        .sg-admin-confirm-cancel:hover { background:rgba(255,255,255,.06); }
+        .sg-admin-confirm-ok { border:1px solid transparent; background:var(--primary-orange); color:#fff; }
+        .sg-admin-confirm-ok:hover { filter:brightness(1.08); }
+        .sg-admin-confirm-ok.danger { background:rgba(231,76,60,.95); }
+        .sg-admin-confirm-ok.success { background:rgba(46,204,113,.92); }
+        .sg-admin-confirm-cancel:focus-visible,.sg-admin-confirm-ok:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+
+        .sg-admin-layout { height:100vh; min-height:100vh; overflow:hidden; }
+        .sg-admin-sidebar { height:100vh; overflow:hidden; position:sticky; top:0; padding:28px 18px 18px; gap:0; }
+        .sg-admin-sidebar-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; padding:0 6px 12px 0; overscroll-behavior:contain; }
+        .sg-admin-sidebar-footer { flex:0 0 auto; display:flex; flex-direction:column; gap:14px; padding-top:18px; margin-top:8px; border-top:1px solid var(--glass-border); }
+        .sg-admin-main { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+        .sg-admin-sidebar .sg-admin-group:first-child { margin-top:10px; }
+        .sg-admin-theme { display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px 15px; border:1px solid var(--glass-border); border-radius:10px; color:var(--text-main); background:rgba(255,255,255,.05); cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:800; transition:background .2s; }
+        .sg-admin-theme:hover { background:rgba(255,255,255,.10); }
+        .sg-admin-theme svg { flex-shrink:0; }
+        .sg-admin-profile { display:flex; align-items:center; gap:12px; border:0; padding:0; margin:0; color:var(--text-main); font-size:14px; font-weight:800; min-width:0; }
+        #admin-perfil-nombre { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sg-admin-avatar { display:flex; justify-content:center; align-items:center; flex-shrink:0; width:36px; height:36px; border-radius:50%; color:var(--primary-orange); background:rgba(255,122,0,.15); border:1px solid var(--primary-orange); }
+        .sg-admin-side-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; padding:12px; min-height:48px; color:#e74c3c; background:rgba(231,76,60,.10); border:1px solid rgba(231,76,60,.30); border-radius:10px; font:inherit; font-weight:800; cursor:pointer; transition:background .2s,color .2s; }
+        .sg-admin-side-btn:hover { color:#fff; background:#e74c3c; }
+        .sg-admin-side-btn:focus-visible,.sg-admin-theme:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-admin-sidebar-scroll,.sg-admin-main,.sg-admin-main #vista-menu .form-panel,#modal-editar > .product-card { scrollbar-width:thin; scrollbar-color:#55423a transparent; }
+        .sg-admin-sidebar-scroll::-webkit-scrollbar,.sg-admin-main::-webkit-scrollbar,.sg-admin-main #vista-menu .form-panel::-webkit-scrollbar,#modal-editar > .product-card::-webkit-scrollbar { width:6px; height:6px; }
+        .sg-admin-sidebar-scroll::-webkit-scrollbar-track,.sg-admin-main::-webkit-scrollbar-track,.sg-admin-main #vista-menu .form-panel::-webkit-scrollbar-track,#modal-editar > .product-card::-webkit-scrollbar-track { background:transparent; }
+        .sg-admin-sidebar-scroll::-webkit-scrollbar-thumb,.sg-admin-main::-webkit-scrollbar-thumb,.sg-admin-main #vista-menu .form-panel::-webkit-scrollbar-thumb,#modal-editar > .product-card::-webkit-scrollbar-thumb { background:#55423a; border-radius:12px; }
+        .sg-admin-sidebar-scroll::-webkit-scrollbar-thumb:hover,.sg-admin-main::-webkit-scrollbar-thumb:hover { background:var(--primary-orange); }
+        body.light-mode .sg-admin-theme { background:#f8fafc; border-color:#e2e8f0; }
+        body.light-mode .sg-admin-sidebar-scroll,body.light-mode .sg-admin-main { scrollbar-color:#b4a49b transparent; }
+        @media (max-width:760px) {
+            .sg-admin-layout { height:auto; min-height:100vh; overflow:visible; }
+            .sg-admin-sidebar { position:static; height:auto; padding:18px; }
+            .sg-admin-sidebar-scroll { max-height:255px; min-height:0; overflow-y:auto; }
+            .sg-admin-sidebar-footer { margin-top:0; }
+            .sg-admin-main { overflow:visible; }
+        }
+
+        /* INSUMOS: usa las mismas tarjetas, formularios y colores del panel. */
+        .sg-admin-field select { width:100%; min-height:46px; padding:12px 13px; background:rgba(0,0,0,.45); color:var(--text-main); border:1px solid var(--glass-border); border-radius:10px; font:inherit; font-size:14px; }
+        .sg-admin-field select:focus-visible,.sg-admin-toolbar select:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        body.light-mode .sg-admin-field select { background:#f8fafc; border-color:#d6dce5; color:#181818; }
+        .sg-admin-muted-note { color:var(--text-muted); font-size:12px; line-height:1.55; margin:4px 0 0; }
+        .sg-admin-metric { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; color:var(--text-muted); }
+        .sg-admin-metric strong { color:var(--text-main); text-align:right; }
+        .sg-admin-state { display:inline-flex; align-items:center; width:max-content; padding:4px 9px; border:1px solid var(--glass-border); border-radius:9px; font-size:11px; font-weight:800; white-space:nowrap; }
+        .sg-admin-state.critico,.sg-admin-state.agotado { border-color:rgba(231,76,60,.65); color:#ff8b87; }
+        .sg-admin-state.bajo { border-color:rgba(255,179,48,.55); color:#ffd18a; }
+        .sg-admin-state.ok { border-color:#348a57; color:#9cfdc4; }
+        .sg-admin-state.sinobjetivo { border-color:rgba(160,160,160,.35); color:var(--text-muted); }
+        .sg-admin-minirow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:9px; }
+        .sg-admin-supplier-choices { display:grid; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); gap:10px; }
+        .sg-admin-supplier-choice { display:flex; align-items:center; gap:9px; padding:12px; border:1px solid var(--glass-border); border-radius:10px; color:var(--text-main); cursor:pointer; font-size:13px; }
+        .sg-admin-supplier-choice input { accent-color:var(--primary-orange); width:16px; height:16px; }
+        .sg-admin-supplier-choice:focus-within { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .sg-admin-supplier-choices:empty::after { content:'No hay proveedores activos para seleccionar.'; color:var(--text-muted); font-size:13px; }
+        .sg-admin-toolbar select { padding:11px 12px; background:rgba(0,0,0,.4); color:var(--text-main); border:1px solid var(--glass-border); border-radius:9px; font:inherit; font-size:13px; }
+        body.light-mode .sg-admin-toolbar select { background:#f8fafc; color:#181818; border-color:#d6dce5; }
+
+
+        /* SAVAGE SELECT: menú desplegable propio. No usa el listado azul nativo de Chrome. */
+        .sg-select-shell { position:relative; display:block; width:100%; min-width:0; flex-shrink:1; }
+        .sg-select-shell .sg-select-native { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; margin:0 !important; border:0 !important; opacity:0 !important; clip-path:inset(50%); overflow:hidden; pointer-events:none; }
+        .sg-select-button { width:100%; min-height:46px; padding:11px 14px; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--text-main); font:inherit; font-size:14px; font-weight:500; background:#0b0b0b; border:1px solid var(--glass-border); border-radius:10px; cursor:pointer; transition:border-color .18s, background .18s, box-shadow .18s; }
+        .sg-select-button:hover { border-color:rgba(255,122,0,.65); }
+        .sg-select-button:focus-visible, .sg-select-button[aria-expanded="true"] { outline:2px solid var(--primary-orange); outline-offset:2px; border-color:var(--primary-orange); }
+        .sg-select-button:disabled { opacity:.55; cursor:not-allowed; }
+        .sg-select-value { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sg-select-button.sg-select-placeholder .sg-select-value { color:var(--text-muted); }
+        .sg-select-arrow { flex-shrink:0; width:10px; height:10px; border-right:2px solid var(--primary-orange); border-bottom:2px solid var(--primary-orange); transform:translateY(-2px) rotate(45deg); transition:transform .2s; margin:0 4px 3px; }
+        .sg-select-button[aria-expanded="true"] .sg-select-arrow { transform:translateY(3px) rotate(225deg); }
+        .sg-select-list { position:fixed; z-index:4100; box-sizing:border-box; max-height:min(300px, 55vh); overflow-y:auto; overscroll-behavior:contain; border:1px solid rgba(255,122,0,.58); border-radius:12px; background:#151313; color:#f5f5f5; padding:6px; box-shadow:0 18px 45px rgba(0,0,0,.65); scrollbar-width:thin; scrollbar-color:#805039 transparent; }
+        .sg-select-list[hidden] { display:none !important; }
+        .sg-select-list::-webkit-scrollbar { width:6px; }
+        .sg-select-list::-webkit-scrollbar-thumb { background:#805039; border-radius:8px; }
+        .sg-select-option { display:flex; align-items:center; gap:9px; width:100%; border:0; border-radius:8px; color:inherit; padding:12px 13px; line-height:1.35; font-size:14px; font-weight:550; overflow-wrap:anywhere; cursor:pointer; }
+        .sg-select-option[aria-disabled="true"] { opacity:.38; cursor:not-allowed; }
+        .sg-select-option[aria-selected="true"] { color:#ffb16c; background:rgba(255,122,0,.13); }
+        .sg-select-option.sg-select-highlight:not([aria-disabled="true"]), .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.23); color:#fff; }
+        .sg-select-option.sg-select-highlight { outline:1px solid rgba(255,122,0,.5); outline-offset:-1px; }
+        body.light-mode .sg-select-button { background:#f8fafc; color:#181818; border-color:#d6dce5; }
+        body.light-mode .sg-select-list { background:#ffffff; color:#181818; border-color:rgba(224,109,0,.7); box-shadow:0 18px 45px rgba(0,0,0,.17); }
+        body.light-mode .sg-select-option[aria-selected="true"] { color:#9f4200; background:rgba(255,122,0,.13); }
+        body.light-mode .sg-select-option.sg-select-highlight:not([aria-disabled="true"]),body.light-mode .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.20); color:#181818; }
+        .sg-select-shell:has(> .admin-input) .sg-select-button { min-height:52px; }
+        .sg-admin-toolbar .sg-select-shell,.sg-compra-tools .sg-select-shell { flex:0 1 auto; width:auto; min-width:115px; }
+        .sg-admin-toolbar .sg-select-button,.sg-compra-tools .sg-select-button { min-height:42px; }
+        @media (max-width:650px) { .sg-select-list { max-height:min(260px, 55vh); } }
+
+        /* Etapa Compras: tarjetas, selectores y tablas adaptables al ancho disponible */
+        .sg-admin-metric > span:first-child { flex:0 0 auto; white-space:nowrap; }
+        .sg-admin-metric > strong { min-width:0; overflow-wrap:anywhere; }
+        .sg-admin-field input[type="date"] { color-scheme:dark; }
+        body.light-mode .sg-admin-field input[type="date"] { color-scheme:light; }
+        .sg-compra-lineas { display:flex; flex-direction:column; gap:16px; }
+        .sg-compra-linea { border:1px solid var(--glass-border); border-radius:14px; background:rgba(255,255,255,.015); padding:18px; }
+        .sg-compra-linea-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+        .sg-compra-linea-header h3 { margin:0; font-size:15px; color:var(--text-main); }
+        .sg-compra-linea-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+        .sg-compra-linea .sg-admin-field input,.sg-compra-linea .sg-admin-field select { min-width:0; }
+        .sg-compra-linea [hidden] { display:none !important; }
+        .sg-compra-linea .sg-admin-field label { line-height:1.35; }
+        .sg-compra-mensaje { padding-top:9px; font-size:13px; color:var(--text-muted); }
+        .sg-compra-total { font-weight:900; color:var(--primary-orange); }
+        .sg-compra-lista { display:grid; gap:14px; }
+        .sg-compra-tarjeta { border:1px solid var(--glass-border); border-radius:13px; background:rgba(255,255,255,.018); padding:19px; }
+        .sg-compra-tarjeta h3 { margin:0; color:var(--text-main); font-size:17px; }
+        .sg-compra-details { display:flex; flex-wrap:wrap; gap:8px 22px; margin:10px 0 16px; color:var(--text-muted); font-size:13px; }
+        .sg-compra-table-scroll { overflow-x:auto; max-width:100%; scrollbar-width:thin; scrollbar-color:#55423a transparent; }
+        .sg-compra-table { border-collapse:collapse; min-width:610px; width:100%; font-size:13px; color:var(--text-main); }
+        .sg-compra-table th { text-align:left; color:var(--text-muted); padding:11px 10px; border-bottom:1px solid var(--glass-border); font-weight:850; }
+        .sg-compra-table td { padding:12px 10px; border-bottom:1px solid var(--glass-border); vertical-align:top; }
+        .sg-compra-baja { border:1px solid rgba(231,76,60,.4); background:rgba(231,76,60,.04); }
+        .sg-compra-table .sg-admin-secondary { padding:8px 11px; white-space:nowrap; }
+        .sg-compra-tools { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:16px; }
+        .sg-compra-tools label { display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:13px; }
+        .sg-compra-tools select { min-height:40px; border:1px solid var(--glass-border); background:rgba(0,0,0,.4); color:var(--text-main); padding:9px; border-radius:9px; font:inherit; }
+        body.light-mode .sg-compra-linea,body.light-mode .sg-compra-tarjeta { background:#fff; border-color:#e2e8f0; }
+        body.light-mode .sg-compra-tools select { background:#fff; color:#181818; border-color:#e2e8f0; }
+        @media(max-width:940px) { .sg-compra-linea-grid { grid-template-columns:1fr; } .sg-compra-linea-grid .sg-admin-span2 { grid-column:1; } }
+
+
+        /* ÍCONOS DEL MENÚ: mismo estilo de trazo que Gerencia, sin dependencias externas. */
+        .sg-admin-sidebar .sg-admin-nav { display:flex; align-items:center; gap:12px; text-align:left; }
+        .sg-admin-sidebar .sg-nav-icon { width:18px; height:18px; flex:0 0 18px; color:currentColor; }
+        .sg-admin-sidebar .sg-nav-label { min-width:0; flex:1; line-height:1.35; }
+
+
+        /* P12: El enlace a Gerencia se muestra únicamente si /me confirma rol Gerente.
+           Evita que display:flex del menú anule el atributo HTML hidden. */
+        .sg-admin-sidebar #admin-ir-gerente[hidden] {
+            display: none !important;
+        }
+
+        /* P12: Microinteracciones de los filtros, en línea con Savage Grill. */
+        #mov-buscar, #mov-limpiar {
+            transition: transform .2s ease, box-shadow .2s ease,
+                        background-color .2s ease, border-color .2s ease;
+            will-change: transform;
+        }
+        #mov-buscar:hover:not(:disabled) {
+            background-color: var(--primary-hover, #ed6900);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 122, 0, .32);
+        }
+        #mov-limpiar:hover:not(:disabled) {
+            background-color: rgba(255, 122, 0, .10);
+            border-color: rgba(255, 122, 0, .55);
+            transform: translateY(-2px);
+            box-shadow: 0 7px 18px rgba(255, 122, 0, .17);
+        }
+        #mov-buscar:active:not(:disabled), #mov-limpiar:active:not(:disabled) {
+            transform: translateY(0) scale(.98);
+            box-shadow: 0 3px 9px rgba(255, 122, 0, .12);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #mov-buscar, #mov-limpiar { transition: none; will-change: auto; }
+            #mov-buscar:hover:not(:disabled), #mov-limpiar:hover:not(:disabled),
+            #mov-buscar:active:not(:disabled), #mov-limpiar:active:not(:disabled) {
+                transform: none;
+            }
+        }
+
+        /* Movimientos: historial de stock, solo lectura; mantiene la estética Savage Grill. */
+        .sg-mov-filtros { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+        .sg-mov-filtros > .sg-admin-field { min-width:0; }
+        .sg-mov-filtros input[type="date"] { min-height:46px; color-scheme:dark; }
+        body.light-mode .sg-mov-filtros input[type="date"] { color-scheme:light; }
+        .sg-mov-tools { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:18px; }
+        .sg-mov-resumen { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin:0 0 18px; font-size:13px; color:var(--text-muted); }
+        .sg-mov-resumen strong { font-size:17px; color:var(--primary-orange); }
+        .sg-mov-tabla-container { width:100%; overflow-x:auto; scrollbar-width:thin; scrollbar-color:#55423a transparent; }
+        .sg-mov-tabla { border-collapse:collapse; width:100%; min-width:940px; color:var(--text-main); font-size:13px; }
+        .sg-mov-tabla th { text-align:left; padding:13px 12px; color:var(--text-muted); font-size:12px; font-weight:850; border-bottom:1px solid var(--glass-border); white-space:nowrap; }
+        .sg-mov-tabla td { padding:14px 12px; vertical-align:top; border-bottom:1px solid var(--glass-border); }
+        .sg-mov-tabla tbody tr:hover { background:rgba(255,122,0,.035); }
+        .sg-mov-tipo { display:inline-block; padding:5px 9px; border-radius:9px; color:var(--text-main); border:1px solid var(--glass-border); font-size:12px; font-weight:800; white-space:nowrap; }
+        .sg-mov-tipo.compra,.sg-mov-tipo.devolucion { color:#84e6a7; border-color:rgba(46,204,113,.35); }
+        .sg-mov-tipo.consumo,.sg-mov-tipo.perdida,.sg-mov-tipo.vencido { color:#ff9994; border-color:rgba(231,76,60,.3); }
+        .sg-mov-tipo.elaboracion { color:#8bcaff; border-color:rgba(52,152,219,.4); }
+        .sg-mov-cantidad { font-weight:850; white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .sg-mov-motivo { display:block; margin-top:5px; font-size:12px; color:var(--text-muted); line-height:1.5; overflow-wrap:anywhere; }
+        .sg-mov-detalle { color:var(--text-muted); font-size:12px; line-height:1.6; }
+        .sg-mov-sin-registros { padding:24px 0; color:var(--text-muted); font-size:14px; }
+        @media(max-width:1080px) { .sg-mov-filtros { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media(max-width:650px) { .sg-mov-filtros { grid-template-columns:1fr; } }
+
+        /* P13: efecto del menú lateral sin recortar el borde izquierdo.
+           El scroll es el único elemento con overflow; reservamos margen interior
+           y dibujamos el foco dentro de cada botón. */
+        .sg-admin-sidebar-scroll {
+            box-sizing: border-box;
+            padding-left: 7px;
+            padding-right: 12px;
+            padding-top: 4px;
+        }
+        .sg-admin-sidebar .sg-admin-nav {
+            box-sizing: border-box;
+            transform-origin: center center;
+            transition: background-color .2s ease, border-color .2s ease,
+                        color .2s ease, transform .2s ease, box-shadow .2s ease;
+        }
+        .sg-admin-sidebar .sg-admin-nav:hover:not(:disabled) {
+            outline: none;
+            transform: translateY(-1px);
+            box-shadow: 0 5px 14px rgba(255, 122, 0, .13);
+        }
+        .sg-admin-sidebar .sg-admin-nav:focus-visible {
+            outline: 2px solid var(--primary-orange);
+            outline-offset: -2px;
+        }
+        .sg-admin-sidebar .sg-admin-nav:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sg-admin-sidebar .sg-admin-nav { transition: none; }
+            .sg-admin-sidebar .sg-admin-nav:hover:not(:disabled),
+            .sg-admin-sidebar .sg-admin-nav:active:not(:disabled) {
+                transform: none;
+            }
+        }
+
+        /* P14: colores del menú de Gerencia; conserva las microanimaciones de Admin. */
+        .sg-admin-sidebar .sg-admin-nav .sg-nav-icon {
+            color: var(--primary-orange);
+        }
+        .sg-admin-sidebar .sg-admin-nav .sg-nav-label {
+            color: var(--text-muted);
+            transition: color .2s ease;
+        }
+        .sg-admin-sidebar .sg-admin-nav.active .sg-nav-label {
+            color: var(--primary-orange);
+        }
+        .sg-admin-sidebar .sg-admin-nav:hover:not(:disabled):not(.active) .sg-nav-label,
+        .sg-admin-sidebar .sg-admin-nav:focus-visible:not(.active) .sg-nav-label {
+            color: var(--text-main);
+        }
+        /* Las opciones pendientes siguen deshabilitadas, pero su icono naranja
+           se ve igual que en Gerencia y el texto queda atenuado. */
+        .sg-admin-sidebar .sg-admin-nav:disabled {
+            opacity: 1;
+            cursor: not-allowed;
+        }
+        .sg-admin-sidebar .sg-admin-nav:disabled .sg-nav-icon {
+            opacity: .72;
+        }
+        .sg-admin-sidebar .sg-admin-nav:disabled .sg-nav-label {
+            opacity: .65;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sg-admin-sidebar .sg-admin-nav .sg-nav-label { transition: none; }
+        }
+
+        /* P15 - Control de inventario: conserva colores, tarjetas y microanimaciones. */
+        .sg-ajustes-grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:24px; align-items:start; }
+        .sg-ajustes-grid .sg-admin-box { min-width:0; margin-bottom:0; }
+        .sg-ajustes-info { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0 18px; }
+        .sg-ajustes-valor { min-width:0; padding:14px 10px; border:1px solid var(--glass-border); border-radius:11px; background:rgba(0,0,0,.14); }
+        .sg-ajustes-valor .etiqueta { font-size:12px; display:block; margin-bottom:7px; color:var(--text-muted); }
+        .sg-ajustes-valor strong { display:block; font-size:16px; color:var(--text-main); overflow-wrap:anywhere; }
+        .sg-ajustes-valor strong.positivo { color:#6bd59f; }
+        .sg-ajustes-valor strong.negativo { color:#ff9390; }
+        .sg-ajustes-ayuda { color:var(--text-muted); font-size:12px; line-height:1.55; margin:7px 0 0; }
+        .sg-ajustes-precaucion { display:block; border-left:3px solid var(--primary-orange); background:rgba(255,122,0,.075); border-radius:7px; padding:12px 14px; line-height:1.5; color:var(--text-main); font-size:13px; margin:0 0 18px; }
+        .sg-ajustes-form { display:flex; flex-direction:column; gap:16px; }
+        .sg-ajustes-line { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .sg-ajustes-estado { padding:14px; border:1px solid var(--glass-border); border-radius:12px; background:rgba(0,0,0,.14); font-size:14px; line-height:1.55; color:var(--text-main); }
+        .sg-ajustes-estado strong { display:block; color:var(--primary-orange); font-size:17px; margin-bottom:4px; }
+        .sg-ajustes-estado.consistente { border-color:rgba(46,204,113,.45); }
+        .sg-ajustes-estado.consistente strong { color:#71e5a6; }
+        .sg-ajustes-estado.inconsistente { border-color:rgba(231,76,60,.45); }
+        .sg-ajustes-estado.inconsistente strong { color:#ffa09b; }
+        .sg-ajustes-incidencias { display:grid; gap:10px; margin-top:15px; }
+        .sg-ajustes-incidencia { border:1px solid var(--glass-border); border-radius:10px; padding:12px; min-width:0; }
+        .sg-ajustes-incidencia strong { display:block; margin-bottom:7px; color:var(--text-main); }
+        .sg-ajustes-incidencia p { margin:3px 0; font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+        .sg-ajustes-grid .sg-admin-primary, .sg-ajustes-grid .sg-admin-secondary { transition:transform .2s, background-color .2s, border-color .2s, box-shadow .2s; }
+        .sg-ajustes-grid .sg-admin-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 20px rgba(255,122,0,.3); }
+        .sg-ajustes-grid .sg-admin-secondary:hover:not(:disabled) { transform:translateY(-2px); border-color:rgba(255,122,0,.5); background:rgba(255,122,0,.08); box-shadow:0 6px 16px rgba(255,122,0,.13); }
+        .sg-ajustes-grid .sg-admin-primary:active:not(:disabled), .sg-ajustes-grid .sg-admin-secondary:active:not(:disabled) { transform:translateY(0) scale(.98); }
+        body.light-mode .sg-ajustes-valor,body.light-mode .sg-ajustes-estado { background:#fff; }
+        @media(max-width:1150px) { .sg-ajustes-grid { grid-template-columns:1fr; } }
+        @media(max-width:550px) { .sg-ajustes-info { grid-template-columns:1fr; } }
+        @media(prefers-reduced-motion:reduce) { .sg-ajustes-grid button { transition:none; } .sg-ajustes-grid button:hover { transform:none !important; } }
+
+        /* RECETAS Y ELABORACIONES · misma estética de Savage Grill */
+        .sg-receta-subnav { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 22px; }
+        .sg-receta-tab { border:1px solid var(--glass-border); background:rgba(255,255,255,.025); color:var(--text-muted); padding:12px 18px; border-radius:11px; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:transform .2s, box-shadow .2s, background .2s, color .2s; }
+        .sg-receta-tab:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 18px rgba(255,122,0,.18); color:var(--text-main); }
+        .sg-receta-tab.active { background:rgba(255,122,0,.12); color:var(--primary-orange); border-color:rgba(255,122,0,.4); }
+        .sg-receta-tab:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        .sg-receta-subview[hidden] { display:none !important; }
+        .sg-receta-grid { display:grid; grid-template-columns:minmax(0,1.06fr) minmax(0,1fr); align-items:start; gap:22px; }
+        .sg-receta-grid .sg-admin-box { margin-bottom:0; min-width:0; }
+        .sg-receta-ingrediente { border:1px solid var(--glass-border); background:rgba(255,255,255,.025); border-radius:12px; padding:15px; margin:0 0 12px; }
+        .sg-receta-ing-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(100px,1fr); gap:13px; align-items:end; }
+        .sg-receta-ing-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-top:11px; }
+        .sg-receta-checkbox { display:flex; align-items:center; gap:9px; color:var(--text-main); font-size:13px; font-weight:750; cursor:pointer; }
+        .sg-receta-checkbox input { width:17px; height:17px; accent-color:var(--primary-orange); }
+        .sg-receta-subview .sg-admin-primary,.sg-receta-subview .sg-admin-secondary { transition:transform .2s, box-shadow .2s, background-color .2s, border-color .2s; }
+        .sg-receta-subview .sg-admin-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 22px rgba(255,122,0,.32); }
+        .sg-receta-subview .sg-admin-secondary:hover:not(:disabled) { transform:translateY(-2px); border-color:rgba(255,122,0,.65); box-shadow:0 5px 14px rgba(255,122,0,.12); }
+        .sg-receta-subview .sg-admin-primary:active,.sg-receta-subview .sg-admin-secondary:active { transform:translateY(0) scale(.985); }
+        .sg-receta-small { font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 14px; }
+        .sg-receta-lista { display:grid; gap:13px; max-height:65vh; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#55423a transparent; }
+        .sg-receta-lista .sg-admin-card { gap:9px; }
+        .sg-receta-ingredientes-ver { margin:2px 0 0; padding-left:20px; font-size:13px; color:var(--text-muted); line-height:1.8; }
+        .sg-receta-pill { display:inline-block; padding:3px 8px; border:1px solid rgba(255,122,0,.34); color:var(--primary-orange); border-radius:9px; font-weight:750; font-size:11px; white-space:nowrap; }
+        .sg-receta-inline { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+        .sg-receta-strong { font-weight:850; color:var(--text-main); }
+        .sg-receta-boxline { border-top:1px solid var(--glass-border); margin-top:14px; padding-top:14px; }
+        .sg-receta-subview .sg-admin-field input:not([type=checkbox]),.sg-receta-subview .sg-admin-field select { min-width:0; }
+        body.light-mode .sg-receta-tab,body.light-mode .sg-receta-ingrediente { background:#fff; border-color:#e2e8f0; }
+        @media(max-width:1130px) { .sg-receta-grid { grid-template-columns:1fr; } .sg-receta-lista { max-height:none; } }
+        @media(max-width:620px) { .sg-receta-ing-grid { grid-template-columns:1fr; } .sg-receta-subnav { display:grid; grid-template-columns:1fr; } .sg-receta-tab { text-align:left; } }
+        @media(prefers-reduced-motion:reduce) { .sg-receta-subview button,.sg-receta-tab { transition:none !important; } .sg-receta-subview button:hover,.sg-receta-tab:hover { transform:none !important; } }
+
+
+        /* P28 — Reposición y pérdidas. Estética consistente con Administración. */
+        #vista-reposicion .sg-rp-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+        #vista-reposicion .sg-rp-tab{border:1px solid var(--glass-border);border-radius:11px;background:rgba(255,255,255,.025);color:var(--text-muted);padding:12px 18px;font:inherit;font-weight:850;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s,color .2s,border-color .2s}
+        #vista-reposicion .sg-rp-tab:hover,#vista-reposicion .sg-admin-primary:hover:not(:disabled),#vista-reposicion .sg-admin-secondary:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(255,122,0,.55);box-shadow:0 5px 15px rgba(255,122,0,.14)}
+        #vista-reposicion .sg-rp-tab[aria-selected="true"]{background:rgba(255,122,0,.12);color:var(--primary-orange);border-color:rgba(255,122,0,.5)}
+        #vista-reposicion .sg-rp-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:22px;align-items:start}
+        #vista-reposicion .sg-rp-cards{display:grid;gap:12px}
+        #vista-reposicion .sg-rp-card{border:1px solid var(--glass-border);border-radius:13px;padding:16px 18px;background:rgba(255,255,255,.018)}
+        #vista-reposicion .sg-rp-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        #vista-reposicion .sg-rp-card-head h3{color:var(--text-main);font-size:16px;margin:0}
+        #vista-reposicion .sg-rp-card p{font-size:13px;color:var(--text-muted);line-height:1.55;margin:8px 0 0}
+        #vista-reposicion .sg-rp-badge{font-size:11px;font-weight:800;border:1px solid rgba(255,122,0,.4);border-radius:9px;padding:4px 9px;color:var(--primary-orange)}
+        #vista-reposicion .sg-rp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+        #vista-reposicion .sg-rp-stat{border:1px solid var(--glass-border);background:rgba(255,255,255,.025);border-radius:12px;padding:14px;min-width:0}
+        #vista-reposicion .sg-rp-stat span{display:block;font-size:12px;color:var(--text-muted);margin-bottom:8px}
+        #vista-reposicion .sg-rp-stat strong{display:block;color:var(--text-main);font-weight:850;font-size:19px;overflow-wrap:anywhere}
+        #vista-reposicion .sg-rp-note{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 18px}
+        #vista-reposicion .sg-rp-history{display:grid;gap:12px;max-height:680px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#55423a transparent}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar{width:6px}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar-thumb{background:#55423a;border-radius:12px}
+        #vista-reposicion .sg-rp-history::-webkit-scrollbar-thumb:hover{background:var(--primary-orange)}
+        #vista-reposicion .sg-rp-filter{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
+        #vista-reposicion .sg-rp-filter input{flex:1 1 180px;min-width:0;background:rgba(0,0,0,.45);border:1px solid var(--glass-border);padding:12px;color:var(--text-main);border-radius:10px;font:inherit}
+        #vista-reposicion .sg-admin-primary,#vista-reposicion .sg-admin-secondary{transition:transform .2s,box-shadow .2s,border-color .2s,background .2s}
+        #vista-reposicion .sg-rp-tab:focus-visible,#vista-reposicion input:focus-visible{outline:2px solid var(--primary-orange);outline-offset:2px}
+        #vista-reposicion .sg-rp-subview[hidden],#vista-reposicion .sg-admin-field[hidden]{display:none!important}
+        body.light-mode #vista-reposicion .sg-rp-card,body.light-mode #vista-reposicion .sg-rp-stat,body.light-mode #vista-reposicion .sg-rp-tab{background:#fff;border-color:#e2e8f0}
+        body.light-mode #vista-reposicion .sg-rp-filter input{background:#f8fafc;color:#181818}
+        @media(max-width:1100px){#vista-reposicion .sg-rp-grid{grid-template-columns:1fr}}
+        @media(max-width:630px){#vista-reposicion .sg-rp-stats{grid-template-columns:1fr}}
+        @media(prefers-reduced-motion:reduce){#vista-reposicion .sg-rp-tab,#vista-reposicion button{transition:none!important}#vista-reposicion .sg-rp-tab:hover,#vista-reposicion button:hover{transform:none!important}}
+
+        /* P33 - Calendario Savage Grill: sin calendario nativo del navegador */
+        #vista-jornada .sg-je-date-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:51px;padding:12px 15px;border-radius:11px;border:1px solid var(--glass-border);background:#0a0a0a;color:var(--text-main);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:border-color .18s,box-shadow .18s}
+        #vista-jornada .sg-je-date-trigger svg{flex-shrink:0;color:var(--primary-orange)}
+        #vista-jornada .sg-je-date-trigger:hover{border-color:rgba(255,122,0,.55)}
+        #vista-jornada .sg-je-date-trigger:focus-visible,#je-calendario button:focus-visible{outline:2px solid var(--primary-orange);outline-offset:2px}
+        #vista-jornada .sg-je-date-trigger.sin-fecha #je-fecha-visual{color:var(--text-muted)}
+        #vista-jornada .sg-je-date-hint{font-size:12px;color:var(--text-muted)}
+        #je-calendario[hidden]{display:none!important}
+        #je-calendario{position:fixed;z-index:4500;width:min(356px,calc(100vw - 24px));max-height:min(510px,calc(100vh - 24px));overflow:auto;background:#171717;color:#f6f6f6;border:1px solid rgba(255,122,0,.48);border-radius:17px;padding:17px;box-shadow:0 22px 65px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.1);scrollbar-width:thin;scrollbar-color:#86502d transparent}
+        #je-calendario .sg-je-calendar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+        #je-calendario .sg-je-calendar-title{font-size:16px;font-weight:900;color:inherit;flex:1;text-align:center}
+        #je-calendario .sg-je-cal-arrow{width:35px;height:35px;flex-shrink:0;display:grid;place-items:center;background:#222;border:1px solid #383838;border-radius:9px;color:#f5f5f5;font-size:22px;cursor:pointer}
+        #je-calendario .sg-je-cal-arrow:hover{border-color:#ff7a00;color:#ff7a00;background:rgba(255,122,0,.08)}
+        #je-calendario .sg-je-cal-days,#je-calendario .sg-je-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+        #je-calendario .sg-je-cal-weekday{text-align:center;font-weight:800;font-size:11px;color:#a7a7a7;padding:7px 0}
+        #je-calendario .sg-je-cal-day{aspect-ratio:1/1;min-width:0;background:transparent;color:#ececec;border:1px solid transparent;border-radius:10px;font-size:13px;font-weight:750;cursor:pointer;position:relative}
+        #je-calendario .sg-je-cal-day.otra-mes{color:#767676}
+        #je-calendario .sg-je-cal-day:hover{background:rgba(255,122,0,.14);border-color:rgba(255,122,0,.45)}
+        #je-calendario .sg-je-cal-day.hoy:not(.elegido){border-color:#81502c;color:#ffab63}
+        #je-calendario .sg-je-cal-day.elegido{color:#fff;background:#ff7a00;box-shadow:0 3px 12px rgba(255,122,0,.25)}
+        #je-calendario .sg-je-cal-actions{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #343434;margin-top:14px;padding-top:13px}
+        #je-calendario .sg-je-cal-actions button{background:transparent;border:1px solid #424242;border-radius:9px;color:#efefef;padding:9px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+        #je-calendario .sg-je-cal-actions button:hover{border-color:#ff7a00;color:#ff9a44}
+        body.light-mode #vista-jornada .sg-je-date-trigger{background:#fff;color:#171717;border-color:#d6dce5}
+        body.light-mode #je-calendario{background:#fff;color:#1a1a1a;border-color:#f9a15a;box-shadow:0 15px 48px rgba(0,0,0,.2)}
+        body.light-mode #je-calendario .sg-je-cal-arrow{background:#f6f7f9;color:#111;border-color:#d4d9e1}
+        body.light-mode #je-calendario .sg-je-cal-day{color:#232323}
+        body.light-mode #je-calendario .sg-je-cal-day.otra-mes{color:#969696}
+        body.light-mode #je-calendario .sg-je-cal-day.elegido{color:#fff}
+        body.light-mode #je-calendario .sg-je-cal-weekday{color:#777}
+        body.light-mode #je-calendario .sg-je-cal-actions{border-top-color:#e1e1e1}
+        body.light-mode #je-calendario .sg-je-cal-actions button{border-color:#d1d1d1;color:#222}
+        @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-date-trigger{transition:none}}
+        /* P30 - Jornada y especiales */
+        #vista-jornada .sg-je-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+        #vista-jornada .sg-je-tab{border:1px solid var(--glass-border);border-radius:11px;background:rgba(255,255,255,.025);color:var(--text-muted);padding:12px 18px;font:inherit;font-weight:850;font-size:14px;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s,color .2s}
+        #vista-jornada .sg-je-tab[aria-selected="true"]{background:rgba(255,122,0,.12);color:var(--primary-orange);border-color:rgba(255,122,0,.5)}
+        #vista-jornada .sg-je-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+        #vista-jornada .sg-je-grid .sg-admin-box{min-width:0}
+        #vista-jornada .sg-je-note{color:var(--text-muted);font-size:13px;line-height:1.65;margin:0 0 16px}
+        #vista-jornada .sg-je-subview[hidden],#vista-jornada [hidden]{display:none!important}
+        #vista-jornada .sg-je-between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+        #vista-jornada .sg-je-between h2{margin:0}
+        #vista-jornada .sg-je-summary,#vista-jornada .sg-je-card{border:1px solid var(--glass-border);background:rgba(255,255,255,.022);border-radius:12px;padding:15px 17px}
+        #vista-jornada .sg-je-card h3{font-size:15px;margin:0;color:var(--text-main);line-height:1.4}
+        #vista-jornada .sg-je-card p,#vista-jornada .sg-je-summary p{color:var(--text-muted);font-size:13px;margin:7px 0 0;line-height:1.55}
+        #vista-jornada .sg-je-list{display:grid;gap:12px;max-height:600px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#6d4934 transparent}
+        #vista-jornada .sg-je-list::-webkit-scrollbar{width:6px}
+        #vista-jornada .sg-je-list::-webkit-scrollbar-thumb{background:#6d4934;border-radius:10px}
+        #vista-jornada .sg-je-list::-webkit-scrollbar-thumb:hover{background:var(--primary-orange)}
+        #vista-jornada .sg-je-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+        #vista-jornada .sg-je-day{border:1px solid var(--glass-border);border-radius:12px;padding:12px;min-height:100px;min-width:0;background:rgba(255,255,255,.015)}
+        #vista-jornada .sg-je-day h3{margin:0 0 12px;color:var(--primary-orange);font-size:13px}
+        #vista-jornada .sg-je-day p{font-size:12px;color:var(--text-muted);line-height:1.45;margin:0 0 9px;overflow-wrap:anywhere}
+        #vista-jornada .sg-je-card .sg-admin-actions{margin-top:12px}
+        #vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:transform .2s,box-shadow .2s,border-color .2s}
+        #vista-jornada .sg-admin-primary:hover:not(:disabled),#vista-jornada .sg-admin-secondary:hover:not(:disabled),#vista-jornada .sg-je-tab:hover{transform:translateY(-2px);border-color:rgba(255,122,0,.5);box-shadow:0 7px 17px rgba(255,122,0,.16)}
+        #vista-jornada .sg-je-danger{border-color:rgba(239,83,80,.4);color:#ff8b87}
+        body.light-mode #vista-jornada .sg-je-card,body.light-mode #vista-jornada .sg-je-day,body.light-mode #vista-jornada .sg-je-summary{background:#fff;border-color:#e2e8f0}
+        @media(max-width:1180px){#vista-jornada .sg-je-week{grid-template-columns:repeat(4,minmax(0,1fr))}}
+        @media(max-width:1000px){#vista-jornada .sg-je-grid{grid-template-columns:1fr}}
+        @media(max-width:650px){#vista-jornada .sg-je-week{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(prefers-reduced-motion:reduce){#vista-jornada .sg-je-tab,#vista-jornada .sg-admin-primary,#vista-jornada .sg-admin-secondary{transition:none!important}#vista-jornada button:hover{transform:none!important}}
+
+        /* Ajustes finales P45: Gestión de Menú más limpia en celular y tablet */
+        .sg-admin-main #vista-menu .catalogo-section { margin-top: 26px; }
+        .sg-admin-main #vista-menu #listado.products-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 300px));
+            justify-content: center;
+        }
+        .sg-admin-main #vista-menu #listado.products-grid > * {
+            width: 100%;
+            justify-self: center;
+        }
+        .sg-admin-main #vista-menu .admin-inline-fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px;
+            align-items: start;
+        }
+        .sg-admin-main #vista-menu .login-card {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        .sg-admin-main #vista-menu .hero-copy h1 span {
+            display: inline;
+            margin-top: 0;
+        }
+
+        @media (min-width: 761px) and (max-width: 1150px) {
+            .sg-admin-main #vista-menu .login-shell {
+                position: relative;
+                display: block;
+                min-height: 0;
+                overflow: hidden;
+                border-radius: 28px;
+                border: 1px solid var(--glass-border);
+                background: rgba(8, 8, 8, 0.88);
+                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+                isolation: isolate;
+            }
+            .sg-admin-main #vista-menu .login-shell::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1400&q=90");
+                background-position: center 43%;
+                background-size: cover;
+                filter: none;
+                transform: none;
+                opacity: 1;
+                pointer-events: none;
+                z-index: 0;
+            }
+            .sg-admin-main #vista-menu .login-shell::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.76);
+                z-index: 0;
+                pointer-events: none;
+            }
+            .sg-admin-main #vista-menu .login-shell > * {
+                position: relative;
+                z-index: 1;
+            }
+            .sg-admin-main #vista-menu .hero-panel {
+                min-height: 0;
+                padding: 26px 30px 8px;
+                border-bottom: 0;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .hero-panel .brand {
+                margin-top: 0 !important;
+                display: flex;
+                justify-content: center;
+            }
+            .sg-admin-main #vista-menu .hero-panel .logo-restaurante {
+                font-size: clamp(30px, 3.4vw, 38px);
+                text-align: center;
+            }
+            .sg-admin-main #vista-menu .hero-copy {
+                max-width: 560px;
+                margin: 14px auto 0;
+                text-align: center;
+            }
+            .sg-admin-main #vista-menu .hero-copy h1 {
+                font-size: clamp(27px, 4vw, 44px);
+                white-space: nowrap;
+                line-height: 1.12;
+                letter-spacing: -0.03em;
+            }
+            .sg-admin-main #vista-menu .hero-copy p {
+                max-width: 460px;
+                margin: 14px auto 0;
+            }
+            .sg-admin-main #vista-menu .form-panel {
+                overflow: visible !important;
+                padding: 10px 24px 27px;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .login-card {
+                max-width: 560px;
+                margin: 0 auto;
+                padding: 28px;
+                border: 1px solid rgba(255, 255, 255, 0.11);
+                border-radius: 24px;
+                background: rgba(15, 15, 15, 0.93);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+            }
+            .sg-admin-main #vista-menu .catalogo-section { margin-top: 30px; }
+        }
+
+        @media (max-width: 760px) {
+            .sg-admin-main #vista-menu .login-shell {
+                display: block;
+                min-height: 0;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
+                overflow: visible;
+            }
+            .sg-admin-main #vista-menu .login-shell::before,
+            .sg-admin-main #vista-menu .login-shell::after,
+            .sg-admin-main #vista-menu .hero-panel {
+                display: none !important;
+                content: none;
+            }
+            .sg-admin-main #vista-menu .form-panel {
+                padding: 0;
+                overflow: visible !important;
+                background: transparent;
+            }
+            .sg-admin-main #vista-menu .login-card {
+                max-width: none;
+                margin: 0;
+                padding: 24px 16px 20px;
+                border-radius: 24px;
+                border: 1px solid var(--glass-border);
+                background: rgba(18, 18, 18, 0.9);
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+            }
+            .sg-admin-main #vista-menu .admin-inline-fields {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .sg-admin-main #vista-menu .catalogo-section { margin-top: 24px; }
+            .sg-admin-main #vista-menu #listado.products-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
     </style>
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <link rel="stylesheet" href="savage-admin-responsive.css">
+    <script defer src="savage-theme.js"></script>
+    <script defer src="savage-admin-responsive.js"></script>
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
+    <div class="sg-admin-layout">
+      <header class="sg-admin-mobilebar" aria-label="Barra de administración">
+        <div class="sg-admin-mobilebar-top">
+          <div class="sg-admin-mobile-brand sg-brand-unified" aria-label="Savage Grill Administración">SAVAGE<span>GRILL.</span><small class="sg-role-unified">ADMINISTRACIÓN</small></div>
+          <div class="sg-admin-mobile-actions">
+            <div id="sg-admin-theme-mobile-slot"></div>
+            <button type="button" id="sg-admin-menu-open" class="sg-admin-menu-trigger" aria-controls="sg-admin-nav" aria-expanded="false" aria-label="Abrir menú de Administración">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+              <span>Menú</span>
+            </button>
+          </div>
+        </div>
+        <div class="sg-admin-mobile-current"><span>SECCIÓN ACTUAL</span><strong id="sg-admin-mobile-title">Gestión de Menú</strong></div>
+      </header>
+      <div class="sg-admin-mobile-overlay" id="sg-admin-mobile-overlay" hidden aria-hidden="true"></div>
+      <aside class="sg-admin-sidebar" id="sg-admin-nav" aria-label="Navegación de Administración">
+        <div class="sg-admin-mobile-navhead"><span>Secciones</span><button type="button" id="sg-admin-menu-close" aria-label="Cerrar menú de Administración">✕</button></div>
+        <h1 class="logo-restaurante sg-admin-brand sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+        <div class="sg-admin-caption sg-role-unified">ADMINISTRACIÓN</div>
+        <nav class="sg-admin-sidebar-scroll" aria-label="Secciones de Administración">
+        <div class="sg-admin-group">MENÚ</div>
+        <button type="button" class="sg-admin-nav active" data-admin-tab="menu" aria-current="page"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><path d="M8 4v16"/></svg><span class="sg-nav-label">Gestión de Menú</span></button>
+        <div class="sg-admin-group">GESTIÓN DE STOCK</div>
+        <button type="button" class="sg-admin-nav" data-admin-tab="proveedores"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v11H3z"/><path d="M14 10h4l3 4v4h-7"/><circle cx="7.5" cy="18.5" r="1.7"/><circle cx="17.5" cy="18.5" r="1.7"/></svg><span class="sg-nav-label">Proveedores</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="insumos"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7"/><path d="M12 12v10"/></svg><span class="sg-nav-label">Insumos</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="compras"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="19" cy="20" r="1"/><path d="M2 3h2l2.5 12h12L21 7H5"/></svg><span class="sg-nav-label">Compras y lotes</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="movimientos"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16m-4-4 4 4-4 4"/><path d="M20 17H4m4-4-4 4 4 4"/></svg><span class="sg-nav-label">Movimientos de stock</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="ajustes"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M7 4v6M4 17h16M16 14v6"/><circle cx="7" cy="7" r="2" fill="var(--bg-dark)"/><circle cx="16" cy="17" r="2" fill="var(--bg-dark)"/></svg><span class="sg-nav-label">Ajustes y verificación</span></button>
+        <div class="sg-admin-group">PRODUCCIÓN Y CONTROL</div>
+        <button type="button" class="sg-admin-nav" data-admin-tab="recetas"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13a4 4 0 0 1-.5-8 5 5 0 0 1 9-1 4.5 4.5 0 0 1 4 8.5"/><path d="M6 13v7h12v-7"/></svg><span class="sg-nav-label">Recetas y elaboraciones</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="reposicion"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 16h4"/></svg><span class="sg-nav-label">Reposición y pérdidas</span></button>
+        <button type="button" class="sg-admin-nav" data-admin-tab="jornada"><svg class="sg-nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg><span class="sg-nav-label">Jornada y especiales</span></button>
+        <button type="button" class="sg-admin-nav" id="admin-ir-gerente" hidden>← Volver a Gerencia</button>
+        </nav>
+        <div class="sg-admin-sidebar-footer">
+          <div class="sg-admin-theme-row"><span>Apariencia</span><div id="sg-admin-theme-desktop-slot"><div data-savage-theme="inline"></div></div></div>
+          <button type="button" class="sg-admin-theme" id="admin-tema" hidden aria-hidden="true" aria-label="Cambiar modo claro u oscuro"><span id="admin-tema-texto">Modo: Oscuro</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
+          <div class="sg-admin-profile" id="admin-perfil">
+            <div class="sg-admin-avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+            <span id="admin-perfil-nombre">Verificando sesión...</span>
+          </div>
+          <button type="button" class="sg-admin-side-btn sg-logout-unificado sg-logout-lateral" id="admin-salir"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
+        </div>
+      </aside>
+      <main class="sg-admin-main" id="admin-contenido">
+        <!-- Acceso directo visible solo para el rol Gerente, sincronizado con el acceso existente. -->
+        <div class="sg-admin-manager-return" id="sg-admin-manager-return" hidden>
+          <button type="button" class="sg-admin-manager-return-btn" id="sg-admin-manager-return-btn" aria-label="Volver al panel de Gerencia">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg>
+            Volver a Gerencia
+          </button>
+        </div>
+        <div class="sg-admin-msg error" id="admin-acceso-error" hidden role="alert"></div>
+        <section id="vista-menu" class="sg-admin-view" aria-label="Gestión de Menú" hidden>
     <div class="login-page">
         <div class="login-shell">
             
             <!-- PANEL IZQUIERDO: Hero -->
             <div class="hero-panel" style="position: relative;">
-                <!-- Botón Volver (Solo visible si es Gerente) -->
-                <button id="btn-volver-gerente" onclick="window.location.href='gerente.html'" style="display: none; position: absolute; top: 25px; left: 30px; background: transparent; color: var(--primary-orange); border: 1px solid var(--primary-orange); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='var(--primary-orange)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-orange)';">
-                    ← Volver al Portal
-                </button>
 
-                <div class="brand" style="margin-top: 50px;">
-                    <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; color: var(--text-main);">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+                <div class="brand" style="margin-top: 20px;">
+                    <h1 class="logo-restaurante sg-brand-unified" style="color: var(--text-main);">SAVAGE<span>GRILL.</span></h1>
                 </div>
                 
                 <div class="hero-copy">
                     <span class="eyebrow">PANEL DE ADMINISTRACIÓN</span>
-                    <h1>Gestión de<br>Menú</h1>
+                    <h1>Gestión de <span>Menú</span></h1>
                     <p>Agregá nuevos platos al catálogo digital y actualiza la carta del restaurante en tiempo real.</p>
                 </div>
             </div>
 
             <!-- PANEL DERECHO: Formulario -->
             <div class="form-panel" style="overflow-y: auto; position: relative;">
-                
-                <button onclick="cerrarSesion()" style="position: absolute; top: 25px; right: 30px; background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; z-index: 100; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
-                    Cerrar Sesión
-                </button>
 
-                <div class="login-card" style="margin-top: 70px; margin-bottom: 50px;">
+                <div class="login-card">
                     <div class="login-header">
                         <h2>Nuevo Producto</h2>
                         <p>Ingresá los datos para enviar al servidor</p>
@@ -184,7 +876,7 @@
                             <input type="text" id="campo-nombre" class="admin-input" placeholder="Ej: Hamburguesa Completa" required>
                         </div>
 
-                        <div style="display: flex; gap: 15px;">
+                        <div class="admin-inline-fields">
                             <div class="admin-form-group" style="flex: 1;">
                                 <label class="admin-label">Precio de Lista ($)</label>
                                 <input type="number" id="campo-precio" class="admin-input" placeholder="0.00" step="0.01" required>
@@ -245,6 +937,531 @@
             
             <div id="listado" class="products-grid">
                 <p style="color: var(--text-muted); font-size: 14px;">Cargando registros desde la API...</p>
+            </div>
+        </div>
+    </div>
+
+        </section>
+        <section id="vista-proveedores" class="sg-admin-view" aria-label="Gestión de Proveedores" hidden>
+          <h2 class="sg-admin-page-title">Gestión de Proveedores</h2>
+          <p class="sg-admin-help">Registrá proveedores y administrá su información de contacto. Las bajas son lógicas: se conserva el historial de compras.</p>
+          <div class="sg-admin-box">
+            <h2 id="proveedor-form-titulo">Nuevo Proveedor</h2>
+            <form id="proveedor-form" class="sg-admin-form" autocomplete="off">
+              <div class="sg-admin-field"><label for="proveedor-nombre">Nombre *</label><input id="proveedor-nombre" name="nombre" maxlength="100" required></div>
+              <div class="sg-admin-field"><label for="proveedor-contacto">Persona de contacto</label><input id="proveedor-contacto" name="contacto"></div>
+              <div class="sg-admin-field"><label for="proveedor-telefono">Teléfono</label><input id="proveedor-telefono" name="telefono" type="tel"></div>
+              <div class="sg-admin-field"><label for="proveedor-email">Correo electrónico</label><input id="proveedor-email" name="email" type="email" maxlength="120"></div>
+              <div class="sg-admin-field sg-admin-span2"><label for="proveedor-direccion">Dirección</label><input id="proveedor-direccion" name="direccion"></div>
+              <div class="sg-admin-field sg-admin-span2"><label for="proveedor-notas">Notas</label><textarea id="proveedor-notas" name="notas" rows="3"></textarea></div>
+              <div class="sg-admin-span2 sg-admin-actions"><button class="sg-admin-primary" type="submit" id="proveedor-guardar">Guardar proveedor</button><button class="sg-admin-secondary" type="button" id="proveedor-cancelar" hidden>Cancelar edición</button></div>
+              <p class="sg-admin-msg" id="proveedor-form-mensaje" hidden aria-live="polite"></p>
+            </form>
+          </div>
+          <div class="sg-admin-box">
+            <h2>Proveedores registrados</h2>
+            <div class="sg-admin-toolbar">
+              <input type="search" id="proveedor-buscar" placeholder="Buscar por nombre..." aria-label="Buscar proveedores">
+              <label for="proveedor-inactivos"><input type="checkbox" id="proveedor-inactivos"> Mostrar inactivos</label>
+              <button type="button" id="proveedor-recargar" class="sg-admin-secondary">Actualizar</button>
+            </div>
+            <p id="proveedor-lista-mensaje" class="sg-admin-msg" role="status">Ingresá a esta sección para cargar proveedores.</p>
+            <div id="proveedor-lista" class="sg-admin-list" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section id="vista-insumos" class="sg-admin-view" aria-label="Gestión de Insumos" hidden>
+          <h2 class="sg-admin-page-title">Gestión de Insumos</h2>
+          <p class="sg-admin-help">Registrá ingredientes, definí cuánto debería haber de cada uno y sus umbrales de alerta. El stock real se incorpora al registrar compras o ajustes, no al dar de alta un insumo.</p>
+          <div class="sg-admin-box">
+            <h2 id="insumo-form-titulo">Nuevo Insumo</h2>
+            <form id="insumo-form" class="sg-admin-form" autocomplete="off">
+              <div class="sg-admin-field">
+                <label for="insumo-nombre">Nombre *</label>
+                <input type="text" id="insumo-nombre" name="nombre" maxlength="100" required placeholder="Ej.: Carne picada">
+              </div>
+              <div class="sg-admin-field">
+                <label for="insumo-tipo-medida">Tipo de medida *</label>
+                <select id="insumo-tipo-medida" name="tipo_medida" required>
+                  <option value="Masa">Masa (gramos)</option>
+                  <option value="Volumen">Volumen (mililitros)</option>
+                  <option value="Unidad">Unidad (unidades)</option>
+                </select>
+              </div>
+              <div class="sg-admin-field">
+                <label for="insumo-stock-objetivo">Stock objetivo (<span id="insumo-unidad-form">g</span>) *</label>
+                <input type="number" id="insumo-stock-objetivo" name="stock_objetivo" min="0" max="999999999.999" step="0.001" value="0" required>
+                <p class="sg-admin-muted-note" id="insumo-ayuda-unidad">Ingresá la cantidad en gramos (no en kilogramos).</p>
+              </div>
+              <div class="sg-admin-field">
+                <label for="insumo-umbral-bajo">Alerta de stock bajo (%) *</label>
+                <input type="number" id="insumo-umbral-bajo" name="umbral_bajo_pct" min="1" max="100" step="1" value="50" required>
+                <p class="sg-admin-muted-note">Se muestra amarillo al llegar a este porcentaje o menos.</p>
+              </div>
+              <div class="sg-admin-field">
+                <label for="insumo-umbral-critico">Alerta de stock crítico (%) *</label>
+                <input type="number" id="insumo-umbral-critico" name="umbral_critico_pct" min="0" max="99" step="1" value="20" required>
+                <p class="sg-admin-muted-note">Debe ser menor que el umbral de stock bajo.</p>
+              </div>
+              <div class="sg-admin-span2 sg-admin-actions">
+                <button type="submit" id="insumo-guardar" class="sg-admin-primary">Guardar insumo</button>
+                <button type="button" id="insumo-cancelar" class="sg-admin-secondary" hidden>Cancelar edición</button>
+              </div>
+              <p id="insumo-form-mensaje" class="sg-admin-msg sg-admin-span2" hidden aria-live="polite"></p>
+            </form>
+          </div>
+          <div class="sg-admin-box">
+            <h2>Insumos registrados</h2>
+            <div class="sg-admin-toolbar">
+              <input type="search" id="insumo-buscar" placeholder="Buscar ingrediente..." aria-label="Buscar insumos por nombre">
+              <label for="insumo-filtrar-tipo">Medida</label>
+              <select id="insumo-filtrar-tipo" aria-label="Filtrar por tipo de medida">
+                <option value="">Todas</option><option value="Masa">Masa</option><option value="Volumen">Volumen</option><option value="Unidad">Unidad</option>
+              </select>
+              <label for="insumo-inactivos"><input type="checkbox" id="insumo-inactivos"> Mostrar inactivos</label>
+              <button type="button" id="insumo-recargar" class="sg-admin-secondary">Actualizar</button>
+            </div>
+            <p id="insumo-lista-mensaje" class="sg-admin-msg" role="status">Ingresá a esta sección para cargar insumos.</p>
+            <div id="insumo-lista" class="sg-admin-list" aria-live="polite"></div>
+          </div>
+          <div class="sg-admin-box" id="insumo-asociacion-box" hidden>
+            <h2 id="insumo-asociacion-titulo">Proveedores del insumo</h2>
+            <p class="sg-admin-help">Elegí los proveedores activos que pueden suministrar el insumo. Podés señalar uno como principal para facilitar la reposición.</p>
+            <form id="insumo-asociacion-form" autocomplete="off">
+              <div id="insumo-proveedores-opciones" class="sg-admin-supplier-choices" role="group" aria-label="Proveedores disponibles"></div>
+              <div class="sg-admin-field" style="margin-top:18px;">
+                <label for="insumo-proveedor-principal">Proveedor principal</label>
+                <select id="insumo-proveedor-principal"><option value="">Ninguno</option></select>
+              </div>
+              <p id="insumo-asociacion-aviso" class="sg-admin-muted-note" aria-live="polite"></p>
+              <div class="sg-admin-actions" style="margin-top:18px;">
+                <button type="submit" id="insumo-proveedores-guardar" class="sg-admin-primary">Guardar proveedores asignados</button>
+                <button type="button" id="insumo-proveedores-cancelar" class="sg-admin-secondary">Cerrar</button>
+              </div>
+              <p id="insumo-proveedores-mensaje" class="sg-admin-msg" hidden aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+
+        <section id="vista-compras" class="sg-admin-view" aria-label="Compras y lotes" hidden>
+          <h2 class="sg-admin-page-title">Compras y Lotes</h2>
+          <p class="sg-admin-help">Registrá el ingreso de mercadería de tus proveedores. Cada línea de compra crea un lote de stock y queda guardada en el historial. Las compras registradas no se pueden editar ni borrar; los errores se corrigen con ajustes de inventario.</p>
+
+          <div class="sg-admin-box">
+            <h2>Nueva compra</h2>
+            <form id="compra-form" autocomplete="off">
+              <div class="sg-admin-form">
+                <div class="sg-admin-field">
+                  <label for="compra-proveedor">Proveedor *</label>
+                  <select id="compra-proveedor" required><option value="">Cargando proveedores...</option></select>
+                </div>
+                <div class="sg-admin-field">
+                  <label for="compra-comprobante">Número de comprobante</label>
+                  <input type="text" id="compra-comprobante" maxlength="50" placeholder="Ej.: FC-0001-00001234">
+                </div>
+                <div class="sg-admin-field sg-admin-span2">
+                  <label for="compra-nota">Nota de la compra</label>
+                  <textarea id="compra-nota" maxlength="300" rows="2" placeholder="Observaciones opcionales"></textarea>
+                </div>
+              </div>
+              <h3 style="margin:24px 0 12px; color:var(--text-main); font-size:18px;">Insumos comprados</h3>
+              <p class="sg-admin-muted-note" style="margin-bottom:12px;">Podés agregar varias líneas. Indicá la cantidad total o la cantidad de presentaciones, pero no ambas. Los importes son costos de compra y solo los ven Admin y Gerente.</p>
+              <div id="compra-lineas" class="sg-compra-lineas"></div>
+              <div class="sg-admin-actions" style="margin-top:16px;">
+                <button type="button" id="compra-agregar-linea" class="sg-admin-secondary">+ Agregar otra línea</button>
+                <span id="compra-total-previo" class="sg-compra-total" aria-live="polite"></span>
+              </div>
+              <div class="sg-admin-actions" style="margin-top:22px;">
+                <button type="submit" id="compra-guardar" class="sg-admin-primary">Registrar compra</button>
+                <button type="button" id="compra-limpiar" class="sg-admin-secondary">Limpiar formulario</button>
+              </div>
+              <p id="compra-form-mensaje" class="sg-admin-msg" hidden aria-live="polite"></p>
+            </form>
+          </div>
+
+          <div class="sg-admin-box">
+            <h2>Compras registradas</h2>
+            <div class="sg-admin-actions" style="margin-bottom:16px;">
+              <button type="button" id="compra-actualizar-historial" class="sg-admin-secondary">Actualizar historial</button>
+              <label for="compra-filtrar-proveedor" class="admin-label">Proveedor:</label>
+              <select id="compra-filtrar-proveedor" class="sg-admin-secondary"><option value="">Todos</option></select>
+            </div>
+            <p id="compra-lista-mensaje" class="sg-admin-msg" hidden aria-live="polite"></p>
+            <div id="compra-historial" class="sg-compra-lista" aria-live="polite"></div>
+          </div>
+
+          <div class="sg-admin-box">
+            <h2>Lotes de insumos</h2>
+            <p class="sg-admin-help">Consultá la mercadería registrada y sus vencimientos. Una baja de lote descontará las existencias y quedará registrada como pérdida.</p>
+            <div class="sg-compra-tools">
+              <label for="lote-filtrar-insumo">Insumo
+                <select id="lote-filtrar-insumo"><option value="">Todos</option></select>
+              </label>
+              <label for="lote-filtrar-estado">Estado
+                <select id="lote-filtrar-estado">
+                  <option value="">Todos</option><option value="activo">Activo</option><option value="agotado">Agotado</option><option value="vencido">Vencido</option><option value="baja">Baja</option>
+                </select>
+              </label>
+              <button type="button" id="lote-actualizar" class="sg-admin-secondary">Actualizar lotes</button>
+            </div>
+            <p id="lote-mensaje" class="sg-admin-msg" hidden aria-live="polite"></p>
+            <div id="lote-tabla" class="sg-compra-table-scroll" aria-live="polite"></div>
+          </div>
+
+          <div id="lote-baja-contenedor" class="sg-admin-box sg-compra-baja" hidden>
+            <h2 id="lote-baja-titulo">Dar de baja lote</h2>
+            <p class="sg-admin-help">Esta operación descuenta las existencias disponibles del lote y registra una pérdida. Escribí el motivo y confirmá.</p>
+            <form id="lote-baja-form">
+              <div class="sg-admin-field">
+                <label for="lote-baja-motivo">Motivo de baja *</label>
+                <textarea id="lote-baja-motivo" required maxlength="100" rows="2" placeholder="Explicá por qué se retira este lote"></textarea>
+              </div>
+              <div class="sg-admin-actions" style="margin-top:16px;">
+                <button type="submit" id="lote-baja-confirmar" class="sg-admin-primary">Confirmar baja</button>
+                <button type="button" id="lote-baja-cancelar" class="sg-admin-secondary">Cancelar</button>
+              </div>
+              <p id="lote-baja-mensaje" class="sg-admin-msg" hidden aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+
+        <section id="vista-movimientos" class="sg-admin-view" aria-label="Movimientos de stock" hidden>
+          <h1 class="sg-admin-page-title">Movimientos de Stock</h1>
+          <p class="sg-admin-help">Consultá el historial de entradas, consumos, pérdidas, ajustes y elaboraciones. Este registro es de solo lectura: no modifica las existencias.</p>
+          <div class="sg-admin-box">
+            <h2>Filtrar movimientos</h2>
+            <form id="mov-form" novalidate>
+              <div class="sg-mov-filtros">
+                <div class="sg-admin-field">
+                  <label for="mov-insumo">Insumo</label>
+                  <select id="mov-insumo"><option value="">Todos los insumos</option></select>
+                </div>
+                <div class="sg-admin-field">
+                  <label for="mov-tipo">Tipo de movimiento</label>
+                  <select id="mov-tipo">
+                    <option value="">Todos los tipos</option>
+                    <option value="compra">Compra</option>
+                    <option value="consumo">Consumo</option>
+                    <option value="perdida">Pérdida</option>
+                    <option value="ajuste">Ajuste</option>
+                    <option value="devolucion">Devolución</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="elaboracion">Elaboración</option>
+                  </select>
+                </div>
+                <div class="sg-admin-field">
+                  <label for="mov-lote">Número de lote</label>
+                  <input id="mov-lote" type="number" inputmode="numeric" min="1" step="1" placeholder="Ej.: 1">
+                </div>
+                <div class="sg-admin-field">
+                  <label for="mov-desde">Desde</label>
+                  <input id="mov-desde" type="date">
+                </div>
+                <div class="sg-admin-field">
+                  <label for="mov-hasta">Hasta</label>
+                  <input id="mov-hasta" type="date">
+                </div>
+                <div class="sg-admin-field">
+                  <label for="mov-limite">Cantidad máxima de registros</label>
+                  <select id="mov-limite">
+                    <option value="200">200 (predeterminado)</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                  </select>
+                </div>
+              </div>
+              <div class="sg-mov-tools">
+                <button type="submit" class="sg-admin-primary" id="mov-buscar">Buscar movimientos</button>
+                <button type="button" class="sg-admin-secondary" id="mov-limpiar">Limpiar filtros</button>
+              </div>
+              <p id="mov-filtro-mensaje" class="sg-admin-msg" hidden role="status" aria-live="polite"></p>
+            </form>
+          </div>
+          <div class="sg-admin-box">
+            <h2>Historial de movimientos</h2>
+            <div class="sg-mov-resumen" id="mov-resumen" aria-live="polite"></div>
+            <p id="mov-resultado-mensaje" class="sg-admin-msg" hidden role="status" aria-live="polite"></p>
+            <div id="mov-tabla" class="sg-mov-tabla-container" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section id="vista-ajustes" class="sg-admin-view" aria-label="Ajustes y verificación de inventario" hidden>
+          <h1 class="sg-admin-page-title">Ajustes y Verificación de Stock</h1>
+          <p class="sg-admin-help">Registrá diferencias entre el inventario físico y el sistema, y comprobá la consistencia del libro de movimientos. Solo Admin y Gerente pueden realizar ajustes.</p>
+          <div class="sg-ajustes-grid">
+            <section class="sg-admin-box" aria-labelledby="ajustes-titulo">
+              <h2 id="ajustes-titulo">Ajustar inventario físico</h2>
+              <p class="sg-ajustes-precaucion">El ajuste modifica las existencias y genera movimientos registrados. Indicá la <strong>cantidad total contada</strong>, no la diferencia que querés sumar o restar.</p>
+              <form id="ajuste-form" class="sg-ajustes-form" novalidate>
+                <div class="sg-admin-field">
+                  <label for="ajuste-insumo">Insumo *</label>
+                  <select id="ajuste-insumo" required><option value="">Seleccioná un insumo</option></select>
+                </div>
+                <div class="sg-admin-field">
+                  <label for="ajuste-cantidad">Cantidad física contada *</label>
+                  <input type="text" inputmode="decimal" id="ajuste-cantidad" placeholder="Ej.: 14000" autocomplete="off" required>
+                  <p class="sg-ajustes-ayuda" id="ajuste-ayuda-unidad">Seleccioná un insumo para ver la unidad de medida.</p>
+                </div>
+                <div class="sg-ajustes-info" aria-live="polite">
+                  <div class="sg-ajustes-valor"><span class="etiqueta">Stock registrado</span><strong id="ajuste-stock-actual">—</strong></div>
+                  <div class="sg-ajustes-valor"><span class="etiqueta">Conteo físico</span><strong id="ajuste-stock-contado">—</strong></div>
+                  <div class="sg-ajustes-valor"><span class="etiqueta">Diferencia</span><strong id="ajuste-diferencia">—</strong></div>
+                </div>
+                <div class="sg-admin-field">
+                  <label for="ajuste-motivo">Motivo del ajuste *</label>
+                  <textarea id="ajuste-motivo" rows="3" maxlength="100" required placeholder="Ej.: Recuento de inventario al cierre de turno"></textarea>
+                  <p class="sg-ajustes-ayuda">Máximo 100 caracteres. El motivo queda en el historial.</p>
+                </div>
+                <div class="sg-ajustes-line">
+                  <button id="ajuste-guardar" type="submit" class="sg-admin-primary">Registrar ajuste</button>
+                  <button id="ajuste-actualizar" type="button" class="sg-admin-secondary">Actualizar existencias</button>
+                </div>
+                <p class="sg-admin-msg" id="ajuste-mensaje" role="status" aria-live="polite" hidden></p>
+              </form>
+            </section>
+            <section class="sg-admin-box" aria-labelledby="verificacion-titulo">
+              <h2 id="verificacion-titulo">Verificación del libro de stock</h2>
+              <p class="sg-admin-help">Comprobá que las cantidades de los lotes coincidan con los movimientos registrados. Esta consulta no modifica datos.</p>
+              <div class="sg-ajustes-line" style="margin-bottom:16px;">
+                <button id="verificacion-ejecutar" type="button" class="sg-admin-primary">Verificar consistencia</button>
+              </div>
+              <p class="sg-admin-msg" id="verificacion-mensaje" role="status" aria-live="polite" hidden></p>
+              <div id="verificacion-estado" class="sg-ajustes-estado" aria-live="polite">
+                Seleccioná «Verificar consistencia» para consultar el estado del libro.
+              </div>
+              <div id="verificacion-detalles" class="sg-ajustes-incidencias"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- RECETAS Y ELABORACIONES: Admin/Gerente; sin alterar la gestión previa. -->
+        <section id="vista-recetas" class="sg-admin-view" aria-label="Recetas y elaboraciones" hidden>
+          <h1 class="sg-admin-page-title">Recetas y Elaboraciones</h1>
+          <p class="sg-admin-help">Definí los ingredientes utilizados por cada plato y por cada preparación interna. Los cambios de una receta afectan los pedidos futuros; no modifican por sí mismos el stock existente.</p>
+          <div class="sg-receta-subnav" role="group" aria-label="Apartados de recetas">
+            <button type="button" class="sg-receta-tab active" data-receta-tab="platos" aria-pressed="true">Recetas de platos</button>
+            <button type="button" class="sg-receta-tab" data-receta-tab="elaboraciones" aria-pressed="false">Elaboraciones internas</button>
+            <button type="button" class="sg-receta-tab" data-receta-tab="asignacion" aria-pressed="false">Asignar a productos</button>
+          </div>
+          <div class="sg-receta-subview" id="receta-subvista-platos">
+            <div class="sg-receta-grid">
+              <section class="sg-admin-box" aria-labelledby="receta-form-titulo">
+                <h2 id="receta-form-titulo">Nueva receta</h2>
+                <p class="sg-receta-small">Cada receta necesita por lo menos un ingrediente fijo, que el cliente no puede quitar. Las cantidades van en g, ml o unidades según el insumo.</p>
+                <form id="receta-form">
+                  <div class="sg-admin-field" style="margin-bottom:16px"><label for="receta-nombre">Nombre de la receta *</label><input id="receta-nombre" maxlength="100" required placeholder="Ej.: Savage Burger Doble"></div>
+                  <div id="receta-ingredientes" aria-label="Ingredientes de la receta"></div>
+                  <div class="sg-admin-actions" style="margin-bottom:18px"><button type="button" id="receta-agregar-ingrediente" class="sg-admin-secondary">+ Añadir ingrediente</button></div>
+                  <div class="sg-admin-actions"><button class="sg-admin-primary" type="submit" id="receta-guardar">Guardar receta</button><button type="button" class="sg-admin-secondary" id="receta-cancelar" hidden>Cancelar edición</button></div>
+                  <p class="sg-admin-msg" id="receta-form-mensaje" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box" aria-labelledby="receta-lista-titulo">
+                <h2 id="receta-lista-titulo">Recetas registradas</h2>
+                <div class="sg-admin-actions" style="margin-bottom:15px"><button type="button" class="sg-admin-secondary" id="receta-actualizar">Actualizar listado</button><span id="receta-contador" class="sg-receta-small" aria-live="polite"></span></div>
+                <p class="sg-admin-msg" id="receta-lista-mensaje" role="status" aria-live="polite" hidden></p>
+                <div id="receta-lista" class="sg-receta-lista"></div>
+              </section>
+            </div>
+          </div>
+          <div class="sg-receta-subview" id="receta-subvista-elaboraciones" hidden>
+            <div class="sg-receta-grid">
+              <section class="sg-admin-box" aria-labelledby="elaboracion-form-titulo">
+                <h2 id="elaboracion-form-titulo">Nueva elaboración</h2>
+                <p class="sg-receta-small">Ejemplo: una tanda produce 1.000 g de salsa a partir de sus ingredientes. La elaboración se prepara luego desde Cocina; registrarla aquí NO suma stock.</p>
+                <form id="elaboracion-form">
+                  <div class="sg-admin-form" style="margin-bottom:18px">
+                    <div class="sg-admin-field"><label for="elaboracion-produce">Insumo que se produce *</label><select id="elaboracion-produce" required><option value="">Seleccioná un insumo</option></select></div>
+                    <div class="sg-admin-field"><label for="elaboracion-rinde">Rendimiento por tanda *</label><input id="elaboracion-rinde" inputmode="decimal" placeholder="Ej.: 1000" required><span class="sg-receta-small" id="elaboracion-unidad">En la unidad base del insumo producido.</span></div>
+                    <div class="sg-admin-field sg-admin-span2"><label for="elaboracion-dias">Días de vencimiento (opcional)</label><input id="elaboracion-dias" type="number" min="1" step="1" placeholder="Ej.: 3"></div>
+                  </div>
+                  <div id="elaboracion-ingredientes" aria-label="Ingredientes de la elaboración"></div>
+                  <div class="sg-admin-actions" style="margin-bottom:18px"><button type="button" class="sg-admin-secondary" id="elaboracion-agregar-ingrediente">+ Añadir ingrediente</button></div>
+                  <div class="sg-admin-actions"><button type="submit" class="sg-admin-primary" id="elaboracion-guardar">Guardar elaboración</button><button type="button" class="sg-admin-secondary" id="elaboracion-cancelar" hidden>Cancelar edición</button></div>
+                  <p class="sg-admin-msg" id="elaboracion-form-mensaje" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box" aria-labelledby="elaboracion-lista-titulo">
+                <h2 id="elaboracion-lista-titulo">Elaboraciones registradas</h2>
+                <div class="sg-admin-actions" style="margin-bottom:15px"><button type="button" class="sg-admin-secondary" id="elaboracion-actualizar">Actualizar listado</button><span class="sg-receta-small" id="elaboracion-contador" aria-live="polite"></span></div>
+                <p class="sg-admin-msg" id="elaboracion-lista-mensaje" role="status" aria-live="polite" hidden></p>
+                <div id="elaboracion-lista" class="sg-receta-lista"></div>
+              </section>
+            </div>
+          </div>
+          <div class="sg-receta-subview" id="receta-subvista-asignacion" hidden>
+            <div class="sg-receta-grid">
+              <section class="sg-admin-box" aria-labelledby="asignacion-titulo">
+                <h2 id="asignacion-titulo">Asignar receta a un plato</h2>
+                <p class="sg-receta-small">Asociá una receta con un producto del menú. Una bebida cerrada puede quedar sin receta. No se descuentan ingredientes hasta que se procese un pedido.</p>
+                <form id="receta-asignacion-form">
+                  <div class="sg-admin-field" style="margin-bottom:16px"><label for="receta-producto">Producto del menú *</label><select id="receta-producto" required><option value="">Seleccioná un producto</option></select></div>
+                  <div class="sg-admin-field" style="margin-bottom:20px"><label for="receta-asignada">Receta que se asignará</label><select id="receta-asignada"><option value="">Sin receta (sin control de ingredientes)</option></select></div>
+                  <div class="sg-admin-actions"><button class="sg-admin-primary" id="receta-asignacion-guardar" type="submit">Guardar asignación</button><button class="sg-admin-secondary" type="button" id="receta-asignacion-actualizar">Actualizar productos</button></div>
+                  <p class="sg-admin-msg" id="receta-asignacion-mensaje" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box" aria-labelledby="sin-receta-titulo">
+                <h2 id="sin-receta-titulo">Productos sin receta</h2>
+                <p class="sg-receta-small">Este listado ayuda a detectar platos que todavía no tienen asignado un control de ingredientes. Algunas bebidas y productos cerrados pueden permanecer así.</p>
+                <button type="button" class="sg-admin-secondary" id="sin-receta-actualizar" style="margin-bottom:14px">Actualizar pendientes</button>
+                <p class="sg-admin-msg" id="sin-receta-mensaje" role="status" aria-live="polite" hidden></p>
+                <div class="sg-receta-lista" id="sin-receta-lista"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- P28: Reposición y pérdidas; consultas reales y registro confirmado. -->
+        <section id="vista-reposicion" class="sg-admin-view" aria-label="Reposición y pérdidas" hidden>
+          <h1 class="sg-admin-page-title">Reposición y Pérdidas</h1>
+          <p class="sg-admin-help">Consultá qué mercadería necesita reponerse, revisá las pérdidas registradas y registrá una baja justificada. Las pérdidas modifican el inventario y quedan en el historial.</p>
+          <div class="sg-rp-tabs" role="tablist" aria-label="Secciones de reposición y pérdidas">
+            <button type="button" class="sg-rp-tab" data-rp-tab="reposicion" role="tab" aria-selected="true" aria-controls="sg-rp-subview-reposicion">Reposición sugerida</button>
+            <button type="button" class="sg-rp-tab" data-rp-tab="perdidas" role="tab" aria-selected="false" aria-controls="sg-rp-subview-perdidas">Registro de pérdidas</button>
+          </div>
+          <div id="sg-rp-subview-reposicion" class="sg-rp-subview" role="tabpanel">
+            <div class="sg-rp-grid">
+              <section class="sg-admin-box">
+                <h2>Necesidades de reposición</h2>
+                <p class="sg-rp-note">Se consulta la sugerencia que calcula el servidor; esta pantalla no agrega mercadería ni realiza compras automáticamente.</p>
+                <div class="sg-admin-actions" style="margin-bottom:17px"><button type="button" class="sg-admin-secondary" id="rp-actualizar">Actualizar sugerencias</button></div>
+                <p class="sg-admin-msg" id="rp-mensaje" role="status" aria-live="polite" hidden></p>
+                <div class="sg-rp-cards" id="rp-lista" aria-live="polite"></div>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Cómo reponer existencias</h2>
+                <p class="sg-rp-note">La reposición muestra necesidades. El ingreso real de mercadería se hace en «Compras y lotes», indicando proveedor, insumo, cantidad y costo. Así se generan los lotes y movimientos correspondientes.</p>
+                <button type="button" class="sg-admin-primary" id="rp-ir-compras">Ir a Compras y lotes</button>
+                <p class="sg-rp-note" style="margin-top:22px">Si lo que necesitás es corregir una diferencia de un conteo físico, utilizá «Ajustes y verificación»; no registres una compra ficticia.</p>
+              </section>
+            </div>
+          </div>
+          <div id="sg-rp-subview-perdidas" class="sg-rp-subview" role="tabpanel" hidden>
+            <div class="sg-rp-grid">
+              <section class="sg-admin-box">
+                <h2>Registrar pérdida</h2>
+                <p class="sg-rp-note">Esta operación descuenta existencias y deja trazabilidad del responsable y del motivo. Usá una base de datos de desarrollo para la prueba.</p>
+                <form id="rp-perdida-form">
+                  <div class="sg-admin-form" style="margin-bottom:18px">
+                    <div class="sg-admin-field"><label for="rp-tipo">Tipo de elemento *</label><select id="rp-tipo" required><option value="insumo">Insumo</option><option value="plato">Plato preparado</option></select></div>
+                    <div class="sg-admin-field"><label for="rp-motivo">Motivo *</label><select id="rp-motivo" required><option value="">Cargando motivos...</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-caja-insumo"><label for="rp-insumo">Insumo afectado *</label><select id="rp-insumo"><option value="">Seleccioná un insumo</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-caja-plato" hidden><label for="rp-plato">Producto afectado *</label><select id="rp-plato"><option value="">Seleccioná un producto</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2"><label for="rp-cantidad">Cantidad *</label><input id="rp-cantidad" type="text" inputmode="decimal" placeholder="Ej.: 200" required><span id="rp-unidad" class="sg-admin-muted-note">Se expresa en la unidad base del insumo seleccionado.</span></div>
+                    <div class="sg-admin-field sg-admin-span2" id="rp-nota-contenedor"><label for="rp-nota">Observaciones <span id="rp-nota-requerida"></span></label><textarea id="rp-nota" maxlength="300" placeholder="Detalle la pérdida cuando corresponda"></textarea></div>
+                  </div>
+                  <div class="sg-admin-actions"><button type="submit" class="sg-admin-primary" id="rp-guardar">Registrar pérdida</button><button type="reset" class="sg-admin-secondary">Limpiar formulario</button></div>
+                  <p id="rp-form-mensaje" class="sg-admin-msg" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Historial de pérdidas</h2>
+                <div class="sg-rp-stats">
+                  <div class="sg-rp-stat"><span>Registros visibles</span><strong id="rp-total-registros">—</strong></div>
+                  <div class="sg-rp-stat"><span>Costo informado por API</span><strong id="rp-total-costo">—</strong></div>
+                  <div class="sg-rp-stat"><span>Última actualización</span><strong id="rp-ultima-actualizacion">—</strong></div>
+                </div>
+                <div class="sg-rp-filter"><input type="search" id="rp-buscar" placeholder="Buscar insumo, plato o motivo..." aria-label="Buscar pérdidas"><button type="button" class="sg-admin-secondary" id="rp-recargar-perdidas">Actualizar historial</button></div>
+                <p id="rp-historial-mensaje" class="sg-admin-msg" role="status" aria-live="polite" hidden></p>
+                <div class="sg-rp-history" id="rp-historial" aria-live="polite"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <!-- P30: Jornada y Especiales. Calendario conectado a la API. -->
+        <section id="vista-jornada" class="sg-admin-view" aria-label="Jornada y especiales" hidden>
+          <h1 class="sg-admin-page-title">Jornada y Especiales</h1>
+          <p class="sg-admin-help">Gestioná el funcionamiento del salón y programá ofertas reales por día de la semana o para una fecha determinada. El catálogo mostrará solamente promociones que estén vigentes según el servidor.</p>
+          <div class="sg-je-tabs" role="tablist" aria-label="Secciones de jornada y especiales">
+            <button type="button" class="sg-je-tab" data-je-tab="jornada" role="tab" aria-selected="true" aria-controls="sg-je-subview-jornada">Jornada actual</button>
+            <button type="button" class="sg-je-tab" data-je-tab="especiales" role="tab" aria-selected="false" aria-controls="sg-je-subview-especiales">Especiales del día</button>
+          </div>
+          <div id="sg-je-subview-jornada" class="sg-je-subview" role="tabpanel">
+            <div class="sg-je-grid">
+              <section class="sg-admin-box">
+                <h2>Estado de la jornada</h2>
+                <p class="sg-je-note">Se consulta el estado real del servidor. Abrir o cerrar una jornada es una operación operativa y requiere confirmación.</p>
+                <p class="sg-admin-msg" id="je-estado-error" role="status" aria-live="polite" hidden></p>
+                <div class="sg-je-summary" id="je-estado" aria-live="polite">Consultando jornada actual...</div>
+                <div class="sg-admin-actions" style="margin-top:16px">
+                  <button type="button" class="sg-admin-secondary" id="je-actualizar-jornada">Actualizar estado</button>
+                </div>
+              </section>
+              <section class="sg-admin-box">
+                <h2>Abrir o cerrar una jornada</h2>
+                <p class="sg-je-note">Las acciones se envían a los endpoints de jornada del backend. No crean registros ficticios en el navegador.</p>
+                <div class="sg-admin-field" style="margin-bottom:16px"><label for="je-turno-jornada">Turno de apertura</label><select id="je-turno-jornada"><option value="">Turno no seleccionado</option></select></div>
+                <div class="sg-admin-actions"><button type="button" id="je-abrir-jornada" class="sg-admin-primary">Abrir jornada</button><button type="button" id="je-cerrar-jornada" class="sg-admin-secondary sg-je-danger">Cerrar jornada</button></div>
+                <p class="sg-admin-msg" id="je-accion-mensaje" role="status" aria-live="polite" hidden></p>
+                <p class="sg-je-note" style="margin-top:16px">Si hay mesas, pedidos o cuentas pendientes, respetá las validaciones del servidor antes de cerrar.</p>
+              </section>
+            </div>
+            <section class="sg-admin-box">
+              <div class="sg-je-between"><h2>Historial de jornadas</h2><button type="button" class="sg-admin-secondary" id="je-actualizar-historial">Actualizar historial</button></div>
+              <p class="sg-admin-msg" id="je-historial-error" role="status" aria-live="polite" hidden></p>
+              <div class="sg-je-list" id="je-historial" aria-live="polite"></div>
+            </section>
+          </div>
+          <div id="sg-je-subview-especiales" class="sg-je-subview" role="tabpanel" hidden>
+            <div class="sg-je-grid">
+              <section class="sg-admin-box">
+                <h2 id="je-form-titulo">Programar especial del día</h2>
+                <p class="sg-je-note">Seleccioná un producto del menú y asignale un precio de oferta. Podés elegir un día semanal o una fecha específica, y limitarlo a un turno.</p>
+                <form id="je-especial-form">
+                  <div class="sg-admin-form" style="margin-bottom:18px">
+                    <div class="sg-admin-field sg-admin-span2"><label for="je-producto">Producto del menú *</label><select id="je-producto" required><option value="">Seleccioná un producto</option></select></div>
+                    <div class="sg-admin-field"><label for="je-precio">Precio especial ($) *</label><input type="text" id="je-precio" inputmode="decimal" placeholder="Ej.: 12500" required></div>
+                    <div class="sg-admin-field"><label for="je-turno-especial">Turno (opcional)</label><select id="je-turno-especial"><option value="">Todos los turnos</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2"><label for="je-modalidad">Frecuencia *</label><select id="je-modalidad"><option value="semanal">Día de la semana</option><option value="fecha">Fecha puntual</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="je-caja-dia"><label for="je-dia">Día de la semana *</label><select id="je-dia"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
+                    <div class="sg-admin-field sg-admin-span2" id="je-caja-fecha" hidden>
+                      <label for="je-fecha-trigger">Fecha del especial *</label>
+                      <input id="je-fecha" name="fecha_especial" type="hidden" value="">
+                      <button type="button" class="sg-je-date-trigger" id="je-fecha-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="je-calendario">
+                        <span id="je-fecha-visual">Seleccioná una fecha</span>
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+                      </button>
+                      <span class="sg-je-date-hint">Elegí el día de la promoción en el calendario.</span>
+                    </div>
+                  </div>
+                  <p class="sg-je-note" id="je-precio-nota">Elegí un producto para consultar su precio de lista.</p>
+                  <div class="sg-admin-actions"><button type="submit" id="je-guardar" class="sg-admin-primary">Guardar especial</button><button type="button" id="je-cancelar-edicion" class="sg-admin-secondary" hidden>Cancelar edición</button></div>
+                  <p class="sg-admin-msg" id="je-form-mensaje" role="status" aria-live="polite" hidden></p>
+                </form>
+              </section>
+              <section class="sg-admin-box">
+                <div class="sg-je-between"><h2>Ofertas programadas</h2><button type="button" id="je-actualizar-especiales" class="sg-admin-secondary">Actualizar</button></div>
+                <p class="sg-je-note">Se muestran los registros guardados en la API, no promociones inventadas por el frontend.</p>
+                <p class="sg-admin-msg" id="je-lista-error" role="status" aria-live="polite" hidden></p>
+                <div class="sg-je-list" id="je-lista" aria-live="polite"></div>
+              </section>
+            </div>
+            <section class="sg-admin-box">
+              <h2>Calendario semanal</h2>
+              <p class="sg-je-note">Las promociones por fecha puntual se presentan por separado: no se mezclan con la programación habitual.</p>
+              <div class="sg-je-week" id="je-semana" aria-live="polite"></div>
+              <h2 style="margin-top:24px">Fechas especiales</h2>
+              <div class="sg-je-list" id="je-fechas" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="admin-confirmacion" class="sg-admin-confirm-backdrop" hidden aria-hidden="true">
+        <div class="sg-admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-confirmacion-titulo" aria-describedby="admin-confirmacion-texto">
+            <div class="sg-admin-confirm-head">
+                <div class="sg-admin-confirm-icon" id="admin-confirmacion-icono" aria-hidden="true">⚠</div>
+                <div>
+                    <h2 id="admin-confirmacion-titulo" class="sg-admin-confirm-title">Confirmar acción</h2>
+                    <p id="admin-confirmacion-texto" class="sg-admin-confirm-text">¿Querés continuar?</p>
+                </div>
+            </div>
+            <div class="sg-admin-confirm-actions">
+                <button type="button" id="admin-confirmacion-cancelar" class="sg-admin-confirm-cancel">Cancelar</button>
+                <button type="button" id="admin-confirmacion-aceptar" class="sg-admin-confirm-ok danger">Confirmar</button>
             </div>
         </div>
     </div>
@@ -319,28 +1536,9 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const usuario = obtenerUsuarioActual();
-            if (usuario && usuario.rol === 'Gerente') {
-                document.getElementById('btn-volver-gerente').style.display = 'block';
-            }
-            
-            // Inicializar el sistema de temas local
-            const temaGuardado = localStorage.getItem('savage-tema');
-            if (temaGuardado === 'light') document.body.classList.add('light-mode');
-            const btnTema = document.createElement('button');
-            btnTema.className = 'btn-tema';
-            const actualizarTexto = () => { btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro'; };
-            actualizarTexto();
-            btnTema.onclick = () => {
-                document.body.classList.toggle('light-mode');
-                actualizarTexto();
-                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-            };
-            document.body.appendChild(btnTema);
-        });
-    </script>
+    <script src="admin-panel.js"></script>
+
 </body>
 </html>

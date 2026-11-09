@@ -1,0 +1,26 @@
+/* Bloqueo del fondo cuando una ventana modal de Savage Grill está visible.
+   El contenido largo del diálogo conserva su scroll propio en móvil y escritorio. */
+html.sg-modal-lock { overflow:hidden !important; overscroll-behavior:none; }
+body.sg-modal-lock {
+    position:fixed !important;
+    top:var(--sg-modal-offset, 0px) !important;
+    left:0 !important;
+    right:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    overscroll-behavior:none;
+}
+/* No propagar el gesto táctil del fondo. Los diálogos siguen desplazándose. */
+#modal-abrir, #modal-pedidos, #modal-aviso, #modal-confirmar-cierre,
+#modal-editar-plato, #modal-mesa, #modal-detalle, #modal-editar,
+#admin-confirmacion, #g-modal-editar, #g-modal-confirmar, #cocina-modal-salida {
+    overscroll-behavior:contain;
+}
+#modal-abrir > *, #modal-pedidos > *, #modal-aviso > *, #modal-confirmar-cierre > *,
+#modal-editar-plato > *, #modal-mesa > *, #modal-detalle > *, #modal-editar > *,
+#admin-confirmacion > *, #g-modal-editar > *, #g-modal-confirmar > *,
+#cocina-modal-salida > * {
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+}

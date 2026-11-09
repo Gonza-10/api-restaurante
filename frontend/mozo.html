@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Salón - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-scrollbars.css">
     <style>
         .salon-grid {
             display: grid;
@@ -24,6 +27,7 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
+            position: relative; 
         }
         .mesa-card.libre:hover { 
             transform: translateY(-5px); 
@@ -32,6 +36,20 @@
         }
         .mesa-card.libre { border-color: rgba(46, 204, 113, 0.4); }
         .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.7; cursor: not-allowed; }
+
+        .mesa-card.pidiendo-cuenta {
+            border-color: #f1c40f !important;
+            background: rgba(241, 196, 15, 0.15) !important;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+            opacity: 1;
+            animation: pulseWarning 2s infinite;
+        }
+
+        @keyframes pulseWarning {
+            0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(241, 196, 15, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+        }
 
         .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
         .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
@@ -58,6 +76,11 @@
             gap: 15px;
             transition: all 0.3s ease;
         }
+        .sesion-card.pidiendo-cuenta {
+            border: 1px solid #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+        }
+
         .pin-display {
             font-family: monospace;
             font-size: 26px;
@@ -92,39 +115,249 @@
             from { transform: translate(-50%, 20px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
         }
+
+
+        /* P23 · Salón operativo, sin librerías ni imágenes externas */
+        :root { --salon-accent: #ff7900; --salon-green:#2ecc71; --salon-red:#e74c3c; --salon-yellow:#f5bf3b; }
+        html { scrollbar-color: #684b3b #101010; scrollbar-width: thin; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-track { background: #101010; }
+        ::-webkit-scrollbar-thumb { background:#674a3a; border:2px solid #101010; border-radius:12px; }
+        ::-webkit-scrollbar-thumb:hover { background:#ff7900; }
+        .salon-shell { max-width: 1510px; margin:0 auto; padding:0 28px 65px; }
+        .salon-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+        .salon-heading h2 { font-size:27px; margin:0 0 4px; }
+        .salon-heading p { color:var(--text-muted); margin:0; font-size:14px; }
+        .salon-columns { display:grid; grid-template-columns:minmax(0, 1fr) minmax(300px, 360px); align-items:start; gap:30px; }
+        .salon-column-main { min-width:0; }
+        .salon-column-side { min-width:0; display:flex; flex-direction:column; gap:22px; }
+        .top-bar { margin-bottom:24px; }
+        .salon-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:18px 0 22px; }
+        .overview-tile { padding:12px 14px; background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:12px; }
+        .overview-tile b { display:block; font-size:23px; line-height:1.3; }
+        .overview-tile small { font-size:12px; color:var(--text-muted); }
+        .overview-tile[data-status="libre"] b {color:#2ecc71;}
+        .overview-tile[data-status="ocupada"] b {color:#f0695a;}
+        .overview-tile[data-status="alerta"] b {color:#f5bf3b;}
+        .map-legend { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:9px 11px; background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:12px; }
+        .legend-chip { display:inline-flex; gap:7px; align-items:center; color:var(--text-muted); font-size:12px; font-weight:650; white-space:nowrap; }
+        .legend-dot { height:9px; width:9px; border:2px solid currentColor; border-radius:50%; }
+        .legend-free {color:#2ecc71;} .legend-busy {color:#e74c3c;} .legend-bill {color:#f5bf3b;}
+        .salon-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(185px,1fr)); gap:16px; padding:0; }
+        .mesa-card { appearance:none; width:100%; min-width:0; border-radius:19px; padding:16px 12px 14px; display:flex; flex-direction:column; align-items:center; background:var(--glass-bg, #171717); border:1px solid var(--glass-border); gap:8px; text-align:center; transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease; cursor:default; opacity:1; color:var(--text-main); font-family:inherit; }
+        .mesa-card[data-clickable="true"] { cursor:pointer; }
+        .mesa-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,.16),0 0 19px rgba(255,121,0,.07); }
+        .mesa-card:focus-visible, .action-btn:focus-visible { outline:2px solid var(--salon-accent); outline-offset:3px; }
+        .mesa-card.libre { border-color:rgba(46,204,113,.32); }
+        .mesa-card.ocupada {border-color:rgba(231,76,60,.3);}
+        .mesa-card.pidiendo-cuenta {border-color:rgba(245,191,59,.75); background:linear-gradient(135deg,rgba(245,191,59,.08),rgba(16,16,16,.12)); box-shadow:0 0 20px rgba(245,191,59,.1); animation:mesaAttention 2.6s ease-in-out infinite; }
+        @keyframes mesaAttention {0%,100%{box-shadow:0 0 5px rgba(245,191,59,.07)}50%{box-shadow:0 0 21px rgba(245,191,59,.21)}}
+        .mesa-card.libre[data-clickable="true"]:hover { border-color:var(--salon-green); }
+        .mesa-card.ocupada[data-clickable="true"]:hover {border-color:var(--salon-accent);}
+        /* Mesas P25: las sillas quedan FUERA del tablero y visibles por los cuatro lados. */
+        .mesa-figure { width:100%; max-width:196px; height:178px; position:relative; display:flex; align-items:center; justify-content:center; margin:2px auto 3px; }
+        .table-surface { position:relative; z-index:2; box-sizing:border-box; width:142px; height:124px; flex:none; border:3px solid #584638; box-shadow:0 5px 9px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 14px rgba(0,0,0,.28); background:linear-gradient(142deg,#3a2d25,#201b1b 60%,#35251e); border-radius:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 8px; }
+        .mesa-figure.mesa-2 .table-surface { width:132px; height:132px; border-radius:50%; }
+        .mesa-figure.mesa-4 .table-surface { width:142px; height:124px; border-radius:27px; }
+        .mesa-figure.mesa-6 .table-surface { width:142px; height:124px; border-radius:35px; }
+        .mesa-figure.mesa-8 .table-surface { width:142px; height:124px; border-radius:35px; }
+        .mesa-card.libre .table-surface { border-color:rgba(46,204,113,.65); }
+        .mesa-card.ocupada .table-surface { border-color:rgba(231,76,60,.72); }
+        .mesa-card.pidiendo-cuenta .table-surface { border-color:rgba(245,191,59,.95); }
+        .table-seat { position:absolute; z-index:1; display:block; box-sizing:border-box; width:32px; height:17px; background:linear-gradient(180deg,#624b3c,#352a23); border:2px solid #99745b; border-radius:9px 9px 5px 5px; box-shadow:0 3px 8px rgba(0,0,0,.45); }
+        .table-seat.top {top:2px; left:50%; transform:translateX(-50%);}
+        .table-seat.bottom {bottom:2px; left:50%; transform:translateX(-50%) rotate(180deg);}
+        /* Las sillas de los lados son verticales: no quedan ocultas detrás del tablero. */
+        .table-seat.left, .table-seat.lt, .table-seat.lb {width:17px;height:32px;left:2px;border-radius:9px 5px 5px 9px;}
+        .table-seat.right, .table-seat.rt, .table-seat.rb {width:17px;height:32px;right:2px;border-radius:5px 9px 9px 5px;}
+        .table-seat.left,.table-seat.right {top:50%;transform:translateY(-50%);}
+        .table-seat.tl{top:2px;left:31%;transform:translateX(-50%)}
+        .table-seat.tr{top:2px;left:69%;transform:translateX(-50%)}
+        .table-seat.bl{bottom:2px;left:31%;transform:translateX(-50%) rotate(180deg)}
+        .table-seat.br{bottom:2px;left:69%;transform:translateX(-50%) rotate(180deg)}
+        .table-seat.lt,.table-seat.rt{top:29%;transform:translateY(-50%)}
+        .table-seat.lb,.table-seat.rb{top:71%;transform:translateY(-50%)}
+        /* Disposición: 2 sillas (arriba/abajo); 4 (+laterales); 6 (4 horizontales +2 laterales); 8 (4+4). */
+        .sesion-tiempo{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;color:#ffad62;font-size:12px;font-weight:800;margin-top:7px}
+        .sesion-tiempo strong{font-variant-numeric:tabular-nums}
+        .history-mesa-info{margin:0 0 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:11px 12px;border-radius:10px;background:rgba(255,122,0,.07);border:1px solid rgba(255,122,0,.14);font-size:12px;color:var(--text-muted)}
+        .history-mesa-info strong{color:var(--text-main);font-variant-numeric:tabular-nums}
+        .table-surface .mesa-numero {color:#fff; font-size:34px; line-height:1; font-weight:900;}
+        .mesa-figure.mesa-2 .mesa-numero{font-size:30px;}
+        .mesa-surface-label {font-size:10px; color:#d3c0b2; letter-spacing:.04em; text-transform:uppercase; font-weight:700;}
+        .mesa-surface-cap {font-size:11px; color:#ede1d5; font-weight:650;}
+        .mesa-badge {display:inline-flex; align-items:center; justify-content:center; font-size:11px; border-radius:999px; padding:5px 10px; font-weight:850; letter-spacing:.02em;}
+        .badge-libre{background:rgba(46,204,113,.13);color:#2ecc71;}
+        .badge-ocupada{background:rgba(231,76,60,.15);color:#ed7064;}
+        .badge-cuenta{background:rgba(245,191,59,.16);color:#ffd466;}
+        .mesa-mozo {display:block;margin:0; min-height:15px;font-size:11px; line-height:1.3; color:var(--text-muted);overflow-wrap:anywhere;}
+        .mesa-instruccion {font-size:11px; color:var(--salon-accent); min-height:14px;}
+        .salon-panel {background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:17px; padding:21px; }
+        .salon-panel h2 {font-size:20px; margin:0;}
+        .panel-titleline {display:flex; align-items:center; gap:10px; justify-content:space-between; border-bottom:1px solid var(--glass-border); padding-bottom:14px; margin-bottom:15px;}
+        .panel-counter {font-size:12px; color:var(--salon-accent); font-weight:800; background:rgba(255,121,0,.12); padding:5px 10px; border-radius:999px;}
+        /* Mis mesas activas: información clara sin duplicar el cronómetro del mapa. */
+        .sesion-card {background:var(--input-bg, rgba(255,255,255,.035)); border:1px solid var(--glass-border); border-radius:13px; padding:0; display:flex;flex-direction:column; gap:0; margin:0; overflow:hidden;}
+        .sesion-card.pidiendo-cuenta {border-color:rgba(245,191,59,.5);background:rgba(245,191,59,.035);}
+        .sesion-card-top{padding:15px 15px 11px;}
+        .sesion-header {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+        .sesion-header strong {font-size:17px;line-height:1.2;}
+        .sesion-people {display:inline-flex;align-items:center;gap:5px;border-radius:999px;border:1px solid var(--glass-border);padding:5px 9px;color:var(--text-muted);font-size:11px;font-weight:750;white-space:nowrap;}
+        .sesion-bill {display:block;color:#ffd466;font-size:11px;font-weight:850;margin-top:10px;}
+        .sesion-meta {font-size:12px; color:var(--text-muted); line-height:1.35;}
+        .sesion-detail-grid {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:stretch;margin-top:13px;}
+        .sesion-opened, .sesion-pin-box {display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0;background:rgba(0,0,0,.15);border:1px solid var(--glass-border);border-radius:10px;padding:10px 11px;}
+        .sesion-opened span,.sesion-pin-box span {font-size:11px;color:var(--text-muted);}
+        .sesion-opened strong {font-size:12px;line-height:1.3;color:var(--text-main);font-weight:800;overflow-wrap:anywhere;}
+        .sesion-pin-box {min-width:97px;align-items:center;}
+        .sesion-pin {font-family:ui-monospace,monospace;font-size:22px;letter-spacing:3px;color:var(--salon-accent);font-weight:900;white-space:nowrap;line-height:1;}
+        .sesion-footer {display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--glass-border);padding:12px 15px 14px;}
+        .sesion-footer .action-btn {width:100%;padding:10px 7px;font-size:11px;white-space:normal;line-height:1.25;}
+        .action-btn { border:1px solid var(--glass-border); background:transparent;color:var(--text-main);border-radius:10px;padding:9px 12px;cursor:pointer;transition:transform .2s ease, background .2s ease, box-shadow .2s ease; font-family:inherit;font-size:12px;font-weight:800; }
+        .action-btn:hover {transform:translateY(-2px);box-shadow:0 6px 17px rgba(255,121,0,.16);border-color:rgba(255,121,0,.45);}
+        .action-btn-primary {background:var(--salon-accent); color:white; border-color:var(--salon-accent);}
+        .action-btn-warn{color:#f6c357;border-color:rgba(245,191,59,.35);}
+        .action-btn-danger{color:#f06a60;border-color:rgba(231,76,60,.35);}
+        .alert-list {display:flex;flex-direction:column;gap:10px;}
+        .alert-item {display:flex;flex-direction:column;gap:8px; background:rgba(255,255,255,.025); border:1px solid var(--glass-border);border-left:3px solid var(--salon-accent);padding:12px;border-radius:10px;}
+        .alert-item.alert-cuenta{border-left-color:#f5bf3b;}
+        .alert-item.alert-listo{border-left-color:#2ecc71;}
+        .alert-item.alert-pendiente{border-left-color:#b777ff;}
+        .alert-item strong{font-size:13px;}
+        .alert-item p{color:var(--text-muted);font-size:12px;line-height:1.45;margin:0;}
+        .alert-empty {color:var(--text-muted);font-size:13px;line-height:1.5;margin:0;}
+        .salon-modal-box {width:min(650px,94vw)!important;max-width:94vw;}
+        .modal-history-head {display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:17px;}
+        .history-card{padding:14px;border:1px solid var(--glass-border);border-radius:13px;background:rgba(255,255,255,.025);margin-bottom:10px;}
+        .history-card-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:9px;}
+        .history-time{font-size:12px;color:var(--text-muted);}
+        .history-status{font-size:11px;font-weight:800;border:1px solid currentColor;border-radius:999px;padding:4px 9px;white-space:nowrap;}
+        .history-status.pendiente{color:#b777ff;} .history-status.proceso{color:#ff8800;} .history-status.listo{color:#2ecc71;} .history-status.entregado{color:#73b2ff;} .history-status.rechazada{color:#ed6458;}
+        .history-item{font-size:13px;line-height:1.5;display:flex;justify-content:space-between;gap:10px;margin-top:5px;}
+        .history-removed{font-size:11px; color:#ffb06a; margin:0 0 4px 16px;}
+        .history-total{font-size:12px;color:var(--text-muted);font-weight:700;text-align:right; margin-top:10px;}
+        .modal-note{font-size:12px;color:var(--text-muted);line-height:1.5;}
+        #toast-exito {background:#203a2b;color:#5ff2a2;border:1px solid rgba(46,204,113,.4);}
+        @media (max-width:1110px){.salon-columns{grid-template-columns:1fr;} .salon-column-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));} .salon-grid{grid-template-columns:repeat(auto-fit,minmax(185px,1fr));}}
+        @media (max-width:720px){.salon-shell{padding:0 15px 70px}.salon-column-side{display:flex;}.salon-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.salon-overview{grid-template-columns:repeat(2,minmax(0,1fr));}.mesa-card{padding:13px 8px}.mesa-figure{transform:scale(.9);margin:-5px auto}.top-bar{flex-wrap:wrap;gap:12px;}.salon-heading h2{font-size:23px;}}
+        @media (max-width:420px){.salon-grid{grid-template-columns:1fr 1fr;}.mesa-figure{transform:scale(.77); margin:-15px auto}.table-surface .mesa-numero{font-size:30px}.mesa-card{padding:9px 5px}.mesa-instruccion{font-size:10px}}
+        @media (prefers-reduced-motion:reduce){.mesa-card,.action-btn{transition:none!important;animation:none!important;}}
+
+
+        /* P40: Mozo adaptable sin alterar API, mapa de mesas ni estados de sesión. */
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { max-width:100%; overflow-x:clip; }
+        .salon-shell, .salon-columns, .salon-column-main, .salon-column-side { min-width:0; }
+        .top-bar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .sg-mozo-acciones { display:flex; align-items:center; justify-content:flex-end; gap:13px; flex-wrap:wrap; min-width:0; }
+        .sg-mozo-acciones #nombre-mozo { overflow-wrap:anywhere; }
+        .sg-mozo-acciones .sg-theme-host { order:0; }
+        .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+        .salon-columns > * { min-width:0; }
+        .map-legend { justify-content:center; }
+        .salon-grid { min-width:0; }
+        .salon-panel, .sesion-card, .mesa-card { min-width:0; }
+        #modal-abrir, #modal-pedidos, #modal-aviso, #modal-confirmar-cierre { padding:12px; overflow-y:auto; }
+        #modal-abrir > div, #modal-pedidos > div, #modal-aviso > div, #modal-confirmar-cierre > div { max-height:calc(100dvh - 24px); max-width:100%; overflow-y:auto; }
+        #modal-pedidos > div { width:min(650px,100%)!important; }
+        #modal-abrir > div { width:min(400px,100%)!important; }
+        @media (max-width:1110px) {
+            .salon-shell { padding-inline:clamp(12px,2.4vw,25px); }
+            .salon-columns { grid-template-columns:minmax(0,1fr); gap:18px; }
+            .salon-column-side { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:15px; }
+            .salon-grid { grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
+        }
+        @media (max-width:760px) {
+            .salon-column-side { grid-template-columns:minmax(0,1fr); }
+            .salon-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+            .salon-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+            .top-bar { gap:12px; align-items:flex-start; }
+            .salon-heading { align-items:flex-start; }
+            .salon-heading h2 { font-size:clamp(22px,5vw,28px); }
+            .salon-panel { padding:16px; }
+            .mesa-card { padding:11px 7px; }
+            .mesa-figure { transform:scale(.83); margin:-9px auto; }
+            .sg-mozo-acciones { gap:9px; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; }
+        }
+        @media (max-width:500px) {
+            .salon-shell { padding-inline:12px; padding-bottom:calc(45px + env(safe-area-inset-bottom)); }
+            .top-bar { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+            .top-bar .brand { min-width:0; }
+            .top-bar .logo-restaurante { font-size:24px!important; }
+            .sg-mozo-acciones { width:100%; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:center; justify-content:stretch; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; text-align:center; }
+            .sg-mozo-acciones .sg-logout-cabecera { min-height:40px; padding:8px 10px!important; font-size:11px!important; }
+            .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+            .salon-heading { gap:12px; }
+            .map-legend { width:100%; justify-content:space-between; gap:4px; padding:9px 7px; }
+            .legend-chip { font-size:10px; gap:4px; }
+            .overview-tile { padding:10px 11px; }
+            .overview-tile b { font-size:21px; }
+            .overview-tile small { font-size:11px; }
+            .mesa-card { padding:10px 5px; gap:7px; }
+            .mesa-figure { transform:scale(.72); margin:-19px auto; }
+            .table-surface .mesa-numero { font-size:30px; }
+            .mesa-instruccion { font-size:10px; }
+            .sesion-detail-grid { grid-template-columns:minmax(0,1fr) auto; gap:6px; }
+            .sesion-opened,.sesion-pin-box { padding:9px 7px; }
+            .sesion-footer button { font-size:11px!important; padding:10px 6px!important; min-height:42px; }
+        }
+        @media (max-width:359px) {
+            .sg-mozo-acciones { grid-template-columns:auto minmax(0,1fr); }
+            .sg-mozo-acciones .sg-logout-cabecera { grid-column:1/-1; justify-self:end; }
+            .salon-grid { grid-template-columns:1fr; }
+            .mesa-figure { transform:scale(.95); margin:-3px auto; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .mesa-card.pidiendo-cuenta { animation:none!important; }
+        }
+
+        /* P40.1: avisos urgentes primero en celular; mapa primero en escritorio.
+           display:contents conserva nodos y eventos sin duplicar contenido. */
+        @media (max-width:720px) {
+            .salon-shell { display:flex; flex-direction:column; }
+            .salon-shell > .top-bar { order:0; }
+            .salon-columns, .salon-column-side { display:contents!important; }
+            .salon-column-side > section[aria-labelledby="avisos-title"] {
+                order:1; width:100%; margin:8px 0 17px;
+            }
+            /* Tareas prioritarias del mozo: avisos, accesos a mesas y luego plano. */
+            .salon-column-side > section[aria-labelledby="sesiones-title"] {
+                order:2; width:100%; margin:0 0 18px;
+            }
+            .salon-shell > .salon-heading { order:3; }
+            .salon-shell > .salon-overview { order:4; }
+            .salon-column-main { order:5; width:100%; }
+        }
     </style>
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
     <div id="toast-exito">¡Mesa abierta con éxito!</div>
 
-    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+
+    <div class="salon-shell">
         <div class="top-bar">
-            <div class="brand">
-                <h1 class="logo-restaurante" style="font-family: 'Elemental End', sans-serif; font-size: 26px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
-            </div>
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <span id="nombre-mozo" style="color: var(--text-main); font-size: 15px; font-weight: bold;">Cargando usuario...</span>
-                <button onclick="cerrarSesion()" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
-                    Cerrar Sesión
-                </button>
+            <div class="brand sg-brand-lockup"><h1 class="logo-restaurante sg-brand-unified">SAVAGE<span>GRILL.</span></h1><div class="sg-role-unified">GESTIÓN DE SALÓN</div></div>
+            <div class="sg-mozo-acciones">
+                <div data-savage-theme="inline"></div>
+                <span id="nombre-mozo" style="font-size:14px;font-weight:800;">Cargando usuario...</span>
+                <button class="action-btn action-btn-danger sg-logout-unificado sg-logout-cabecera" type="button" onclick="cerrarSesion()"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
             </div>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 400px; gap: 40px; align-items: start;">
-            <div>
-                <h2 style="font-size: 24px; margin-bottom: 5px;">Mapa de Mesas</h2>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Hacé clic en una mesa libre para sentar a los clientes.</p>
-                <div id="mapa-mesas" class="salon-grid">
-                    <p style="color: var(--text-muted);">Cargando mapa interactivo...</p>
-                </div>
-            </div>
-
-            <div class="sesiones-panel">
-                <h2 style="font-size: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; margin-bottom: 5px;">Mis Mesas Activas</h2>
-                <div id="mis-sesiones" style="display: flex; flex-direction: column; gap: 12px;">
-                    <p style="color: var(--text-muted); font-size: 14px;">No tenés mesas abiertas en este momento.</p>
-                </div>
-            </div>
+        <div class="salon-heading"><div><h2>Mapa de Mesas</h2><p>Seleccioná una mesa libre para abrirla, o una de tus mesas para consultar los pedidos.</p></div><div class="map-legend" aria-label="Referencias de estado"><span class="legend-chip"><i class="legend-dot legend-free"></i>Libre</span><span class="legend-chip"><i class="legend-dot legend-busy"></i>Ocupada</span><span class="legend-chip"><i class="legend-dot legend-bill"></i>Pide cuenta</span></div></div>
+        <div class="salon-overview" id="salon-overview" aria-live="polite"><div class="overview-tile"><b>—</b><small>Mesas totales</small></div><div class="overview-tile"><b>—</b><small>Libres</small></div><div class="overview-tile"><b>—</b><small>Ocupadas</small></div><div class="overview-tile"><b>—</b><small>Avisos</small></div></div>
+        <div class="salon-columns">
+            <div class="salon-column-main"><div id="mapa-mesas" class="salon-grid" aria-live="polite"><p class="alert-empty">Cargando mapa...</p></div></div>
+            <aside class="salon-column-side">
+                <section class="salon-panel" aria-labelledby="avisos-title"><div class="panel-titleline"><h2 id="avisos-title">Avisos del salón</h2><span id="avisos-contador" class="panel-counter">0 avisos</span></div><div class="alert-list" id="avisos-salon" aria-live="polite"><p class="alert-empty">Consultando avisos...</p></div></section>
+                <section class="salon-panel" aria-labelledby="sesiones-title"><div class="panel-titleline"><h2 id="sesiones-title">Mis mesas activas</h2><span id="sesiones-contador" class="panel-counter">0</span></div><div id="mis-sesiones" style="display:flex;flex-direction:column;gap:12px"><p class="alert-empty">Consultando mesas...</p></div></section>
+            </aside>
         </div>
     </div>
 
@@ -156,9 +389,11 @@
 
     <!-- MODAL DE SEGUIMIENTO DE COCINA -->
     <div id="modal-pedidos" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center;">
-        <div class="product-card" style="width: min(480px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="product-card" class="salon-modal-box" style="width: min(650px, 94vw); padding: 28px; position: relative; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
             <button type="button" onclick="cerrarModalPedidos()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
-            <h2 style="margin: 0 0 20px 0; color: var(--text-main); font-size: 22px;">Mesa <span id="span-pedidos-mesa" style="color: var(--primary-orange);"></span> - Seguimiento</h2>
+            <h2 style="margin: 0 0 20px 0; color: var(--text-main); font-size: 22px;">Mesa <span id="span-pedidos-mesa" style="color: var(--primary-orange);"></span> — Historial y seguimiento</h2>
+            <div class="history-mesa-info" id="info-tiempo-historial" aria-live="off"><span>Sesión abierta: <strong id="historial-fecha-apertura">—</strong></span><span>Tiempo transcurrido: <strong class="js-tiempo-mesa" id="historial-tiempo-abierto">—</strong></span><span>Comensales: <strong id="historial-comensales">—</strong></span></div>
+            <p class="modal-note" style="margin:0 0 14px">Incluye todas las comandas de la sesión actual, también las entregadas.</p>
             <div id="lista-pedidos-mozo" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
                 <p style="color: var(--text-muted);">Cargando estado...</p>
             </div>
@@ -168,7 +403,7 @@
     <!-- MODAL CUSTOM ESTÉTICO PARA AVISOS GENERALES -->
     <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
-            <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
+            <div style="color:var(--primary-orange);font-size:23px;font-weight:900;margin-bottom:10px">SAVAGE GRILL</div>
             <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso del Sistema</h2>
             <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
             <button onclick="cerrarModalAviso()" style="width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer;">
@@ -177,19 +412,19 @@
         </div>
     </div>
 
-    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA -->
+    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA (T.12) -->
     <div id="modal-confirmar-cierre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
         <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
-            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
-            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar Mesa</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">¿Estás seguro de CERRAR esta mesa?<br>El cliente será desconectado y no podrá seguir pidiendo.</p>
+            <div style="color:var(--primary-orange);font-size:23px;font-weight:900;margin-bottom:10px">GESTIÓN DE MESA</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar mesa</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">Confirmá que el cobro se haya realizado antes de cerrar la mesa. Esta acción registra el cierre y libera el lugar, pero no procesa el pago.</p>
             <input type="hidden" id="input-sesion-a-cerrar">
             <div style="display: flex; gap: 10px;">
                 <button onclick="cerrarModalCierre()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">
                     Cancelar
                 </button>
                 <button onclick="ejecutarCierreMesa()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: #e74c3c; color: white; border: none; cursor: pointer;">
-                    Sí, Cerrar Mesa
+                    Confirmar cierre
                 </button>
             </div>
         </div>
@@ -197,189 +432,237 @@
 
     <script src="app.js"></script>
     <script>
-        // Nueva variable global para el temporizador del modal de pedidos
+
+        const API_MOZO = 'http://localhost:8080/api/v1';
         let intervaloPedidosMozo = null;
+        let sesionesActivasCache = [];
+        let mesasCache = [];
+        let comandasTableroCache = [];
+        let historialSesionSeleccionada = null;
+        let cargandoTablero = false;
+        let avisosDatosValidos = true;
+
+        const escapeHTML = (s) => String(s ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const num = x => Number(x) || 0;
+        const mesaNum = x => parseInt(x,10);
+        const formatearMonto = valor => Number(valor || 0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+        const moment = fecha => {if(!fecha) return 'Sin fecha'; const f=new Date(fecha); return Number.isNaN(f.getTime()) ? 'Sin fecha' : f.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+        // Todas las pantallas calculan el tiempo desde la misma fecha del servidor.
+        function duracionDesdeApertura(fecha){
+            if(!fecha)return 'Sin horario';
+            const inicio=new Date(fecha).getTime();
+            if(!Number.isFinite(inicio))return 'Sin horario';
+            const segundos=Math.max(0,Math.floor((Date.now()-inicio)/1000));
+            const h=Math.floor(segundos/3600),m=Math.floor((segundos%3600)/60),s=segundos%60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+        function actualizarTiemposMesas(){
+            document.querySelectorAll('.js-tiempo-mesa[data-apertura]').forEach(el=>{
+                el.textContent=duracionDesdeApertura(el.dataset.apertura);
+            });
+        }
+        function etiquetaTiempoMesa(fecha){
+            if(!fecha)return '<span class="sesion-tiempo">Tiempo abierta: no disponible</span>';
+            const segura=escapeHTML(fecha);
+            return `<span class="sesion-tiempo">Tiempo abierta: <strong class="js-tiempo-mesa" data-apertura="${segura}">${escapeHTML(duracionDesdeApertura(fecha))}</strong></span>`;
+        }
+        const pideCuenta = s => Boolean(s && (s.cuenta_solicitada === true || s.solicita_cuenta === true || s.fecha_hora_solicita_cuenta));
+        const usuarioNombre = () => {const u=obtenerUsuarioActual();return u?[u.nombre,u.apellido].filter(Boolean).join(' ').trim():'';};
+        const estadoTexto = s => ({pendiente:'Pendiente',proceso:'En preparación',listo:'Listo para servir',entregado:'Entregado',rechazada:'Rechazada'}[String(s||'').toLowerCase()] || String(s||'Sin estado'));
 
         document.addEventListener('DOMContentLoaded', () => {
             const usuario = obtenerUsuarioActual();
-            if (!usuario || (usuario.rol !== 'Mozo' && usuario.rol !== 'Admin' && usuario.rol !== 'Gerente')) {
-                alert("Acceso denegado. Pantalla exclusiva de salón.");
-                window.location.href = 'login.html';
-                return;
+            if(!usuario || !['Mozo','Admin','Gerente'].includes(usuario.rol)) {
+                window.location.href='login.html'; return;
             }
-            document.getElementById('nombre-mozo').textContent = `${usuario.rol}: ${usuario.nombre} ${usuario.apellido}`;
+            document.getElementById('nombre-mozo').textContent=`${usuario.rol}: ${usuarioNombre()}`;
+            document.getElementById('mapa-mesas').addEventListener('click',ev=>{
+                const elem=ev.target.closest('[data-action]'); if(!elem)return;
+                const n=Number(elem.dataset.mesa);
+                if(elem.dataset.action==='abrir'){
+                    const m=mesasCache.find(x=>Number(x.numero)===n); if(m)abrirModalMesa(m);
+                } else if(elem.dataset.action==='historial'){
+                    const s=sesionesActivasCache.find(x=>Number(x.numero_mesa)===n);if(s)verPedidosMesa(s.id,n);
+                }
+            });
+            document.getElementById('mis-sesiones').addEventListener('click',event=>{
+                const el=event.target.closest('[data-action]');if(!el)return;
+                const s=sesionesActivasCache.find(x=>Number(x.id)===Number(el.dataset.sesion));if(!s)return;
+                if(el.dataset.action==='historial')verPedidosMesa(s.id,s.numero_mesa);
+                if(el.dataset.action==='cerrar')confirmarCierreMesa(s.id,s.numero_mesa);
+            });
+            document.getElementById('avisos-salon').addEventListener('click',event=>{
+                const el=event.target.closest('[data-action]');if(!el)return;
+                const s=sesionesActivasCache.find(x=>Number(x.id)===Number(el.dataset.sesion));if(!s)return;
+                if(el.dataset.action==='historial')verPedidosMesa(s.id,s.numero_mesa);
+                if(el.dataset.action==='cerrar')confirmarCierreMesa(s.id,s.numero_mesa);
+            });
             cargarTablero();
-            // Actualización periódica del mapa de mesas
-            setInterval(cargarTablero, 10000); 
+            setInterval(cargarTablero,5000);
+            setInterval(actualizarTiemposMesas,1000);
         });
 
         function mostrarToast(mensaje) {
-            const toast = document.getElementById('toast-exito');
-            toast.textContent = mensaje;
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 3500);
+            const toast=document.getElementById('toast-exito');toast.textContent=mensaje;toast.style.display='block';
+            clearTimeout(mostrarToast.timer);mostrarToast.timer=setTimeout(()=>toast.style.display='none',3500);
         }
+        function mostrarAviso(titulo,mensaje){document.getElementById('aviso-titulo').textContent=titulo;document.getElementById('aviso-mensaje').textContent=mensaje;document.getElementById('modal-aviso').style.display='flex';}
+        function cerrarModalAviso(){document.getElementById('modal-aviso').style.display='none';}
+        function cerrarModalCierre(){document.getElementById('modal-confirmar-cierre').style.display='none';}
+        function cerrarModalAbrir(){document.getElementById('modal-abrir').style.display='none';}
+        function cerrarModalPedidos(){document.getElementById('modal-pedidos').style.display='none'; historialSesionSeleccionada=null;if(intervaloPedidosMozo){clearInterval(intervaloPedidosMozo);intervaloPedidosMozo=null;}}
 
-        function mostrarAviso(titulo, mensaje) {
-            document.getElementById('aviso-titulo').textContent = titulo;
-            document.getElementById('aviso-mensaje').textContent = mensaje;
-            document.getElementById('modal-aviso').style.display = 'flex';
+        async function apiMozo(ruta, options={}) {
+            const resp=await apiFetch(API_MOZO+ruta,options);
+            if(!resp.ok) throw new Error(`La API respondió HTTP ${resp.status}`);
+            return resp.json();
         }
-
-        function cerrarModalAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
-        function cerrarModalCierre() { document.getElementById('modal-confirmar-cierre').style.display = 'none'; }
-        function cerrarModalAbrir() { document.getElementById('modal-abrir').style.display = 'none'; }
-        
-        // Al cerrar el modal de pedidos, detenemos el consumo en segundo plano
-        function cerrarModalPedidos() { 
-            document.getElementById('modal-pedidos').style.display = 'none'; 
-            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
-        }
-
-        function confirmarCierreMesa(idSesion) {
-            document.getElementById('input-sesion-a-cerrar').value = idSesion;
-            document.getElementById('modal-confirmar-cierre').style.display = 'flex';
-        }
-
         async function cargarTablero() {
-            await Promise.all([cargarMesas(), cargarMisSesiones()]);
-        }
-
-        async function cargarMesas() {
+            if(cargandoTablero)return;
+            cargandoTablero=true;
             try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/mesas');
-                const mesas = await resp.json();
-                const contenedor = document.getElementById('mapa-mesas');
-                contenedor.innerHTML = '';
-
-                mesas.forEach(mesa => {
-                    const div = document.createElement('div');
-                    div.className = `mesa-card ${mesa.estado ? 'ocupada' : 'libre'}`;
-                    
-                    let infoMozo = mesa.estado ? `<div class="mesa-mozo">Mesa Ocupada</div>` : '';
-
-                    div.innerHTML = `
-                        <div class="mesa-numero">${mesa.numero}</div>
-                        <div class="mesa-capacidad">Máx: ${mesa.capacidad_maxima} pers.</div>
-                        <div style="margin-top: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: ${mesa.estado ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)'}; color: ${mesa.estado ? '#e74c3c' : '#2ecc71'}">
-                            ${mesa.estado ? 'OCUPADA' : 'LIBRE'}
-                        </div>
-                        ${infoMozo}
-                    `;
-                    if (!mesa.estado) { div.onclick = () => abrirModalMesa(mesa); }
-                    contenedor.appendChild(div);
-                });
-            } catch (error) {
-                document.getElementById('mapa-mesas').innerHTML = '<p style="color: var(--error);">Error al cargar las mesas.</p>';
-            }
+                await cargarMisSesiones();
+                await Promise.all([cargarMesas(),cargarAvisosCocina()]);
+                renderizarAvisos();
+                renderizarResumen();
+            } finally {cargandoTablero=false;}
         }
-
-        async function cargarMisSesiones() {
+        async function cargarMisSesiones(){
             try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/sesiones-mesa?estado=Abierto');
-                const sesiones = await resp.json();
-                const contenedor = document.getElementById('mis-sesiones');
-                
-                if (sesiones.length === 0) {
-                    contenedor.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">No tenés mesas abiertas en este momento.</p>';
-                    return;
-                }
-
-                contenedor.innerHTML = '';
-                sesiones.forEach(s => {
-                    const div = document.createElement('div');
-                    div.className = 'sesion-card';
-                    div.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="color: var(--text-main); font-weight: bold; font-size: 18px;">Mesa ${s.numero_mesa}</div>
-                                <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">👤 ${s.cantidad_comensales} personas</div>
-                            </div>
-                            <div style="text-align: center; border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); padding: 0 15px;">
-                                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">PIN Cliente</div>
-                                <div class="pin-display">${s.codigo_pin}</div>
-                            </div>
-                            <button onclick="confirmarCierreMesa(${s.id})" style="background: transparent; color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.1)'" onmouseout="this.style.background='transparent'">
-                                Cerrar
-                            </button>
-                        </div>
-                        
-                        <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 12px; color: var(--text-muted);">Seguimiento de cocina:</span>
-                            <button onclick="verPedidosMesa('${s.numero_mesa}')" style="background: var(--glass-border); color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                                Ver Pedidos ➔
-                            </button>
-                        </div>
-                    `;
-                    contenedor.appendChild(div);
-                });
-            } catch (error) {
-                console.error("Error al cargar sesiones activas.");
-            }
-        }
-
-        // Nueva lógica para abrir el modal y disparar la actualización en vivo
-        async function verPedidosMesa(numeroMesa) {
-            document.getElementById('span-pedidos-mesa').textContent = numeroMesa;
-            const contenedor = document.getElementById('lista-pedidos-mozo');
-            contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">Consultando estado...</p>';
-            document.getElementById('modal-pedidos').style.display = 'flex';
-
-            // Ejecuta la primera carga inmediata
-            await cargarPedidosModalEnVivo(numeroMesa);
-
-            // Inicia el polling cada 3 segundos
-            if (intervaloPedidosMozo) clearInterval(intervaloPedidosMozo);
-            intervaloPedidosMozo = setInterval(() => cargarPedidosModalEnVivo(numeroMesa), 3000);
-        }
-
-        // Función que consume la API e inyecta sin parpadear
-        async function cargarPedidosModalEnVivo(numeroMesa) {
-            // Si el mozo cerró la ventana, matamos el ciclo de consumo
-            if (document.getElementById('modal-pedidos').style.display === 'none') {
-                clearInterval(intervaloPedidosMozo);
-                return;
-            }
-
-            const contenedor = document.getElementById('lista-pedidos-mozo');
-
-            try {
-                const resp = await apiFetch('http://localhost:8080/api/v1/cocina/tablero');
-                if(!resp.ok) return;
-                const comandas = await resp.json();
-                
-                const misComandas = comandas.filter(c => parseInt(c.mesa_id) === parseInt(numeroMesa));
-
-                if (misComandas.length === 0) {
-                    contenedor.innerHTML = '<p style="color:var(--text-muted); font-size: 14px;">No hay pedidos en curso en la cocina para esta mesa.</p>';
-                    return;
-                }
-
-                let htmlContent = '';
-                misComandas.forEach(c => {
-                    let conteo = {};
-                    c.items.forEach(i => { conteo[i.nombre] = (conteo[i.nombre] || 0) + 1; });
-                    let nombresItems = Object.entries(conteo).map(([nom, cant]) => `<span style="color:var(--primary-orange); font-weight:800;">${cant}x</span> ${nom}`).join(', ');
-                    
-                    let color = '#a855f7'; let txt = 'Pendiente';
-                    if (c.estado === 'proceso') { color = '#ff7a00'; txt = 'En Proceso'; }
-                    else if (c.estado === 'listo') { color = '#2ecc71'; txt = '¡Listo!'; }
-
-                    htmlContent += `
-                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
-                            <div style="font-size: 14px; font-weight: 500; color: var(--text-main); flex-grow:1; line-height: 1.5;">${nombresItems}</div>
-                            <div style="background: ${color}15; color: ${color}; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid ${color}40; letter-spacing: 0.5px; text-transform: uppercase; flex-shrink: 0; margin-top: 2px;">
-                                ${txt}
+                const sesiones=await apiMozo('/sesiones-mesa?estado=Abierto');
+                if(!Array.isArray(sesiones))throw new Error('Formato inesperado');
+                sesionesActivasCache=sesiones;
+                const cont=document.getElementById('mis-sesiones');
+                document.getElementById('sesiones-contador').textContent=String(sesiones.length);
+                if(!sesiones.length){cont.innerHTML='<p class="alert-empty">No tenés mesas abiertas en este momento.</p>';return;}
+                cont.innerHTML=sesiones.map(s=>{
+                    const cuenta=pideCuenta(s);
+                    return `<article class="sesion-card ${cuenta?'pidiendo-cuenta':''}">
+                        <div class="sesion-card-top">
+                            <div class="sesion-header"><strong>Mesa ${num(s.numero_mesa)}</strong><span class="sesion-people">${num(s.cantidad_comensales)} comensales</span></div>
+                            ${cuenta?'<span class="sesion-bill">SOLICITA LA CUENTA</span>':''}
+                            <div class="sesion-detail-grid">
+                                <div class="sesion-opened"><span>Fecha y hora de apertura</span><strong>${escapeHTML(moment(s.fecha_hora_apertura))}</strong></div>
+                                <div class="sesion-pin-box"><span>PIN cliente</span><strong class="sesion-pin">${escapeHTML(s.codigo_pin)}</strong></div>
                             </div>
                         </div>
-                    `;
-                });
-                
-                contenedor.innerHTML = htmlContent;
-                
-            } catch(error) {
-                console.error("Fallo silencioso actualizando mozo.");
+                        <div class="sesion-footer"><button type="button" class="action-btn action-btn-primary" data-action="historial" data-sesion="${num(s.id)}">Ver historial</button><button type="button" class="action-btn ${cuenta?'action-btn-warn':'action-btn-danger'}" data-action="cerrar" data-sesion="${num(s.id)}">Gestionar cierre</button></div></article>`;
+                }).join('');
+            } catch(e) {
+                console.error('No fue posible cargar las sesiones:',e);
+                document.getElementById('mis-sesiones').innerHTML='<p class="alert-empty">No se pudo consultar las mesas activas. Reintentando...</p>';
             }
+        }
+        function figuraMesa(m){
+            const capacidad=num(m.capacidad_maxima);
+            const seats= capacidad<=2 ? ['top','bottom'] : capacidad<=4 ? ['top','bottom','left','right'] : capacidad<=6 ? ['tl','tr','bl','br','left','right'] : ['tl','tr','bl','br','lt','lb','rt','rb'];
+            const figura=capacidad<=2?'mesa-2':capacidad<=4?'mesa-4':capacidad<=6?'mesa-6':'mesa-8';
+            return `<div class="mesa-figure ${figura}" aria-hidden="true">${seats.map(p=>`<i class="table-seat ${p}"></i>`).join('')}<div class="table-surface"><span class="mesa-surface-label">Mesa</span><strong class="mesa-numero">${num(m.numero)}</strong><span class="mesa-surface-cap">Máx. ${capacidad} personas</span></div></div>`;
+        }
+        async function cargarMesas(){
+            const cont=document.getElementById('mapa-mesas');
+            try {
+                const mesas=await apiMozo('/mesas');
+                if(!Array.isArray(mesas))throw new Error('Formato inesperado');
+                mesasCache=mesas;
+                if(!mesas.length){cont.innerHTML='<p class="alert-empty">No hay mesas registradas.</p>';return;}
+                cont.innerHTML=mesas.map(m=>{
+                    const sesion=sesionesActivasCache.find(s=>Number(s.numero_mesa)===Number(m.numero));
+                    const ocupada=Boolean(m.estado);
+                    const cuenta=pideCuenta(sesion);
+                    const state=cuenta?'pidiendo-cuenta':ocupada?'ocupada':'libre';
+                    const label=cuenta?'PIDE CUENTA':ocupada?'OCUPADA':'LIBRE';
+                    const badge=cuenta?'badge-cuenta':ocupada?'badge-ocupada':'badge-libre';
+                    const action=!ocupada?'abrir':sesion?'historial':null;
+                    const usuario=sesion?`Mozo: ${escapeHTML(usuarioNombre())}`:ocupada?'Mozo asignado: no disponible':'Sin mozo asignado';
+                    const extra=sesion?`${num(sesion.cantidad_comensales)} comensales · ${escapeHTML(usuarioNombre())}`:usuario;
+                    const tag=action?'button':'div';
+                    return `<${tag} ${action?'type="button"':''} class="mesa-card ${state}" data-clickable="${Boolean(action)}" ${action?`data-action="${action}" data-mesa="${num(m.numero)}"`:''} aria-label="Mesa ${num(m.numero)}. ${label}. Capacidad ${num(m.capacidad_maxima)}. ${escapeHTML(extra)}" ${!action?'title="Solo podés abrir mesas libres o consultar tus propias mesas"':''}>
+                        ${figuraMesa(m)}<span class="mesa-badge ${badge}">${label}</span><span class="mesa-mozo">${extra}</span>${sesion?etiquetaTiempoMesa(sesion.fecha_hora_apertura):''}<span class="mesa-instruccion">${!ocupada?'Abrir mesa':sesion?'Ver pedidos e historial':' '}</span>
+                    </${tag}>`;
+                }).join('');
+            } catch(e) {console.error('No se pudieron consultar mesas:',e);cont.innerHTML='<p class="alert-empty">Error al cargar las mesas. Reintentando...</p>';}
+        }
+        async function cargarAvisosCocina(){
+            try {const data=await apiMozo('/cocina/tablero');if(!Array.isArray(data))throw new Error('Formato inesperado');comandasTableroCache=data;avisosDatosValidos=true;}
+            catch(e){console.error('No se pudo consultar el tablero:',e);avisosDatosValidos=false;}
+        }
+        function resumenItems(comanda){
+            const items=Array.isArray(comanda.items)?comanda.items:[];
+            return items.map(i=>`${num(i.cantidad)||1}× ${String(i.nombre||'Producto')}`).join(', ');
+        }
+        function renderizarAvisos(){
+            const avisos=[];
+            for(const s of sesionesActivasCache){
+                if(pideCuenta(s))avisos.push({type:'cuenta',priority:0,mesa:num(s.numero_mesa),sesion:num(s.id),title:`Mesa ${num(s.numero_mesa)} solicita la cuenta`,detail:'Los clientes pidieron cerrar la cuenta.',action:'cerrar',text:'Gestionar cierre'});
+            }
+            for(const c of comandasTableroCache){
+                const sesion=sesionesActivasCache.find(s=>num(s.numero_mesa)===mesaNum(c.mesa_id));
+                if(!sesion)continue;
+                const estado=String(c.estado||'').toLowerCase();
+                if(estado==='listo'||estado==='pendiente')avisos.push({type:estado,priority:estado==='listo'?1:2,mesa:num(sesion.numero_mesa),sesion:num(sesion.id),title:`Mesa ${num(sesion.numero_mesa)} · ${estado==='listo'?'Pedido listo':'Pedido pendiente'}`,detail:resumenItems(c),action:'historial',text:'Ver pedido'});
+            }
+            avisos.sort((a,b)=>a.priority-b.priority||a.mesa-b.mesa);
+            const c=document.getElementById('avisos-salon');
+            document.getElementById('avisos-contador').textContent=`${avisos.length} aviso${avisos.length===1?'':'s'}`;
+            if(!avisosDatosValidos){c.innerHTML='<p class="alert-empty">No se pudieron actualizar los pedidos. Verificá la conexión con Cocina.</p>';return;}
+            if(!avisos.length){c.innerHTML='<p class="alert-empty">Sin avisos pendientes en tus mesas. Se actualiza automáticamente.</p>';return;}
+            c.innerHTML=avisos.map(a=>`<div class="alert-item alert-${a.type}"><strong>${escapeHTML(a.title)}</strong><p>${escapeHTML(a.detail)}</p><div><button type="button" class="action-btn ${a.type==='cuenta'?'action-btn-warn':''}" data-action="${a.action}" data-sesion="${a.sesion}">${a.text}</button></div></div>`).join('');
+        }
+        function renderizarResumen(){
+            const libres=mesasCache.filter(m=>!m.estado).length;
+            const pedidos=sesionesActivasCache.filter(pideCuenta).length;
+            const tarjetas=[['Mesas registradas',mesasCache.length,'total'],['Mesas libres',libres,'libre'],['Mesas ocupadas',mesasCache.length-libres,'ocupada'],['Solicitan cuenta',pedidos,'alerta']];
+            document.getElementById('salon-overview').innerHTML=tarjetas.map(([label,v,status])=>`<div class="overview-tile" data-status="${status}"><b>${v}</b><small>${label}</small></div>`).join('');
+        }
+        async function confirmarCierreMesa(idSesion,numeroMesa){
+            try {
+                // Cierre conservador: no permitir si no podemos comprobar comandas pendientes.
+                const comandas=await apiMozo(`/sesiones-mesa/${idSesion}/comandas`);
+                if(!Array.isArray(comandas))throw new Error('Respuesta no válida');
+                const hayPendientes=comandas.some(c=>['pendiente','proceso','listo'].includes(String(c.estado).toLowerCase()));
+                if(hayPendientes){mostrarAviso('Mesa con pedidos activos',`La mesa ${numeroMesa} todavía tiene comandas pendientes, en preparación o listas para entregar. Verificá el historial antes de cerrarla.`);return;}
+            } catch(e) {mostrarAviso('No se puede verificar el cierre','No pudimos comprobar el estado de los pedidos. Por seguridad, no vamos a cerrar esta mesa hasta restablecer la conexión.');return;}
+            document.getElementById('input-sesion-a-cerrar').value=idSesion;
+            document.getElementById('modal-confirmar-cierre').style.display='flex';
+        }
+        async function verPedidosMesa(idSesion,numeroMesa){
+            historialSesionSeleccionada=idSesion;
+            document.getElementById('span-pedidos-mesa').textContent=numeroMesa;
+            const sesion=sesionesActivasCache.find(s=>Number(s.id)===Number(idSesion));
+            document.getElementById('historial-fecha-apertura').textContent=sesion?moment(sesion.fecha_hora_apertura):'Sin fecha';
+            document.getElementById('historial-comensales').textContent=sesion?String(sesion.cantidad_comensales):'—';
+            const reloj=document.getElementById('historial-tiempo-abierto');
+            if(sesion?.fecha_hora_apertura)reloj.dataset.apertura=sesion.fecha_hora_apertura;
+            else delete reloj.dataset.apertura;
+            reloj.textContent=duracionDesdeApertura(sesion?.fecha_hora_apertura);
+            document.getElementById('modal-pedidos').style.display='flex';
+            document.getElementById('lista-pedidos-mozo').innerHTML='<p class="alert-empty">Consultando historial...</p>';
+            if(intervaloPedidosMozo)clearInterval(intervaloPedidosMozo);
+            await cargarPedidosModalEnVivo();
+            intervaloPedidosMozo=setInterval(cargarPedidosModalEnVivo,6000);
+        }
+        async function cargarPedidosModalEnVivo(){
+            if(!historialSesionSeleccionada || document.getElementById('modal-pedidos').style.display==='none')return;
+            const id=historialSesionSeleccionada;
+            const cont=document.getElementById('lista-pedidos-mozo');
+            try {
+                const result=await apiMozo(`/sesiones-mesa/${id}/comandas`);
+                if(historialSesionSeleccionada!==id)return;
+                if(!Array.isArray(result))throw new Error('Formato inesperado');
+                if(!result.length){cont.innerHTML='<p class="alert-empty">Todavía no se registraron pedidos para esta sesión.</p>';return;}
+                const historial=[...result].sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
+                cont.innerHTML=historial.map(c=>{
+                    const estado=String(c.estado||'').toLowerCase();
+                    const css=['pendiente','proceso','listo','entregado','rechazada'].includes(estado)?estado:'pendiente';
+                    const items=Array.isArray(c.items)?c.items:[];
+                    return `<article class="history-card"><div class="history-card-head"><span class="history-time">${escapeHTML(moment(c.timestamp))}</span><span class="history-status ${css}">${escapeHTML(estadoTexto(estado))}</span></div>
+                        ${items.map(i=>`<div><div class="history-item"><span>${num(i.cantidad)||1}× ${escapeHTML(i.nombre||'Producto')}</span>${i.sub_total!=null?`<span>$ ${formatearMonto(i.sub_total)}</span>`:''}</div>${Array.isArray(i.sin)&&i.sin.length?`<p class="history-removed">Sin: ${i.sin.map(escapeHTML).join(', ')}</p>`:''}</div>`).join('')}
+                        ${c.mensaje?`<p class="history-removed">${escapeHTML(c.mensaje)}</p>`:''}
+                        ${c.total!=null?`<div class="history-total">Total de la comanda: $ ${formatearMonto(c.total)}</div>`:''}
+                        </article>`;
+                }).join('');
+            }catch(e){console.error('No se pudo obtener el historial:',e);cont.innerHTML='<p class="alert-empty">No se pudo cargar el historial de esta mesa. Reintentando...</p>';}
         }
 
         function abrirModalMesa(mesa) {

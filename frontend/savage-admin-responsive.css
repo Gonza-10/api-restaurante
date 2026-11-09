@@ -1,0 +1,437 @@
+/* Savage Grill — Administración responsive P41.
+   Navegación móvil por cajón lateral. Solo afecta diseño; el panel conserva sus IDs y llamadas API. */
+.sg-admin-mobilebar,.sg-admin-mobile-overlay,.sg-admin-mobile-navhead { display:none; }
+.sg-admin-sidebar .sg-admin-theme[hidden] { display:none!important; }
+.sg-admin-theme-row { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--text-muted);font-size:12px;font-weight:800; padding:0 5px; }
+.sg-admin-theme-row .sg-theme-popup {left:0;right:auto;top:auto;bottom:calc(100% + 10px);}
+.sg-admin-main,.sg-admin-box,.sg-admin-view,.sg-admin-card { min-width:0; }
+.sg-admin-main img,.sg-admin-main video { max-width:100%; }
+.sg-admin-main input,.sg-admin-main select,.sg-admin-main textarea { max-width:100%; }
+.sg-admin-toolbar > *, .sg-admin-actions > * { min-width:0; }
+.sg-admin-main .sg-admin-list { grid-template-columns:repeat(auto-fill,minmax(min(265px,100%),1fr)); }
+.sg-admin-main .sg-compra-table-wrap,.sg-admin-main .sg-mov-tabla-wrap { max-width:100%; }
+body.light-mode .sg-admin-mobilebar { background:rgba(255,255,255,.97); border-color:#e5e7eb; }
+body.light-mode .sg-admin-mobile-overlay { background:rgba(0,0,0,.35); }
+body.light-mode .sg-admin-mobile-current { background:#fff5ec; }
+@media (max-width:1100px) {
+  .sg-admin-layout { display:grid!important; grid-template-columns:minmax(0,1fr)!important; grid-template-rows:auto minmax(0,1fr); min-height:100dvh!important; height:auto!important; overflow:visible!important; }
+  .sg-admin-mobilebar { display:flex; flex-direction:column; gap:12px; position:sticky; top:0; z-index:1050; padding:13px clamp(13px,3vw,22px) 12px; background:rgba(13,12,12,.97); backdrop-filter:blur(14px); border-bottom:1px solid var(--glass-border); }
+  .sg-admin-mobilebar-top { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; }
+  .sg-admin-mobile-brand { font-family:'Elemental End',sans-serif; letter-spacing:-.02em; font-weight:900; font-size:clamp(19px,3vw,25px); white-space:nowrap; line-height:1.15; }
+  .sg-admin-mobile-brand span { color:var(--primary-orange); }
+  .sg-admin-mobile-brand small { display:block; font:800 9px/1.4 inherit; font-family:system-ui,sans-serif; letter-spacing:.17em; color:var(--text-muted); margin-top:3px; }
+  .sg-admin-mobile-actions { display:flex; gap:9px; align-items:center; justify-content:flex-end; flex-shrink:0; }
+  .sg-admin-menu-trigger { display:flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:8px 13px; border:1px solid rgba(255,122,0,.45); border-radius:11px; color:var(--primary-orange); background:rgba(255,122,0,.08); font-weight:800; font-size:13px; font-family:inherit;cursor:pointer; }
+  .sg-admin-menu-trigger:hover,.sg-admin-menu-trigger:focus-visible { background:rgba(255,122,0,.19); outline:2px solid var(--primary-orange);outline-offset:2px; }
+  .sg-admin-mobile-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; border:1px solid rgba(255,122,0,.15);border-radius:10px; background:rgba(255,122,0,.06); padding:8px 11px; }
+  .sg-admin-mobile-current span { font-size:9px; letter-spacing:.12em; font-weight:850; color:var(--text-muted); }
+  .sg-admin-mobile-current strong { font-size:12px; color:var(--primary-orange); overflow-wrap:anywhere; }
+  .sg-admin-sidebar { display:flex!important; position:fixed!important; left:0;top:0; bottom:0; z-index:1700; width:min(330px,88vw); max-width:100vw; height:100dvh!important; padding:15px 17px!important; overflow:hidden!important; transform:translateX(-105%); visibility:hidden; pointer-events:none; transition:transform .22s ease, visibility .22s ease; box-shadow:15px 0 50px rgba(0,0,0,.5); }
+  .sg-admin-mobile-navhead { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 0 10px 4px; color:var(--primary-orange); font-size:13px; font-weight:850; }
+  #sg-admin-menu-close { color:var(--text-main); background:rgba(255,255,255,.06);border:1px solid var(--glass-border);border-radius:10px;width:36px;height:36px;cursor:pointer; }
+  .sg-admin-sidebar-scroll { flex:1 1 auto;max-height:none!important;min-height:0;overflow-y:auto!important;overscroll-behavior:contain; }
+  .sg-admin-sidebar-footer { flex:0 0 auto; gap:10px; padding-top:11px; }
+  .sg-admin-main { padding:clamp(14px,2.4vw,28px)!important;min-height:0; overflow:visible!important; min-width:0; }
+  .sg-admin-mobile-overlay:not([hidden]) { display:block!important; position:fixed;inset:0;z-index:1600;background:rgba(0,0,0,.72);backdrop-filter:blur(3px); }
+  body.sg-admin-nav-open .sg-admin-sidebar { visibility:visible;pointer-events:auto;transform:translateX(0); }
+  body.sg-admin-nav-open { overflow:hidden!important; }
+  .sg-admin-box { padding:clamp(14px,2.5vw,23px); }
+  .sg-admin-page-title { font-size:clamp(23px,3.1vw,30px); }
+  .sg-admin-main #vista-menu .login-shell { grid-template-columns:1fr!important; }
+  .sg-admin-main #vista-menu .hero-panel { min-height:200px; }
+  .sg-admin-form { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  /* La apariencia se elige desde la cabecera móvil: no dejar un rótulo vacío en el menú. */
+  .sg-admin-theme-row { display:none!important; }
+}
+@media (max-width:650px) {
+  .sg-admin-main { padding:15px 12px 60px!important; }
+  .sg-admin-box { padding:16px 13px; margin-bottom:17px; }
+  .sg-admin-form, .sg-compra-linea-grid,.sg-mov-filtros, .sg-receta-ing-grid { grid-template-columns:minmax(0,1fr)!important; }
+  .sg-admin-form .sg-admin-span2, .sg-compra-linea-grid .sg-admin-span2 { grid-column:1!important; }
+  .sg-admin-toolbar { align-items:stretch;gap:10px; }
+  .sg-admin-toolbar input[type=search] { flex:1 1 100%; }
+  .sg-admin-toolbar .sg-select-shell { flex:1 1 140px;max-width:100%; }
+  .sg-admin-actions .sg-admin-primary,.sg-admin-actions .sg-admin-secondary { min-height:44px; }
+  .sg-admin-main #vista-menu .login-page { padding:0!important; }
+  .sg-admin-main #vista-menu .hero-panel { display:none!important; }
+  .sg-admin-main #vista-menu .login-shell { display:block!important; min-height:0!important; }
+  .sg-admin-main #vista-menu .form-panel { width:100%!important;max-width:100%!important;padding:15px!important; }
+  .sg-admin-main #vista-menu .catalogo-section { padding-inline:0!important; }
+  .sg-admin-main .sg-admin-list { grid-template-columns:1fr; }
+  .sg-admin-mobile-current { padding:7px 10px; }
+  .sg-admin-main .sg-rp-grid, .sg-admin-main .sg-je-grid {grid-template-columns:1fr!important;}
+  .sg-admin-main button, .sg-admin-main [role=button] { touch-action:manipulation; }
+}
+@media (max-width:380px) {
+  .sg-admin-mobile-brand { font-size:18px; }
+  .sg-admin-mobile-brand small { font-size:8px; }
+  .sg-admin-menu-trigger { padding:8px 9px; gap:4px; }
+  .sg-admin-menu-trigger svg { width:19px; }
+  .sg-admin-mobile-actions { gap:6px; }
+  .sg-admin-main {padding-inline:10px!important;}
+}
+@media (prefers-reduced-motion:reduce) {
+ .sg-admin-sidebar { transition:none; }
+}
+
+/* P42 · Gestión de menú de tablet: fotografía y formulario con proporciones equilibradas. */
+@media (min-width:651px) and (max-width:1100px) {
+  .sg-admin-main #vista-menu .login-page {padding:0!important;}
+  .sg-admin-main #vista-menu .login-shell {
+    width:100%!important; max-width:100%!important;min-height:0!important;
+    display:grid!important;grid-template-columns:minmax(225px,.72fr) minmax(0,1.28fr)!important;
+    align-items:stretch!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel {
+    display:flex!important; min-height:560px!important;height:auto!important;
+    padding:29px clamp(18px,2.5vw,32px)!important;
+    background-position:50% center!important;
+  }
+  .sg-admin-main #vista-menu .hero-copy h1 {font-size:clamp(30px,3.2vw,44px)!important;line-height:1.08;}
+  .sg-admin-main #vista-menu .hero-copy p {font-size:13px!important;line-height:1.5;}
+  .sg-admin-main #vista-menu .form-panel {
+    display:flex!important;align-items:flex-start!important;justify-content:center!important;
+    padding:25px clamp(12px,2.5vw,27px)!important;min-width:0;
+  }
+  .sg-admin-main #vista-menu .login-card {
+    width:100%!important;max-width:490px!important;min-width:0!important;
+    margin:0!important;padding:clamp(15px,2vw,25px)!important;
+  }
+  .sg-admin-main #vista-menu .login-header h2 {font-size:clamp(22px,2.8vw,28px)!important;}
+  .sg-admin-main #vista-menu .form-panel .admin-form-row {min-width:0;}
+}
+/* P42 · Pestañas coherentes en Recetas, Reposición y Jornada. */
+.sg-admin-main .sg-receta-subnav,
+.sg-admin-main #vista-reposicion .sg-rp-tabs,
+.sg-admin-main #vista-jornada .sg-je-tabs {
+  display:flex!important;flex-wrap:nowrap!important;gap:9px!important;
+  max-width:100%;overflow-x:auto;overflow-y:hidden;
+  padding:0 0 3px!important;margin-bottom:22px!important;
+  scrollbar-width:none!important;-ms-overflow-style:none;
+  overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+.sg-admin-main .sg-receta-subnav::-webkit-scrollbar,
+.sg-admin-main #vista-reposicion .sg-rp-tabs::-webkit-scrollbar,
+.sg-admin-main #vista-jornada .sg-je-tabs::-webkit-scrollbar {display:none!important;width:0!important;height:0!important;}
+.sg-admin-main .sg-receta-tab,
+.sg-admin-main #vista-reposicion .sg-rp-tab,
+.sg-admin-main #vista-jornada .sg-je-tab {
+  flex:1 0 0;min-width:0;min-height:46px;
+  padding:10px 12px!important;text-align:center!important;
+  display:flex;align-items:center;justify-content:center;
+  line-height:1.25;white-space:normal;
+  font-size:clamp(11px,1.3vw,14px)!important;
+}
+@media(max-width:650px){
+  .sg-admin-main .sg-receta-subnav,
+  .sg-admin-main #vista-reposicion .sg-rp-tabs,
+  .sg-admin-main #vista-jornada .sg-je-tabs {gap:7px!important;}
+  .sg-admin-main .sg-receta-tab,
+  .sg-admin-main #vista-reposicion .sg-rp-tab,
+  .sg-admin-main #vista-jornada .sg-je-tab {font-size:11px!important;padding:10px 6px!important;}
+}
+/* P42 · Confirmación legible en celular; scroll solo dentro del cuadro. */
+@media(max-width:600px){
+  .sg-admin-confirm-backdrop {padding:12px!important;overflow-y:auto;}
+  .sg-admin-confirm-dialog {
+    width:min(100%,450px)!important;max-width:100%;max-height:calc(100dvh - 24px);
+    overflow-y:auto;padding:21px 18px 18px!important;
+  }
+  .sg-admin-confirm-head {display:block!important;min-width:0;}
+  .sg-admin-confirm-icon {margin-bottom:13px;width:42px;height:42px;}
+  .sg-admin-confirm-title {font-size:clamp(19px,5vw,23px)!important;line-height:1.18;overflow-wrap:break-word;}
+  .sg-admin-confirm-text {font-size:13px;line-height:1.55;overflow-wrap:anywhere;}
+  .sg-admin-confirm-actions {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:20px;}
+  .sg-admin-confirm-cancel,.sg-admin-confirm-ok {min-width:0!important;width:100%;padding:12px 7px!important;font-size:12px!important;line-height:1.25;}
+}
+
+/* P44 · Navegación: conservar microinteracciones fluidas en escritorio. */
+.sg-admin-sidebar .sg-admin-nav {
+  transition:transform .2s cubic-bezier(.2,.7,.2,1),background-color .2s,border-color .2s,color .2s,box-shadow .2s!important;
+  will-change:transform;
+}
+@media(hover:hover) and (pointer:fine) {
+ .sg-admin-sidebar .sg-admin-nav:hover:not(:disabled) {transform:translateX(5px);background:rgba(255,122,0,.115);border-color:rgba(255,122,0,.22);box-shadow:inset 3px 0 0 rgba(255,122,0,.72);outline:none;}
+ .sg-admin-sidebar .sg-admin-nav:active:not(:disabled){transform:translateX(2px) scale(.995)}
+}
+.sg-admin-sidebar .sg-admin-nav:focus-visible {outline:2px solid var(--primary-orange);outline-offset:2px}
+
+/* Volver a Gerencia a mano, sin abrir el menú de Administración. */
+.sg-admin-manager-return[hidden]{display:none!important}
+.sg-admin-manager-return{display:flex;align-items:center;justify-content:flex-end;margin:-3px 0 18px;min-width:0}
+.sg-admin-manager-return-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:41px;
+ padding:10px 15px;border-radius:11px;background:rgba(255,122,0,.085);border:1px solid rgba(255,122,0,.36);
+ color:var(--primary-orange);font:inherit;font-size:13px;font-weight:850;cursor:pointer;
+ transition:transform .2s,background-color .2s,border-color .2s}
+.sg-admin-manager-return-btn:hover{background:rgba(255,122,0,.16);border-color:rgba(255,122,0,.65);transform:translateY(-1px)}
+.sg-admin-manager-return-btn:focus-visible{outline:2px solid var(--primary-orange);outline-offset:3px}
+@media(max-width:650px){.sg-admin-manager-return{margin:0 0 13px}.sg-admin-manager-return-btn{min-height:40px;padding:9px 12px;font-size:12px}}
+
+/* P44 · Catálogo administrativo: tarjetas verdaderamente centradas y uniformes.
+   app.js define width:300px en línea; esta regla visual la adapta al ancho disponible. */
+.sg-admin-main #vista-menu #listado.products-grid {
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(275px,100%),1fr));
+ justify-items:center;align-items:stretch;gap:17px;width:100%;min-width:0;
+}
+.sg-admin-main #vista-menu #listado.products-grid>.product-card {
+ width:min(100%,345px)!important;max-width:100%;min-width:0;justify-self:center;
+}
+.sg-admin-main #vista-menu #listado.products-grid>.product-card img{max-width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+@media(max-width:650px){.sg-admin-main #vista-menu #listado.products-grid{gap:14px}}
+
+/* P44 · Tablet: fotografía como banner ambiental desenfocado, formulario centrado debajo.
+   Evita el panel lateral estrecho de P42, sin tocar el diseño de escritorio. */
+@media(min-width:651px) and (max-width:1100px){
+ .sg-admin-main #vista-menu .login-shell{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto;max-width:min(840px,100%)!important;margin-inline:auto!important;
+ }
+ .sg-admin-main #vista-menu .hero-panel{
+  position:relative;isolation:isolate;overflow:hidden;display:flex!important;
+  min-height:240px!important;height:clamp(240px,31vw,306px)!important;
+  padding:clamp(20px,3.2vw,34px)!important;
+  background-position:center 43%!important;justify-content:space-between!important;
+ }
+ .sg-admin-main #vista-menu .hero-panel::after{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(6,6,6,.64) 0%,rgba(7,7,7,.4) 55%,rgba(7,7,7,.55) 100%);
+  backdrop-filter:blur(3.5px);-webkit-backdrop-filter:blur(3.5px);
+ }
+ .sg-admin-main #vista-menu .hero-panel .brand{margin-top:0!important}
+ .sg-admin-main #vista-menu .hero-copy{max-width:540px}
+ .sg-admin-main #vista-menu .hero-copy h1{font-size:clamp(33px,4vw,45px)!important}
+ .sg-admin-main #vista-menu .hero-copy h1 br{display:none}
+ .sg-admin-main #vista-menu .hero-copy p{max-width:480px;font-size:13px!important}
+ .sg-admin-main #vista-menu .form-panel{padding:clamp(22px,4vw,38px)!important;overflow:visible!important}
+ .sg-admin-main #vista-menu .login-card{margin:0 auto!important;width:100%!important;max-width:615px!important;padding:clamp(20px,3vw,31px)!important}
+}
+@media(prefers-reduced-motion:reduce){.sg-admin-sidebar .sg-admin-nav,.sg-admin-manager-return-btn{transition:none!important;transform:none!important}}
+
+/* P48 · Gestión de Menú — tablet y escritorio: una sola escena, sin desenfoques.
+   La fotografía original queda detrás de una capa negra uniforme; marca, título y
+   formulario se superponen sin modificar las funcionalidades. */
+@media (min-width:651px) {
+  .sg-admin-main #vista-menu .login-shell {
+    display:block!important;
+    grid-template-columns:none!important;
+    width:100%!important;
+    max-width:1120px!important;
+    min-height:0!important;
+    margin:0 auto!important;
+    position:relative!important;
+    isolation:isolate!important;
+    overflow:hidden!important;
+    border:1px solid var(--glass-border)!important;
+    border-radius:25px!important;
+    background:#090909!important;
+    box-shadow:0 24px 60px rgba(0,0,0,.36)!important;
+  }
+  .sg-admin-main #vista-menu .login-shell::before {
+    content:""!important;
+    display:block!important;
+    position:absolute!important;
+    inset:0!important;
+    background-image:url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1400&q=90")!important;
+    background-size:cover!important;
+    background-position:center 43%!important;
+    filter:none!important;
+    -webkit-filter:none!important;
+    transform:none!important;
+    opacity:1!important;
+    z-index:0!important;
+    pointer-events:none!important;
+  }
+  .sg-admin-main #vista-menu .login-shell::after {
+    content:""!important;
+    display:block!important;
+    position:absolute!important;
+    inset:0!important;
+    background:rgba(0,0,0,.76)!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    z-index:0!important;
+    pointer-events:none!important;
+  }
+  .sg-admin-main #vista-menu .login-shell > .hero-panel,
+  .sg-admin-main #vista-menu .login-shell > .form-panel {position:relative!important;z-index:1!important;}
+  .sg-admin-main #vista-menu .hero-panel {
+    display:block!important;
+    min-height:0!important;
+    height:auto!important;
+    padding:25px 28px 7px!important;
+    background:none!important;
+    border:0!important;
+    text-align:center!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel::after {
+    content:none!important;
+    display:none!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel .brand {
+    display:flex!important;
+    justify-content:center!important;
+    width:100%!important;
+    margin:0!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel .logo-restaurante {
+    font-size:clamp(27px,3.6vw,39px)!important;
+  }
+  .sg-admin-main #vista-menu .hero-copy {
+    margin:14px auto 0!important;
+    max-width:100%!important;
+    text-align:center!important;
+  }
+  .sg-admin-main #vista-menu .hero-copy h1 {
+    max-width:100%!important;
+    margin:0!important;
+    font-size:clamp(27px,4vw,44px)!important;
+    line-height:1.15!important;
+    letter-spacing:-.045em!important;
+    white-space:nowrap!important;
+  }
+  .sg-admin-main #vista-menu .hero-copy h1 span {display:inline!important;margin:0!important;}
+  .sg-admin-main #vista-menu .hero-copy p {
+    max-width:500px!important;
+    margin:10px auto 0!important;
+    font-size:13px!important;
+    line-height:1.45!important;
+  }
+  .sg-admin-main #vista-menu .form-panel {
+    display:flex!important;
+    justify-content:center!important;
+    align-items:flex-start!important;
+    min-height:0!important;
+    padding:11px 22px 26px!important;
+    background:transparent!important;
+    overflow:visible!important;
+  }
+  .sg-admin-main #vista-menu .login-card {
+    width:100%!important;
+    max-width:555px!important;
+    min-width:0!important;
+    margin:0 auto!important;
+    padding:clamp(17px,2.6vw,28px)!important;
+    background:rgba(13,13,13,.94)!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    border:1px solid rgba(255,255,255,.13)!important;
+    box-shadow:0 14px 36px rgba(0,0,0,.34)!important;
+  }
+  body.light-mode .sg-admin-main #vista-menu .login-card {
+    background:rgba(255,255,255,.96)!important;
+    border-color:rgba(0,0,0,.13)!important;
+  }
+}
+/* Evitar que el título se parta en desktop; se reduce antes de forzarlo a dos líneas. */
+@media(min-width:1151px) {
+  .sg-admin-main #vista-menu .hero-copy h1 {
+    font-size:clamp(29px,2.7vw,45px)!important;
+    white-space:nowrap;
+    letter-spacing:-.045em;
+  }
+}
+
+/* P47 · Escritorio: idéntica composición de tablet, con aire proporcional. */
+@media(min-width:1151px) {
+  .sg-admin-main #vista-menu .hero-panel {padding:38px 44px 10px!important;}
+  .sg-admin-main #vista-menu .hero-copy {margin-top:16px!important;}
+  .sg-admin-main #vista-menu .hero-copy h1 {
+    font-size:clamp(34px,3vw,45px)!important;
+    white-space:nowrap!important;
+  }
+  .sg-admin-main #vista-menu .form-panel {padding:15px 30px 38px!important;}
+  .sg-admin-main #vista-menu .login-card {max-width:610px!important;padding:30px!important;}
+}
+
+/* P48 · Galaxy Tab S4 (712 px) y tablets compactas: escena igual a iPad,
+   pero con formulario y márgenes proporcionados a la pantalla. */
+@media (min-width:651px) and (max-width:760px) {
+  .sg-admin-main #vista-menu .login-shell {
+    max-width:min(650px,100%)!important;
+    margin-inline:auto!important;
+    border-radius:22px!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel {padding:22px 20px 5px!important;}
+  .sg-admin-main #vista-menu .hero-panel .logo-restaurante {font-size:30px!important;}
+  .sg-admin-main #vista-menu .hero-copy {margin-top:11px!important;}
+  .sg-admin-main #vista-menu .hero-copy h1 {font-size:clamp(25px,4.25vw,31px)!important;}
+  .sg-admin-main #vista-menu .hero-copy p {font-size:12px!important;max-width:410px!important;}
+  .sg-admin-main #vista-menu .form-panel {
+    display:flex!important;
+    justify-content:center!important;
+    align-items:flex-start!important;
+    padding:10px 19px 24px!important;
+  }
+  .sg-admin-main #vista-menu .login-card {
+    width:100%!important;
+    max-width:470px!important;
+    padding:21px!important;
+    border-radius:19px!important;
+  }
+  .sg-admin-main #vista-menu .admin-inline-fields {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:13px!important;
+  }
+}
+
+/* P48 · Celulares: volver a la versión simple aprobada, sin fotografía
+   ni un recuadro decorativo extra rodeando Nuevo Producto. */
+@media (max-width:650px) {
+  .sg-admin-main #vista-menu .login-shell {
+    display:block!important;
+    position:static!important;
+    isolation:auto!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .sg-admin-main #vista-menu .login-shell::before,
+  .sg-admin-main #vista-menu .login-shell::after {
+    content:none!important;
+    display:none!important;
+    background:none!important;
+  }
+  .sg-admin-main #vista-menu .hero-panel {display:none!important;}
+  .sg-admin-main #vista-menu .form-panel {
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    padding:0!important;
+    min-height:0!important;
+    background:transparent!important;
+    overflow:visible!important;
+  }
+  .sg-admin-main #vista-menu .login-card {
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:22px 16px 20px!important;
+    border:1px solid var(--glass-border)!important;
+    border-radius:19px!important;
+    background:rgba(18,18,18,.94)!important;
+    box-shadow:0 12px 28px rgba(0,0,0,.14)!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  .sg-admin-main #vista-menu .admin-inline-fields {
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:16px!important;
+  }
+  body.light-mode .sg-admin-main #vista-menu .login-card {
+    background:#fff!important;
+    border-color:#e5e7eb!important;
+  }
+}
+@media(max-width:380px) {
+  .sg-admin-main #vista-menu .login-card {padding:19px 13px!important;}
+}

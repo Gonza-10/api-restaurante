@@ -5,240 +5,1476 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Cocina - Savage Grill</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
     <style>
-        /* Estilos específicos para el layout de la cocina (Pantalla completa) */
         body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px; flex-grow: 1; overflow: hidden; }
+        
+        /* Navegación por Pestañas */
+        .tabs-header {
+            display: flex;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0 40px;
+            gap: 20px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 15px 20px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--primary-orange);
+            border-bottom-color: var(--primary-orange);
+        }
+        .tab-content { display: none; flex-grow: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
+
+        /* Contenedores Genéricos para Pestañas de Stock y Notificaciones */
+        .panel-scrollable { padding: 30px 40px; flex-grow: 1; overflow-y: auto; background: var(--bg-dark); }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        /* Componente: Badge de Notificación */
+        .badge-noti {
+            background: #e74c3c;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: none; /* Se activa vía JS */
+        }
+
+        /* Estilos del Tablero Kanban (Tab 1) */
+        .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px; width: 100%; height: 100%; }
         .kanban-column { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
         body.light-mode .kanban-column { background: #f8fafc; border-color: #e2e8f0; }
-
         .kanban-header { padding: 20px; border-bottom: 1px solid var(--glass-border); text-align: center; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
-        body.light-mode .kanban-header { border-bottom-color: #e2e8f0; }
-
         .kanban-body { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        
-        /* Tarjetas de comandas */
         .comanda-card { background: rgba(18,18,18,0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
         body.light-mode .comanda-card { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .comanda-card:hover { transform: translateY(-3px); }
-
         .comanda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed var(--text-muted); padding-bottom: 10px; }
         .mesa-badge { background: var(--primary-orange); color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .tiempo-badge { color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-        .item-pedido { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; color: var(--text-main); }
+        .item-pedido { display: flex; flex-direction: column; font-size: 14px; margin-bottom: 8px; color: var(--text-main); }
+        
+        /* Modificador "SIN" (Tarea 10) */
+        .modificador-sin {
+            background: #e74c3c;
+            color: white;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: inline-block;
+            width: max-content;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Estilos Componentes Stock (Tabs 2 y 3) */
+        .card-panel { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; }
+        .noti-item { border-left: 4px solid #3498db; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
+        .noti-item.urgente { border-left-color: #e74c3c; background: rgba(231,76,60,0.1); }
+        .noti-item.info { border-left-color: #2ecc71; background: rgba(46,204,113,0.1); }
+        
+        .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid var(--glass-border); }
+        .stock-row:last-child { border-bottom: none; }
+        .semaforo { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+        .semaforo.rojo { background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+        .semaforo.amarillo { background-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+        .semaforo.verde { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+        .semaforo.gris { background-color: #7f8c8d; }
+
+        /* Formulario UI */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: bold; }
+        .form-control { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: white; padding: 10px; border-radius: 8px; font-family: inherit; }
+
+        /* Botones anchos dentro de tarjetas: evitar que el zoom del hover (styles.css)
+           los saque de su contenedor. Conserva los colores y las acciones existentes. */
+        #form-produccion > .btn-orange,
+        #form-perdida > .btn-orange {
+            width: 100%;
+            max-width: 100%;
+            transform: none;
+        }
+        #form-produccion > .btn-orange:hover,
+        #form-produccion > .btn-orange:active,
+        #form-perdida > .btn-orange:hover,
+        #form-perdida > .btn-orange:active {
+            transform: none;
+            filter: brightness(1.07);
+        }
+
+
+        /* SELECTORES SAVAGE GRILL: reemplaza el menú celeste nativo del navegador. */
+
+        /* SAVAGE SELECT: menú desplegable propio. No usa el listado azul nativo de Chrome. */
+        .sg-select-shell { position:relative; display:block; width:100%; min-width:0; flex-shrink:1; }
+        .sg-select-shell .sg-select-native { position:absolute !important; width:1px !important; height:1px !important; min-height:0 !important; padding:0 !important; margin:0 !important; border:0 !important; opacity:0 !important; clip-path:inset(50%); overflow:hidden; pointer-events:none; }
+        .sg-select-button { width:100%; min-height:46px; padding:11px 14px; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--text-main); font:inherit; font-size:14px; font-weight:500; background:#0b0b0b; border:1px solid var(--glass-border); border-radius:10px; cursor:pointer; transition:border-color .18s, background .18s, box-shadow .18s; }
+        .sg-select-button:hover { border-color:rgba(255,122,0,.65); }
+        .sg-select-button:focus-visible, .sg-select-button[aria-expanded="true"] { outline:2px solid var(--primary-orange); outline-offset:2px; border-color:var(--primary-orange); }
+        .sg-select-button:disabled { opacity:.55; cursor:not-allowed; }
+        .sg-select-value { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sg-select-button.sg-select-placeholder .sg-select-value { color:var(--text-muted); }
+        .sg-select-arrow { flex-shrink:0; width:10px; height:10px; border-right:2px solid var(--primary-orange); border-bottom:2px solid var(--primary-orange); transform:translateY(-2px) rotate(45deg); transition:transform .2s; margin:0 4px 3px; }
+        .sg-select-button[aria-expanded="true"] .sg-select-arrow { transform:translateY(3px) rotate(225deg); }
+        .sg-select-list { position:fixed; z-index:4100; box-sizing:border-box; max-height:min(300px, 55vh); overflow-y:auto; overscroll-behavior:contain; border:1px solid rgba(255,122,0,.58); border-radius:12px; background:#151313; color:#f5f5f5; padding:6px; box-shadow:0 18px 45px rgba(0,0,0,.65); scrollbar-width:thin; scrollbar-color:#805039 transparent; }
+        .sg-select-list[hidden] { display:none !important; }
+        .sg-select-list::-webkit-scrollbar { width:6px; }
+        .sg-select-list::-webkit-scrollbar-thumb { background:#805039; border-radius:8px; }
+        .sg-select-option { display:flex; align-items:center; gap:9px; width:100%; border:0; border-radius:8px; color:inherit; padding:12px 13px; line-height:1.35; font-size:14px; font-weight:550; overflow-wrap:anywhere; cursor:pointer; }
+        .sg-select-option[aria-disabled="true"] { opacity:.38; cursor:not-allowed; }
+        .sg-select-option[aria-selected="true"] { color:#ffb16c; background:rgba(255,122,0,.13); }
+        .sg-select-option.sg-select-highlight:not([aria-disabled="true"]), .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.23); color:#fff; }
+        .sg-select-option.sg-select-highlight { outline:1px solid rgba(255,122,0,.5); outline-offset:-1px; }
+        body.light-mode .sg-select-button { background:#f8fafc; color:#181818; border-color:#d6dce5; }
+        body.light-mode .sg-select-list { background:#ffffff; color:#181818; border-color:rgba(224,109,0,.7); box-shadow:0 18px 45px rgba(0,0,0,.17); }
+        body.light-mode .sg-select-option[aria-selected="true"] { color:#9f4200; background:rgba(255,122,0,.13); }
+        body.light-mode .sg-select-option.sg-select-highlight:not([aria-disabled="true"]),body.light-mode .sg-select-option:hover:not([aria-disabled="true"]) { background:rgba(255,122,0,.20); color:#181818; }
+        .sg-select-shell:has(> .admin-input) .sg-select-button { min-height:52px; }
+        .sg-admin-toolbar .sg-select-shell,.sg-compra-tools .sg-select-shell { flex:0 1 auto; width:auto; min-width:115px; }
+        .sg-admin-toolbar .sg-select-button,.sg-compra-tools .sg-select-button { min-height:42px; }
+        @media (max-width:650px) { .sg-select-list { max-height:min(260px, 55vh); } }
+
+        /* Encaje específico para el filtro de Estado de Insumos en Cocina. */
+        #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:215px; min-width:200px; }
+        .form-group .sg-select-shell { width:100%; }
+        @media (max-width:700px) { #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:190px; min-width:160px; } }
+
+
+        /* Cierre de sesión de Cocina, consistente con Mozo/Gerencia/Administración. */
+        .sg-cocina-salir { border:1px solid rgba(232,76,61,.55);border-radius:11px;background:rgba(191,42,34,.12);color:#fb695b;font:inherit;font-size:13px;font-weight:850;padding:10px 15px;cursor:pointer;transition:background .2s,border-color .2s;white-space:nowrap }
+        .sg-cocina-salir:hover { background:rgba(191,42,34,.22);border-color:#fa695b }
+        .sg-cocina-salir:focus-visible,.sg-cocina-modal button:focus-visible { outline:2px solid var(--primary-orange);outline-offset:3px }
+        .sg-cocina-overlay[hidden] { display:none!important }
+        .sg-cocina-overlay { position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.82);display:grid;place-items:center;padding:16px;backdrop-filter:blur(5px) }
+        .sg-cocina-modal { width:min(470px,100%);box-sizing:border-box;background:#191919;color:#f5f5f5;border:1px solid rgba(255,122,0,.6);border-radius:20px;padding:30px;box-shadow:0 24px 66px rgba(0,0,0,.66) }
+        .sg-cocina-modal h2 { font-size:24px;margin:4px 0 12px;font-weight:900;line-height:1.2 }
+        .sg-cocina-modal p { color:#aaa;line-height:1.5;margin:0 0 24px;font-size:14px }
+        .sg-cocina-modal .sg-cocina-mark { width:48px;height:48px;display:grid;place-items:center;border-radius:13px;background:rgba(255,122,0,.1);border:1px solid rgba(255,122,0,.5);color:var(--primary-orange);font-size:25px;margin-bottom:12px }
+        .sg-cocina-modal-footer { display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap }
+        .sg-cocina-modal-footer button { border-radius:11px;padding:12px 18px;border:1px solid #363636;background:#242424;color:#fff;font:inherit;font-size:14px;font-weight:850;cursor:pointer }
+        .sg-cocina-modal-footer .sg-cocina-confirmar { background:#c9362d;border-color:#c9362d;color:#fff }
+        .sg-cocina-modal-footer button:hover { filter:brightness(1.12) }
+        body.light-mode .sg-cocina-modal { background:#fff;color:#191919;box-shadow:0 18px 55px rgba(0,0,0,.22) }
+        body.light-mode .sg-cocina-modal p { color:#666 }
+        body.light-mode .sg-cocina-modal-footer button:not(.sg-cocina-confirmar) { color:#1a1a1a;background:#f5f5f5;border-color:#ddd }
+        @media(max-width:700px) { header { padding:14px 17px!important;gap:10px;flex-wrap:wrap } header>div { flex-wrap:wrap;gap:9px!important } .tabs-header { padding:0 10px;overflow-x:auto;gap:4px } .tab-btn { white-space:nowrap;padding:13px 10px } .sg-cocina-modal { padding:22px } }
+
+        /* P39: Cocina responsive, sin cambios en endpoints, estados o workers. */
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { min-width:0; width:100%; max-width:100%; }
+        body { height:100vh; height:100dvh; overflow:hidden; }
+        .cocina-header { flex:0 0 auto; gap:16px; position:relative; z-index:1800; min-width:0; }
+        .cocina-logo { min-width:0; white-space:nowrap; }
+        .cocina-header-acciones { min-width:0; justify-content:flex-end; }
+        .cocina-header-acciones > * { flex-shrink:0; }
+        .cocina-header .sg-theme-host { z-index:50; }
+        .cocina-header .sg-theme-popup { z-index:2000; }
+        .tabs-header { flex:0 0 auto; min-width:0; scrollbar-width:thin; scrollbar-color:#865038 transparent; }
+        .tab-btn { white-space:nowrap; flex-shrink:0; touch-action:manipulation; }
+        .tab-content { min-height:0; min-width:0; }
+        #tab-comandas { flex-direction:column; }
+        .kanban-board { flex:1; min-height:0; min-width:0; }
+        .kanban-column { min-width:0; min-height:0; }
+        .kanban-body { min-width:0; min-height:0; scrollbar-width:thin; scrollbar-color:#855039 transparent; overscroll-behavior:contain; }
+        .kanban-header { line-height:1.35; }
+        .comanda-card { min-width:0; overflow-wrap:anywhere; }
+        .comanda-header { gap:12px; flex-wrap:wrap; }
+        .modificador-sin { max-width:100%; width:fit-content; white-space:normal; overflow-wrap:anywhere; }
+        .comanda-card button { min-height:48px; font-size:14px!important; touch-action:manipulation; }
+        .cocina-vistas-moviles { display:none; min-width:0; flex:0 0 auto; gap:8px; padding:13px 16px 4px; background:var(--bg-dark); }
+        .cocina-vistas-moviles button { flex:1 1 0; min-width:0; min-height:48px; padding:9px 8px; background:rgba(255,255,255,.04); border:1px solid var(--glass-border); border-radius:11px; color:var(--text-muted); font:inherit; font-size:13px; font-weight:850; cursor:pointer; touch-action:manipulation; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .cocina-vistas-moviles button[aria-pressed="true"] { border-color:#ff7a00; color:#ff9b3b; background:rgba(255,122,0,.13); }
+        .cocina-vistas-moviles button:focus-visible { outline:2px solid var(--primary-orange); outline-offset:2px; }
+        .cocina-vistas-moviles .cocina-vista-cuenta { background:rgba(255,122,0,.13); border-radius:7px; padding:2px 5px; font-variant-numeric:tabular-nums; }
+        .cocina-vistas-moviles button[data-vista="pendiente"] { --cocina-estado-color:#bc60eb; }
+        .cocina-vistas-moviles button[data-vista="proceso"] { --cocina-estado-color:#ff7a00; }
+        .cocina-vistas-moviles button[data-vista="listo"] { --cocina-estado-color:#38d681; }
+        .cocina-vistas-moviles button[aria-pressed="true"] { border-color:var(--cocina-estado-color); }
+        .panel-scrollable { min-width:0; min-height:0; scrollbar-width:thin; scrollbar-color:#865038 transparent; }
+        .panel-scrollable > div, .grid-layout > *, .card-panel { min-width:0; }
+        .stock-row { gap:12px; overflow-wrap:anywhere; }
+        .noti-item { gap:12px; overflow-wrap:anywhere; }
+        .form-control { max-width:100%; min-height:46px; }
+        .sg-cocina-modal { max-height:calc(100dvh - 30px); overflow-y:auto; }
+        body.light-mode .cocina-vistas-moviles button { background:#fff; color:#515151; border-color:#d7d7d7; }
+        body.light-mode .cocina-vistas-moviles button[aria-pressed="true"] { background:#fff0e5; border-color:var(--cocina-estado-color); color:#a94900; }
+        @media (max-width:1180px) {
+            .kanban-board { gap:14px; padding:16px 20px; }
+            .kanban-header { font-size:15px; padding:15px 12px; letter-spacing:0; }
+            .kanban-body { padding:12px; }
+            .tabs-header { padding:0 20px; gap:8px; }
+            .tab-btn { padding:14px 12px; }
+            .panel-scrollable { padding:24px 20px; }
+            .grid-layout { gap:18px; }
+            .cocina-header { padding:14px 20px!important; }
+        }
+        @media (max-width:980px) {
+            .cocina-vistas-moviles { display:flex; }
+            .kanban-board { display:block; padding:12px 16px 20px; overflow:hidden; }
+            .kanban-column { display:none; height:100%; }
+            .kanban-board[data-vista="pendiente"] .kanban-column[data-estado="pendiente"],
+            .kanban-board[data-vista="proceso"] .kanban-column[data-estado="proceso"],
+            .kanban-board[data-vista="listo"] .kanban-column[data-estado="listo"] { display:flex; }
+            .kanban-body { padding:14px; }
+            .kanban-header { font-size:16px; padding:14px 10px; }
+            .grid-layout { grid-template-columns:minmax(0,1fr); }
+            .panel-scrollable { padding:22px 20px; }
+            .cocina-header { flex-wrap:wrap; }
+            .cocina-header-acciones { gap:10px!important; flex-wrap:wrap; }
+            #tab-notificaciones .panel-scrollable > div:first-child,
+            #tab-stock .panel-scrollable > div:first-child { flex-wrap:wrap; gap:12px; }
+        }
+        @media (min-width:601px) and (max-width:980px) {
+            .kanban-body { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-content:start; }
+            .kanban-body > .comanda-card { align-self:start; }
+        }
+        @media (max-width:600px) {
+            .cocina-header { display:grid!important; grid-template-columns:minmax(0,1fr); gap:10px!important; padding:13px 14px!important; }
+            .cocina-logo { font-size:clamp(18px,5.2vw,24px)!important; letter-spacing:0; }
+            .cocina-logo .cocina-subtitulo { font-size:12px!important; letter-spacing:1px!important; }
+            .cocina-header-acciones { display:grid!important; grid-template-columns:minmax(0,1fr) auto auto; gap:8px!important; width:100%; justify-content:stretch; }
+            #indicador-conexion { min-width:0; font-size:12px!important; }
+            #reloj-cocina { padding:7px 9px!important; font-size:12px!important; }
+            .cocina-header-acciones .sg-theme-popup { left:auto; right:0; }
+            #cocina-salir { grid-column:1/-1; justify-self:end; min-height:40px; }
+            .tabs-header { padding:0 10px; gap:4px; overflow-x:auto; overflow-y:hidden; }
+            .tab-btn { min-height:45px; font-size:12px; padding:11px 12px; }
+            .cocina-vistas-moviles { padding:10px 10px 4px; gap:5px; }
+            .cocina-vistas-moviles button { font-size:12px; padding:8px 5px; gap:3px; min-height:44px; }
+            .kanban-board { padding:10px 10px 15px; }
+            .kanban-body { padding:12px; gap:10px; }
+            .kanban-header { font-size:14px; }
+            .comanda-card { padding:13px; }
+            .comanda-card:hover { transform:none; }
+            .panel-scrollable { padding:16px 12px; }
+            .card-panel { padding:15px; }
+            .stock-row { padding:10px 4px; flex-wrap:wrap; }
+            .noti-item { flex-wrap:wrap; }
+            #tab-stock .sg-select-shell:has(> #filtro-estado-stock) { width:100%; min-width:0; }
+            .sg-cocina-modal { padding:20px; }
+        }
+        @media (max-width:360px) {
+            .cocina-vistas-moviles button { font-size:11px; }
+            .cocina-logo .cocina-subtitulo { display:block; padding-top:3px; }
+            .cocina-header .sg-theme-popup { right:0; left:auto; width:min(228px,calc(100vw - 24px)); min-width:0; }
+        }
+        /* P39.1 · Cabecera ordenada y pestañas desplazables sin barra visible. */
+        .cocina-marca {
+            display:flex; align-items:center; flex:0 1 auto; gap:12px;
+            min-width:0; white-space:nowrap;
+        }
+        .cocina-marca .cocina-logo { margin:0; flex:0 1 auto; font-size:clamp(19px,2.1vw,25px)!important; }
+        .cocina-marca .cocina-subtitulo {
+            display:inline-flex; align-items:center; align-self:center;
+            color:var(--text-muted); font-family:inherit;
+            letter-spacing:1.5px; font-size:11px; font-weight:800;
+            white-space:nowrap;
+        }
+        .cocina-marca .cocina-subtitulo::before {
+            content:""; display:block; margin-right:10px;
+            width:1px; height:17px; background:rgba(255,122,0,.65);
+        }
+        .cocina-header { align-items:center!important; }
+        .cocina-header-acciones { display:flex; align-items:center; flex:0 0 auto; }
+        #indicador-conexion { white-space:nowrap; line-height:1.2; }
+        #reloj-cocina { white-space:nowrap; font-variant-numeric:tabular-nums; }
+        /* Solo para navegaciones horizontales: conservar swipe/scroll con la barra oculta. */
+        .tabs-header { overflow-x:auto; overflow-y:hidden; scrollbar-width:none!important; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+        .tabs-header::-webkit-scrollbar { width:0!important; height:0!important; display:none!important; }
+        @media (max-width:800px) {
+            .cocina-header {
+                display:grid!important; grid-template-columns:minmax(0,1fr);
+                justify-content:stretch; gap:10px!important; padding:13px 16px!important;
+            }
+            .cocina-marca { justify-self:start; }
+            .cocina-header-acciones {
+                display:flex!important; align-items:center; flex-wrap:nowrap!important;
+                width:100%; gap:9px!important; justify-content:flex-end!important;
+            }
+            #indicador-conexion { margin-right:auto; font-size:12px!important; gap:6px!important; }
+            #reloj-cocina { padding:7px 10px!important; font-size:12px!important; }
+            #cocina-salir { grid-column:auto; min-height:38px; padding:8px 10px!important; justify-self:auto; }
+            .tabs-header { padding:7px 10px 8px; gap:5px; }
+            .tab-btn {
+                flex:0 0 auto; border:1px solid transparent; border-radius:9px;
+                padding:10px 11px; min-height:41px; font-size:12px;
+                border-bottom:1px solid transparent;
+            }
+            .tab-btn.active {
+                color:var(--primary-orange); border-color:rgba(255,122,0,.38);
+                background:rgba(255,122,0,.12);
+            }
+        }
+        @media (min-width:801px) and (max-width:980px) {
+            .tabs-header { padding:7px 16px 8px; gap:6px; }
+            .tab-btn { border:1px solid transparent; border-radius:9px; padding:10px 12px; min-height:41px; }
+            .tab-btn.active { border-color:rgba(255,122,0,.38); background:rgba(255,122,0,.12); }
+        }
+        @media (max-width:600px) {
+            /* Dos filas reales: marca+tema y conexión+reloj+salir. */
+            .cocina-header {
+                display:grid!important;
+                grid-template-columns:minmax(0,1fr) auto auto;
+                grid-template-areas:"marca marca tema" "estado reloj salir";
+                align-items:center!important;
+                column-gap:7px!important; row-gap:10px!important;
+                padding:12px 12px!important;
+            }
+            .cocina-marca { grid-area:marca; min-width:0; gap:7px; }
+            .cocina-marca .cocina-logo { font-size:clamp(18px,5.5vw,23px)!important; }
+            .cocina-marca .cocina-subtitulo {
+                font-size:10px!important; letter-spacing:1px!important;
+                display:inline-flex!important; padding:0!important;
+            }
+            .cocina-marca .cocina-subtitulo::before { height:14px; margin-right:6px; }
+            .cocina-header-acciones { display:contents!important; }
+            #indicador-conexion { grid-area:estado; min-width:0; font-size:11px!important; gap:5px!important; }
+            #indicador-conexion > div:first-child { width:7px!important; height:7px!important; }
+            .cocina-header [data-savage-theme="inline"] { grid-area:tema; justify-self:end; }
+            .cocina-header .sg-theme-popup { right:0; left:auto; }
+            #reloj-cocina { grid-area:reloj; justify-self:end; padding:7px 8px!important; font-size:11px!important; }
+            #cocina-salir { grid-area:salir; justify-self:end; min-width:0; min-height:36px; padding:8px 9px!important; font-size:11px!important; }
+            #cocina-salir .sg-logout-icon { width:14px; height:14px; }
+            .tabs-header { padding:7px 9px 8px; }
+            .tab-btn { padding:10px 9px; }
+        }
+        @media (max-width:355px) {
+            .cocina-marca .cocina-logo { font-size:18px!important; }
+            .cocina-marca .cocina-subtitulo { font-size:9px!important; }
+            .cocina-header { column-gap:5px!important; padding-inline:9px!important; }
+            #cocina-salir { padding:7px 6px!important; font-size:10px!important; }
+            #reloj-cocina { font-size:10px!important; padding:7px 5px!important; }
+        }
+        body.light-mode .tab-btn.active { background:rgba(255,122,0,.12); }
+
+        @media (prefers-reduced-motion:reduce) { .comanda-card { transition:none; } }
     </style>
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
-    <!-- ==========================================================================
-         CABECERA OPERATIVA (Solo lectura, sin navegación)
-         ========================================================================== -->
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.3);">
-        <h1 class="logo-restaurante" style="font-size: 24px; margin: 0;">Savage<span style="color: var(--primary-orange);">Grill.</span> <span style="font-size: 14px; color: var(--text-muted); font-family: sans-serif; letter-spacing: 2px;">| COCINA</span></h1>
-        
-        <div style="display: flex; align-items: center; gap: 15px;">
+    <!-- CABECERA OPERATIVA -->
+    <header class="cocina-header sg-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: rgba(0,0,0,0.3);">
+        <div class="cocina-marca">
+            <h1 class="logo-restaurante cocina-logo sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+            <span class="cocina-subtitulo sg-role-unified">COCINA</span>
+        </div>
+        <div class="cocina-header-acciones" style="display: flex; align-items: center; gap: 15px;">
             <div id="indicador-conexion" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4CAF50; font-weight: bold;">
                 <div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div>
                 Sistema En Línea
             </div>
-            <!-- Reloj Digital en tiempo real -->
-            <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">
-                00:00:00
-            </span>
-
+            <div data-savage-theme="inline"></div>
+            <span id="reloj-cocina" style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; font-family: monospace;">00:00:00</span>
+            <button type="button" id="cocina-salir" class="sg-cocina-salir sg-logout-unificado sg-logout-cabecera" aria-haspopup="dialog" aria-controls="cocina-modal-salida"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
         </div>
     </header>
 
+    <!-- NAVEGADOR DE PESTAÑAS -->
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="cambiarTab('tab-comandas', this)">Tablero de Comandas</button>
+        <button class="tab-btn" onclick="cambiarTab('tab-notificaciones', this)">Notificaciones <span id="badge-noti-global" class="badge-noti">0</span></button>
+        <button class="tab-btn" onclick="cambiarTab('tab-stock', this)">Estado de Insumos</button>
+        <button class="tab-btn" onclick="cambiarTab('tab-acciones', this)">Gestión y Pérdidas</button>
+    </div>
+
     <!-- ==========================================================================
-         TABLERO KANBAN (Gestión de Estados de la Comanda)
+         TAB 1: TABLERO KANBAN (COMANDAS)
          ========================================================================== -->
-    <main class="kanban-board">
-        
-        <!-- Columna 1: Entrantes (Violeta) -->
-        <div class="kanban-column" style="border-top: 4px solid #a855f7;">
-            <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
-            <div class="kanban-body" id="columna-pendientes">
-                <!-- Inyección dinámica de JS -->
+    <main id="tab-comandas" class="tab-content active">
+        <!-- En móviles y tablets verticales: estados sin columnas comprimidas. -->
+        <div class="cocina-vistas-moviles" role="group" aria-label="Filtrar comandas por estado">
+            <button type="button" data-vista="pendiente" aria-pressed="true">Nuevos <span class="cocina-vista-cuenta" data-conteo="pendiente">0</span></button>
+            <button type="button" data-vista="proceso" aria-pressed="false">Preparando <span class="cocina-vista-cuenta" data-conteo="proceso">0</span></button>
+            <button type="button" data-vista="listo" aria-pressed="false">Listos <span class="cocina-vista-cuenta" data-conteo="listo">0</span></button>
+        </div>
+        <div class="kanban-board" data-vista="pendiente">
+            <div class="kanban-column" data-estado="pendiente" style="border-top: 4px solid #a855f7;">
+                <div class="kanban-header" style="color: #a855f7;">NUEVOS PEDIDOS (<span id="contador-pendientes">0</span>)</div>
+                <div class="kanban-body" id="columna-pendientes"></div>
+            </div>
+            <div class="kanban-column" data-estado="proceso" style="border-top: 4px solid #ff7a00;">
+                <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
+                <div class="kanban-body" id="columna-proceso"></div>
+            </div>
+            <div class="kanban-column" data-estado="listo" style="border-top: 4px solid #2ecc71;">
+                <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
+                <div class="kanban-body" id="columna-listos"></div>
             </div>
         </div>
-
-        <!-- Columna 2: Preparación (Naranja) -->
-        <div class="kanban-column" style="border-top: 4px solid #ff7a00;">
-            <div class="kanban-header" style="color: #ff7a00;">EN PREPARACIÓN (<span id="contador-proceso">0</span>)</div>
-            <div class="kanban-body" id="columna-proceso">
-                <!-- Inyección dinámica de JS -->
-            </div>
-        </div>
-
-        <!-- Columna 3: Despacho (Verde) -->
-        <div class="kanban-column" style="border-top: 4px solid #2ecc71;">
-            <div class="kanban-header" style="color: #2ecc71;">LISTOS PARA SERVIR (<span id="contador-listos">0</span>)</div>
-            <div class="kanban-body" id="columna-listos">
-                <!-- Inyección dinámica de JS -->
-            </div>
-        </div>
-
     </main>
 
     <!-- ==========================================================================
-         LÓGICA ASÍNCRONA DEL MÓDULO DE COCINA
+         TAB 2: NOTIFICACIONES (TAREA 6)
          ========================================================================== -->
+    <main id="tab-notificaciones" class="tab-content">
+        <div class="panel-scrollable">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--primary-orange);">Centro de Alertas</h2>
+                <button onclick="cargarNotificaciones()" class="btn-orange" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Actualizar Manual</button>
+            </div>
+            <div id="contenedor-notificaciones">
+                <p style="color: var(--text-muted);">Consultando alertas...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================================================
+         TAB 3: ESTADO DE STOCK (TAREA 7)
+         ========================================================================== -->
+    <main id="tab-stock" class="tab-content">
+        <div class="panel-scrollable">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--text-main);">Monitor de Insumos</h2>
+                <div style="display: flex; gap: 10px;">
+                    <select id="filtro-estado-stock" class="form-control" style="width: auto;" onchange="cargarPanelStock()">
+                        <option value="">Todos los insumos</option>
+                        <option value="critico,bajo,agotado">Solo estado crítico/bajo</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid-layout">
+                <!-- Columna Izquierda: Semáforos -->
+                <div class="card-panel">
+                    <h3 style="margin-top: 0; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">Niveles Actuales</h3>
+                    <div id="lista-semaforos-stock" style="margin-top: 15px;">
+                        <p style="color: var(--text-muted); font-size: 13px;">Cargando inventario...</p>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Lotes y Vencimientos -->
+                <div class="card-panel">
+                    <h3 style="margin-top: 0; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; display: flex; justify-content: space-between;">
+                        Control de Vencimientos
+                        <button onclick="procesarVencidos()" class="btn-orange" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; background-color: #e74c3c;">Dar de Baja Vencidos</button>
+                    </h3>
+                    <div id="lista-vencimientos" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <p style="color: var(--text-muted); font-size: 13px;">Analizando lotes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================================================
+         TAB 4: ACCIONES, PÉRDIDAS Y ELABORACIONES (TAREA 8 y 9)
+         ========================================================================== -->
+    <main id="tab-acciones" class="tab-content">
+        <div class="panel-scrollable grid-layout">
+            
+            <!-- Formulario Pérdidas -->
+            <div class="card-panel">
+                <h3 style="margin-top: 0; color: #e74c3c; border-bottom: 1px solid rgba(231,76,60,0.3); padding-bottom: 10px;">Registrar Pérdida</h3>
+                <form id="form-perdida" onsubmit="enviarPerdida(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="perdida-motivo">Motivo</label>
+                        <!-- Le agregamos el onchange para detectar cuando requiere nota -->
+                        <select id="perdida-motivo" class="form-control" onchange="toggleNotaPerdida()" required></select>
+                    </div>
+                    
+                    <!-- NUEVO CAMPO NOTA (oculto por defecto) -->
+                    <div class="form-group" id="caja-nota" style="display: none;">
+                        <label class="form-label">Motivo de la pérdida</label>
+                        <textarea id="perdida-nota" class="form-control" rows="2" placeholder="Describa el motivo de la pérdida... (Ej: Se quemó la carne en la parrilla, se cayó un frasco al piso, plato rechazado por el cliente, etc.)"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="perdida-tipo">Tipo de Elemento</label>
+                        <select id="perdida-tipo" class="form-control" onchange="toggleSelectoresPerdida()" required>
+                            <option value="insumo">Insumo Suelto</option>
+                            <option value="plato">Plato Preparado</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="caja-insumo">
+                        <label class="form-label" for="perdida-insumo">Insumo Afectado</label>
+                        <select id="perdida-insumo" class="form-control"></select>
+                    </div>
+                    <div class="form-group" id="caja-plato" style="display: none;">
+                        <label class="form-label" for="perdida-plato">Plato Afectado</label>
+                        <select id="perdida-plato" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cantidad (Unidad base o porciones)</label>
+                        <input type="number" id="perdida-cantidad" class="form-control" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="btn-orange" style="width: 100%; margin-top: 10px; background-color: #e74c3c;">Registrar Baja</button>
+                    <p id="perdida-msj" style="font-size: 13px; margin-top: 10px;"></p>
+                </form>
+            </div>
+
+            <!-- Formulario Producción (Elaboraciones) -->
+            <div class="card-panel">
+                <h3 style="margin-top: 0; color: #3498db; border-bottom: 1px solid rgba(52,152,219,0.3); padding-bottom: 10px;">Registrar Elaboración Interna</h3>
+                <form id="form-produccion" onsubmit="enviarProduccion(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="prod-elaboracion">Receta de Elaboración</label>
+                        <select id="prod-elaboracion" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cantidad de Tandas</label>
+                        <input type="number" id="prod-tandas" class="form-control" value="1" step="0.5" min="0.5" required>
+                    </div>
+                    <button type="submit" class="btn-orange" style="width: 100%; margin-top: 10px; background-color: #3498db;">Añadir al Stock</button>
+                    <p id="prod-msj" style="font-size: 13px; margin-top: 10px;"></p>
+                </form>
+            </div>
+
+        </div>
+    </main>
+
+
+    <!-- Confirmación de cierre: no utiliza alertas nativas. -->
+    <div id="cocina-modal-salida" class="sg-cocina-overlay" hidden>
+        <div class="sg-cocina-modal" role="alertdialog" aria-modal="true" aria-labelledby="cocina-modal-titulo" aria-describedby="cocina-modal-descripcion">
+            <div class="sg-cocina-mark" aria-hidden="true">↪</div>
+            <h2 id="cocina-modal-titulo">Cerrar sesión de Cocina</h2>
+            <p id="cocina-modal-descripcion">¿Querés salir de tu cuenta? Las comandas guardadas permanecerán en el sistema y podrás volver a ingresar desde el acceso principal.</p>
+            <div class="sg-cocina-modal-footer">
+                <button type="button" id="cocina-cancelar-salida">Cancelar</button>
+                <button type="button" id="cocina-confirmar-salida" class="sg-cocina-confirmar">Cerrar sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOTOR DE LOGICA -->
+    <script src="config.js"></script>
     <script>
-        // Rutas exactas del backend de David
-        const API_TABLERO_URL = 'http://localhost:8080/api/v1/cocina/tablero';
-        const API_ESTADO_URL = 'http://localhost:8080/api/v1/pedidos';
-        const INTERVALO_POLLING = 3000; // Consulta al servidor cada 3 segundos
+        // API Base
+        const BASE_URL = window.SAVAGE_CONFIG.API_BASE_URL;
 
-        // Estado local de la vista
+        // Variables Globales
         let comandas = [];
+        let pollingActivo = true;
+        const INTERVALO_POLLING = 5000; // 5 segundos, tablero visible
+        const cambiosEnCurso = new Set();
+        let sincronizando = false;
 
-        // Reloj digital para la cabecera en formato 24hs
+        /* ==================== SISTEMA DE TABS ==================== */
+        function cambiarTab(idTab, btnElement) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            btnElement.classList.add('active');
+            document.getElementById(idTab).classList.add('active');
+
+            // Cargas condicionales para no saturar al backend
+            if(idTab === 'tab-notificaciones') cargarNotificaciones();
+            if(idTab === 'tab-stock') { cargarPanelStock(); cargarVencimientos(); }
+            if(idTab === 'tab-acciones') cargarSelectoresAcciones();
+        }
+
+        /* Vista móvil del tablero: solo cambia qué columna se ve, no los estados. */
+        document.querySelectorAll('.cocina-vistas-moviles [data-vista]').forEach(boton => {
+            boton.addEventListener('click', () => {
+                const vista = boton.dataset.vista;
+                document.querySelector('.kanban-board').dataset.vista = vista;
+                document.querySelectorAll('.cocina-vistas-moviles [data-vista]').forEach(b => {
+                    b.setAttribute('aria-pressed', String(b === boton));
+                });
+            });
+        });
+
+        /* ==================== RELOJ ==================== */
         setInterval(() => {
-            const ahora = new Date();
-            const reloj = document.getElementById('reloj-cocina');
-            if (reloj) reloj.textContent = ahora.toLocaleTimeString('es-AR', { hour12: false });
+            document.getElementById('reloj-cocina').textContent = new Date().toLocaleTimeString('es-AR', { hour12: false });
         }, 1000);
 
-        /* ==========================================================================
-           MOTOR DE RENDERIZADO (Actualización del DOM)
-           ========================================================================== */
+        // Peticiones protegidas de Cocina: el token nunca viaja en la URL.
+        async function fetchAutenticado(url, opciones = {}) {
+            const token = sessionStorage.getItem('savage_token');
+            if (!token) {
+                window.location.replace('login.html');
+                throw new Error('No hay una sesión de personal activa.');
+            }
+
+            const headers = { ...opciones.headers, Authorization: `Bearer ${token}` };
+            if (opciones.body != null && !(opciones.body instanceof FormData) && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            // Evita que una solicitud quede pendiente indefinidamente.
+            const controlador = new AbortController();
+            const temporizador = setTimeout(() => controlador.abort(), 12000);
+            try {
+                const respuesta = await fetch(url, {
+                    ...opciones,
+                    headers,
+                    signal: controlador.signal,
+                    cache: 'no-store'
+                });
+                if (respuesta.status === 401) {
+                    sessionStorage.removeItem('savage_token');
+                    sessionStorage.removeItem('savage_usuario');
+                    window.location.replace('login.html');
+                    throw new Error('La sesión venció. Iniciá sesión nuevamente.');
+                }
+                return respuesta;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('La solicitud tardó demasiado. Intentá nuevamente.');
+                }
+                throw error;
+            } finally {
+                clearTimeout(temporizador);
+            }
+        }
+
+        // Nunca insertar texto del backend como HTML ejecutable.
+        function escaparHTML(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[caracter]);
+        }
+
+        async function leerMensajeError(respuesta) {
+            let datos = {};
+            try { datos = await respuesta.json(); } catch (_) { /* Sin cuerpo JSON */ }
+            for (const campo of ['error', 'mensaje', 'texto', 'detail']) {
+                if (typeof datos?.[campo] === 'string' && datos[campo].trim()) return datos[campo];
+            }
+            if (Array.isArray(datos?.errores) && datos.errores.length) {
+                return datos.errores.map(e => [e.campo, e.mensaje].filter(Boolean).join(': ')).join('; ');
+            }
+            if (respuesta.status === 404) return 'La función no está disponible en esta versión del backend (HTTP 404).';
+            if (respuesta.status === 403) return 'No tenés permiso para realizar esta acción (HTTP 403).';
+            if (respuesta.status === 429) return 'Demasiados intentos. Intentá más tarde (HTTP 429).';
+            return `La operación no se pudo completar (HTTP ${respuesta.status}).`;
+        }
+
+        function mostrarErrorEn(contenedorId, mensaje) {
+            const cont = document.getElementById(contenedorId);
+            cont.replaceChildren();
+            const p = document.createElement('p');
+            p.style.cssText = 'color:#e74c3c;font-size:13px;line-height:1.5;';
+            p.textContent = mensaje;
+            cont.appendChild(p);
+        }
+
+        function llenarSelect(id, items, formatoTexto, clave = 'id') {
+            const select = document.getElementById(id);
+            select.replaceChildren();
+            for (const item of items) {
+                const option = document.createElement('option');
+                option.value = String(item[clave] ?? '');
+                option.textContent = formatoTexto(item);
+                select.appendChild(option);
+            }
+        }
+
+        function indicarConexion(mensaje, correcto) {
+            const indicador = document.getElementById('indicador-conexion');
+            indicador.replaceChildren();
+            const punto = document.createElement('div');
+            punto.style.cssText = 'width:10px;height:10px;border-radius:50%;flex-shrink:0;';
+            punto.style.backgroundColor = correcto ? '#4CAF50' : '#e74c3c';
+            indicador.append(punto, document.createTextNode(mensaje));
+        }
+
+        /* ==================== TAB 1: KANBAN COMANDAS ==================== */
         function renderizarTablero() {
-            const colPendientes = document.getElementById('columna-pendientes');
-            const colProceso = document.getElementById('columna-proceso');
-            const colListos = document.getElementById('columna-listos');
-            
-            if (!colPendientes || !colProceso || !colListos) return;
+            // IDs reales del HTML: pendientes, proceso (sin "s"), listos.
+            const columnas = {
+                pendiente: document.getElementById('columna-pendientes'),
+                proceso: document.getElementById('columna-proceso'),
+                listo: document.getElementById('columna-listos')
+            };
+            Object.values(columnas).forEach(columna => columna.replaceChildren());
+            const contadores = { pendiente: 0, proceso: 0, listo: 0 };
 
-            colPendientes.innerHTML = '';
-            colProceso.innerHTML = '';
-            colListos.innerHTML = '';
-
-            let contPendientes = 0, contProceso = 0, contListos = 0;
-
-            comandas.forEach(comanda => {
-                let itemsHTML = '';
-                if (comanda.items && Array.isArray(comanda.items)) {
-                    comanda.items.forEach(item => {
-                        itemsHTML += `<div class="item-pedido"><span>1x ${item.nombre || 'Plato'}</span></div>`;
-                    });
-                }
-
-                let botonesHTML = '';
-                if (comanda.estado === 'pendiente') {
-                    contPendientes++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'proceso')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #ff7a00; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">Comenzar Preparación ➔</button>`;
-                } else if (comanda.estado === 'proceso') {
-                    contProceso++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'listo')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">✔ Marcar como Listo</button>`;
-                } else if (comanda.estado === 'listo') {
-                    contListos++;
-                    botonesHTML = `<button onclick="cambiarEstado('${comanda.id_comanda_uuid}', 'entregado')" style="width: 100%; margin-top: 15px; padding: 10px; background-color: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">Despachado (Ocultar)</button>`;
-                }
+            for (const comanda of comandas) {
+                const estado = String(comanda.estado ?? '').toLowerCase();
+                const columna = columnas[estado];
+                if (!columna) continue;
+                contadores[estado] += 1;
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'comanda-card';
-                tarjeta.innerHTML = `
-                    <div class="comanda-header">
-                        <span class="mesa-badge">Mesa #${comanda.mesa_id}</span>
-                        <span class="tiempo-badge">⏱ ${comanda.timestamp ? new Date(comanda.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', hour12: false}) : '--:--'}</span>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        ${itemsHTML}
-                    </div>
-                    <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--glass-border); padding-top: 8px; margin-top: 8px;">
-                        Ref: ${comanda.id_comanda_uuid ? comanda.id_comanda_uuid.substring(0,8) : 'N/A'}...
-                    </div>
-                    ${botonesHTML}
-                `;
 
-                if (comanda.estado === 'pendiente') colPendientes.appendChild(tarjeta);
-                else if (comanda.estado === 'proceso') colProceso.appendChild(tarjeta);
-                else if (comanda.estado === 'listo') colListos.appendChild(tarjeta);
-            });
+                const cabecera = document.createElement('div');
+                cabecera.className = 'comanda-header';
+                const mesa = document.createElement('span');
+                mesa.className = 'mesa-badge';
+                mesa.textContent = `Mesa #${comanda.mesa_id ?? '--'}`;
+                const tiempo = document.createElement('span');
+                tiempo.className = 'tiempo-badge';
+                const fecha = new Date(comanda.timestamp);
+                tiempo.textContent = Number.isNaN(fecha.getTime())
+                    ? '⏱ --:--'
+                    : `⏱ ${fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+                cabecera.append(mesa, tiempo);
+                tarjeta.appendChild(cabecera);
 
-            const elPend = document.getElementById('contador-pendientes');
-            const elProc = document.getElementById('contador-proceso');
-            const elList = document.getElementById('contador-listos');
-            if(elPend) elPend.textContent = contPendientes;
-            if(elProc) elProc.textContent = contProceso;
-            if(elList) elList.textContent = contListos;
-        }
-
-        /* ==========================================================================
-           INTEGRACIÓN REST (Comunicación con Backend)
-           ========================================================================== */
-        async function sincronizarComandas() {
-            try {
-                const respuesta = await fetch(API_TABLERO_URL);
-                if (respuesta.ok) {
-                    comandas = await respuesta.json();
-                    renderizarTablero();
-                    const indicador = document.getElementById('indicador-conexion');
-                    if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 10px #4CAF50;"></div> Sistema En Línea';
+                const lista = document.createElement('div');
+                lista.style.marginBottom = '10px';
+                for (const item of (Array.isArray(comanda.items) ? comanda.items : [])) {
+                    const renglon = document.createElement('div');
+                    renglon.className = 'item-pedido';
+                    const nombre = document.createElement('span');
+                    nombre.style.fontWeight = 'bold';
+                    const cantidad = Number(item.cantidad);
+                    nombre.textContent = `${Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1}x ${item.nombre ?? 'Plato'}`;
+                    renglon.appendChild(nombre);
+                    if (Array.isArray(item.sin) && item.sin.length > 0) {
+                        const modificador = document.createElement('span');
+                        modificador.className = 'modificador-sin';
+                        modificador.textContent = `SIN: ${item.sin.join(', ')}`;
+                        renglon.appendChild(modificador);
+                    }
+                    lista.appendChild(renglon);
                 }
-            } catch (error) {
-                console.error("Fallo de conexión con el backend:", error);
-                const indicador = document.getElementById('indicador-conexion');
-                if(indicador) indicador.innerHTML = '<div style="width: 10px; height: 10px; background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 10px #e74c3c;"></div> Sin Conexión';
+                tarjeta.appendChild(lista);
+
+                const acciones = {
+                    pendiente: ['proceso', 'Comenzar Preparación ➔', '#ff7a00'],
+                    proceso: ['listo', '✔ Marcar como Listo', '#2ecc71'],
+                    listo: ['entregado', 'Despachado (Ocultar)', 'transparent']
+                };
+                const [siguienteEstado, textoBoton, color] = acciones[estado];
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.textContent = textoBoton;
+                boton.style.cssText = 'width:100%;margin-top:15px;padding:10px;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;';
+                boton.style.backgroundColor = color;
+                if (estado === 'listo') {
+                    boton.style.color = 'var(--text-muted)';
+                    boton.style.border = '1px solid var(--text-muted)';
+                }
+                const uuid = String(comanda.id_comanda_uuid ?? '');
+                boton.disabled = cambiosEnCurso.has(uuid);
+                boton.addEventListener('click', () => cambiarEstado(uuid, siguienteEstado));
+                tarjeta.appendChild(boton);
+                columna.appendChild(tarjeta);
             }
+
+            document.getElementById('contador-pendientes').textContent = contadores.pendiente;
+            document.getElementById('contador-proceso').textContent = contadores.proceso;
+            document.getElementById('contador-listos').textContent = contadores.listo;
+            document.querySelectorAll('.cocina-vista-cuenta').forEach(contador => {
+                contador.textContent = contadores[contador.dataset.conteo] ?? 0;
+            });
         }
 
-        async function cambiarEstado(idComanda, nuevoEstado) {
-            const index = comandas.findIndex(c => c.id_comanda_uuid === idComanda);
-            if (index === -1) return;
-            const estadoAnterior = comandas[index].estado;
-            
-            if (nuevoEstado === 'entregado') {
-                comandas.splice(index, 1);
-            } else {
-                comandas[index].estado = nuevoEstado;
-            }
+        async function cambiarEstado(uuid, nuevoEstado) {
+            if (!uuid || cambiosEnCurso.has(uuid)) return;
+            cambiosEnCurso.add(uuid);
             renderizarTablero();
-
             try {
-                const respuesta = await fetch(`${API_ESTADO_URL}/${idComanda}/estado`, {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/pedidos/${encodeURIComponent(uuid)}/estado`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ estado: nuevoEstado })
                 });
-                
-                if (!respuesta.ok) throw new Error("Rechazo del servidor");
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                // La respuesta del servidor confirma el cambio.
+                // El refresco se ejecuta en finally para evitar solapamientos.
             } catch (error) {
-                console.error("Fallo al actualizar estado. Realizando Rollback visual:", error);
-                if (nuevoEstado !== 'entregado') {
-                    comandas[index].estado = estadoAnterior;
-                    renderizarTablero();
+                alert(error.message || 'No se pudo actualizar el estado del pedido.');
+            } finally {
+                cambiosEnCurso.delete(uuid);
+                await sincronizarComandas();
+                renderizarTablero();
+            }
+        }
+
+        async function sincronizarComandas() {
+            if (!pollingActivo || document.hidden || cambiosEnCurso.size > 0 || sincronizando) return;
+            sincronizando = true;
+            try {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/cocina/tablero`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                if (!Array.isArray(datos)) throw new Error('El tablero no devolvió una lista de comandas.');
+                comandas = datos;
+                renderizarTablero();
+                indicarConexion('En Línea', true);
+            } catch (error) {
+                indicarConexion(error.message || 'Sin conexión', false);
+                console.error('Error al sincronizar comandas:', error);
+            } finally {
+                sincronizando = false;
+            }
+        }
+
+        /* ==================== TAB 2: NOTIFICACIONES ==================== */
+        async function cargarNotificaciones({soloBadge = false} = {}) {
+            try {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/cocina/notificaciones`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                const lista = Array.isArray(datos.notificaciones) ? datos.notificaciones : [];
+                const total = Number(datos?.resumen?.total ?? lista.length);
+                const badge = document.getElementById('badge-noti-global');
+                badge.textContent = String(total);
+                badge.style.display = total > 0 ? 'inline-block' : 'none';
+                if (soloBadge) return;
+
+                const cont = document.getElementById('contenedor-notificaciones');
+                cont.replaceChildren();
+                if (!lista.length) {
+                    const p = document.createElement('p');
+                    p.style.color = 'var(--text-muted)';
+                    p.textContent = 'Todo bajo control. No hay alertas.';
+                    cont.appendChild(p);
+                    return;
+                }
+                for (const aviso of lista) {
+                    const fila = document.createElement('div');
+                    fila.className = `noti-item ${aviso.severidad === 'urgente' ? 'urgente' : aviso.severidad === 'info' ? 'info' : ''}`;
+                    const texto = document.createElement('div');
+                    const titulo = document.createElement('strong');
+                    titulo.style.cssText = 'color:var(--text-main);display:block;margin-bottom:4px;';
+                    titulo.textContent = String(aviso.mensaje ?? '');
+                    const tipo = document.createElement('span');
+                    tipo.style.cssText = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;';
+                    tipo.textContent = String(aviso.tipo ?? '').replace(/_/g, ' ');
+                    texto.append(titulo, tipo);
+                    fila.appendChild(texto);
+                    if (aviso.tipo === 'se_puede_reactivar' && Number.isInteger(Number(aviso.producto?.id)) && Number(aviso.producto.id) > 0) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-orange';
+                        btn.style.cssText = 'background:#2ecc71;padding:4px 8px;font-size:11px;';
+                        btn.textContent = 'Activar Plato';
+                        btn.addEventListener('click', () => reactivarPlato(Number(aviso.producto.id)));
+                        fila.appendChild(btn);
+                    }
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                if (!soloBadge) mostrarErrorEn('contenedor-notificaciones', error.message || 'No se pudieron cargar las notificaciones.');
+                console.error('Notificaciones:', error);
+            }
+        }
+
+        async function reactivarPlato(id) {
+            try {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/productos/${encodeURIComponent(id)}/reactivar`, { method: 'POST' });
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                alert('Plato reactivado correctamente.');
+                await cargarNotificaciones();
+            } catch (error) {
+                alert(error.message || 'No se pudo reactivar el plato.');
+            }
+        }
+
+        /* ==================== TAB 3: ESTADO STOCK Y VENCIMIENTOS ==================== */
+        async function cargarPanelStock() {
+            const estado = document.getElementById('filtro-estado-stock').value;
+            const params = new URLSearchParams();
+            // Cocina necesita la vista detallada: el resumen no incluye cantidades ni objetivos.
+            // Django omite los costos para el rol Cocina.
+            params.set('vista', 'detallada');
+            if (estado) params.set('estado', estado);
+            const url = `${BASE_URL}/stock${params.size ? `?${params}` : ''}`;
+            try {
+                const respuesta = await fetchAutenticado(url);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                const cont = document.getElementById('lista-semaforos-stock');
+                cont.replaceChildren();
+                const insumos = Array.isArray(datos.insumos) ? datos.insumos : [];
+                if (!insumos.length) {
+                    const p = document.createElement('p');
+                    p.textContent = 'No hay insumos registrados para esta vista.';
+                    cont.appendChild(p);
+                    return;
+                }
+                const gravedad = { Agotado: 0, Critico: 1, Bajo: 2, SinObjetivo: 3, Ok: 4 };
+                insumos.sort((a, b) => (gravedad[a.estado] ?? 99) - (gravedad[b.estado] ?? 99));
+                for (const ins of insumos) {
+                    const fila = document.createElement('div');
+                    fila.className = 'stock-row';
+                    const izquierda = document.createElement('div');
+                    izquierda.style.cssText = 'display:flex;align-items:center;';
+                    const semaforo = document.createElement('span');
+                    const color = ['rojo', 'amarillo', 'verde', 'gris'].includes(ins.semaforo) ? ins.semaforo : 'gris';
+                    semaforo.className = `semaforo ${color}`;
+                    semaforo.title = String(ins.estado ?? '');
+                    const nombre = document.createElement('span');
+                    nombre.style.fontWeight = '500';
+                    nombre.textContent = String(ins.nombre ?? 'Insumo');
+                    izquierda.append(semaforo, nombre);
+                    const derecha = document.createElement('div');
+                    derecha.style.textAlign = 'right';
+                    const cantidad = document.createElement('div');
+                    cantidad.style.fontWeight = '900';
+                    cantidad.textContent = String(ins.stock_actual_texto ?? 'Cantidad no disponible');
+                    const objetivo = document.createElement('div');
+                    objetivo.style.cssText = 'font-size:11px;color:var(--text-muted);';
+                    const porcentaje = ins.porcentaje == null ? '' : ` · ${Number(ins.porcentaje).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+                    objetivo.textContent = `Obj: ${ins.stock_objetivo_texto ?? 'No disponible'}${porcentaje}`;
+                    derecha.append(cantidad, objetivo);
+                    fila.append(izquierda, derecha);
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                mostrarErrorEn('lista-semaforos-stock', error.message || 'No se pudo consultar el stock.');
+            }
+        }
+
+        async function cargarVencimientos() {
+            try {
+                const respuesta = await fetchAutenticado(`${BASE_URL}/vencimientos`);
+                if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                const datos = await respuesta.json();
+                const todos = [...(datos.vencidos || []), ...(datos.por_vencer || [])];
+                const cont = document.getElementById('lista-vencimientos');
+                cont.replaceChildren();
+                if (!todos.length) {
+                    const p = document.createElement('p');
+                    p.textContent = 'No hay lotes próximos a vencer.';
+                    cont.appendChild(p);
+                    return;
+                }
+                for (const lote of todos) {
+                    const fila = document.createElement('div');
+                    fila.style.cssText = 'background:rgba(0,0,0,0.2);padding:10px 15px;border-radius:6px;border:1px solid var(--glass-border);';
+                    const cabecera = document.createElement('div');
+                    cabecera.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:5px;';
+                    const nombre = document.createElement('strong');
+                    nombre.style.fontSize = '14px';
+                    nombre.textContent = String(lote.insumo_nombre ?? 'Insumo');
+                    const cantidad = document.createElement('span');
+                    cantidad.style.cssText = 'font-size:13px;font-weight:bold;';
+                    cantidad.textContent = String(lote.cantidad_texto ?? '');
+                    cabecera.append(nombre, cantidad);
+                    const leyenda = document.createElement('div');
+                    leyenda.style.cssText = 'font-size:12px;font-weight:bold;';
+                    leyenda.style.color = Number(lote.dias_restantes) < 0 ? '#e74c3c' : Number(lote.dias_restantes) === 0 ? '#f39c12' : 'var(--text-muted)';
+                    leyenda.textContent = `📅 ${lote.texto ?? ''} (Vence: ${lote.fecha_vencimiento ?? '-'})`;
+                    fila.append(cabecera, leyenda);
+                    cont.appendChild(fila);
+                }
+            } catch (error) {
+                mostrarErrorEn('lista-vencimientos', error.message || 'No se pudieron consultar los vencimientos.');
+            }
+        }
+
+        async function procesarVencidos() {
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/vencimientos/procesar`, { method: 'POST' });
+                if (!res.ok) throw new Error(await leerMensajeError(res));
+                const data = await res.json();
+                alert(`Se dieron de baja ${data.cantidad} lotes vencidos correctamente.`);
+                cargarVencimientos();
+                cargarNotificaciones();
+            } catch(e) { alert(e.message || "Error dando de baja lotes."); }
+        }
+
+        // Variable global para guardar qué motivos exigen nota
+        let motivosPerdidaGlobal = [];
+
+        /* ==================== TAB 4: ACCIONES (Pérdidas y Producción) ==================== */
+        async function cargarSelectoresAcciones() {
+            // Se consultan por separado: un endpoint no disponible no impide cargar los demás.
+            const consultas = [
+                {ruta: '/perdidas/motivos', id: 'perdida-motivo', extraer: d => d, texto: m => String(m.etiqueta ?? ''), clave: 'codigo'},
+                {ruta: '/stock', id: 'perdida-insumo', extraer: d => d.insumos, texto: i => String(i.nombre ?? '')},
+                {ruta: '/productos', id: 'perdida-plato', extraer: d => d, texto: p => String(p.nombre ?? '')},
+                {ruta: '/elaboraciones', id: 'prod-elaboracion', extraer: d => d, texto: e => `Elaborar: ${e.insumo_nombre ?? ''} (Rinde: ${e.rinde_texto ?? e.rinde ?? '-'} por tanda)`}
+            ];
+            for (const consulta of consultas) {
+                try {
+                    const respuesta = await fetchAutenticado(`${BASE_URL}${consulta.ruta}`);
+                    if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
+                    const datos = await respuesta.json();
+                    const items = consulta.extraer(datos);
+                    if (!Array.isArray(items)) throw new Error('Respuesta inválida del servidor.');
+                    llenarSelect(consulta.id, items, consulta.texto, consulta.clave);
+                    if (consulta.ruta === '/perdidas/motivos') {
+                        motivosPerdidaGlobal = items;
+                        toggleNotaPerdida();
+                    }
+                } catch (error) {
+                    const selector = document.getElementById(consulta.id);
+                    selector.replaceChildren();
+                    const option = document.createElement('option');
+                    option.textContent = error.message || 'No disponible';
+                    option.value = '';
+                    selector.appendChild(option);
+                    console.warn(`No se pudo cargar ${consulta.ruta}:`, error.message);
                 }
             }
         }
 
-        // Inicialización y ciclo asíncrono
-        sincronizarComandas();
-        setInterval(sincronizarComandas, INTERVALO_POLLING);
-    </script>
-    <script>
-        // Inyector local de Modo Claro/Oscuro sincronizado globalmente
-        document.addEventListener('DOMContentLoaded', () => {
-            const temaGuardado = localStorage.getItem('savage-tema');
-            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+        // NUEVA FUNCIÓN: Muestra u oculta el campo de texto de la Nota
+        function toggleNotaPerdida() {
+            const codigoSeleccionado = document.getElementById('perdida-motivo').value;
+            const motivoObj = motivosPerdidaGlobal.find(m => m.codigo === codigoSeleccionado);
+            const cajaNota = document.getElementById('caja-nota');
+            const inputNota = document.getElementById('perdida-nota');
+            
+            if (motivoObj && motivoObj.requiere_nota) {
+                cajaNota.style.display = 'block';
+                inputNota.required = true;
+            } else {
+                cajaNota.style.display = 'none';
+                inputNota.required = false;
+                inputNota.value = ''; // Limpiamos si lo oculta
+            }
+        }
 
-            const btnTema = document.createElement('button');
-            btnTema.className = 'btn-tema';
-            
-            const actualizarTexto = () => {
-                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+        function toggleSelectoresPerdida() {
+            const tipo = document.getElementById('perdida-tipo').value;
+            document.getElementById('caja-insumo').style.display = tipo === 'insumo' ? 'block' : 'none';
+            document.getElementById('caja-plato').style.display = tipo === 'plato' ? 'block' : 'none';
+        }
+
+        async function enviarPerdida(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const msj = document.getElementById('perdida-msj');
+            btn.disabled = true;
+
+            const payload = {
+                tipo: document.getElementById('perdida-tipo').value,
+                motivo: document.getElementById('perdida-motivo').value,
+                cantidad: parseFloat(document.getElementById('perdida-cantidad').value)
             };
-            
-            actualizarTexto();
-            
-            btnTema.onclick = () => {
-                document.body.classList.toggle('light-mode');
-                actualizarTexto();
-                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+
+            if (!Number.isFinite(payload.cantidad) || payload.cantidad <= 0 || (payload.tipo === 'plato' && !Number.isInteger(payload.cantidad))) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = 'Ingresá una cantidad válida (para platos, un número entero).';
+                btn.disabled = false;
+                return;
+            }
+
+            // Agregamos la nota al payload si el usuario escribió algo
+            const notaText = document.getElementById('perdida-nota').value.trim();
+            if (notaText) payload.nota = notaText;
+
+            if (payload.tipo === 'insumo') payload.insumo = parseInt(document.getElementById('perdida-insumo').value);
+            else payload.producto = parseInt(document.getElementById('perdida-plato').value);
+
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/perdidas`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                if(res.ok) {
+                    msj.style.color = '#2ecc71';
+                    msj.textContent = 'Pérdida registrada con éxito. Inventario ajustado.';
+                    e.target.reset();
+                    toggleNotaPerdida(); // Reseteamos la visibilidad de la nota
+                } else {
+                    msj.style.color = '#e74c3c';
+                    msj.textContent = await leerMensajeError(res);
+                }
+            } catch(err) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = err.message || 'Fallo de conexión.';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { msj.textContent = ''; }, 3000);
+            }
+        }
+
+        async function enviarProduccion(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const msj = document.getElementById('prod-msj');
+            btn.disabled = true;
+
+            const payload = {
+                elaboracion: parseInt(document.getElementById('prod-elaboracion').value),
+                tandas: parseFloat(document.getElementById('prod-tandas').value)
             };
-            
-            document.body.appendChild(btnTema);
+
+            try {
+                const res = await fetchAutenticado(`${BASE_URL}/producciones`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                if(res.ok) {
+                    msj.style.color = '#2ecc71';
+                    msj.textContent = 'Producción registrada. Ingredientes descontados y stock actualizado.';
+                    e.target.reset();
+                } else {
+                    msj.style.color = '#e74c3c';
+                    msj.textContent = await leerMensajeError(res);
+                }
+            } catch(err) {
+                msj.style.color = '#e74c3c';
+                msj.textContent = err.message || 'Fallo de conexión.';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { msj.textContent = ''; }, 3000);
+            }
+        }
+
+        async function iniciarCocina() {
+            const token = sessionStorage.getItem('savage_token');
+            if (!token) {
+                window.location.replace('login.html');
+                return;
+            }
+            try {
+                const perfil = await fetchAutenticado(`${BASE_URL}/me`);
+                if (!perfil.ok) throw new Error(await leerMensajeError(perfil));
+                const usuario = await perfil.json();
+                const rol = usuario.rol ?? usuario.empleado?.rol;
+                if (!['Cocina', 'Admin', 'Gerente'].includes(rol)) {
+                    indicarConexion('Sin permiso para acceder a Cocina', false);
+                    return;
+                }
+                await sincronizarComandas();
+                setInterval(sincronizarComandas, INTERVALO_POLLING);
+                // Actualizamos notificaciones con la misma frecuencia documentada (~10 segundos).
+                setInterval(() => {
+                    if (document.hidden) return;
+                    const activa = document.getElementById('tab-notificaciones').classList.contains('active');
+                    cargarNotificaciones({ soloBadge: !activa });
+                }, 10000);
+                cambiarTab('tab-comandas', document.querySelector('.tab-btn.active'));
+            } catch (error) {
+                indicarConexion(error.message || 'No se pudo validar el perfil', false);
+                console.error('No se pudo iniciar Cocina:', error);
+            }
+        }
+
+        iniciarCocina();
+    </script>
+
+    <script>
+    /* Mismo motor de desplegables que Administración P8; funciona con opciones cargadas por Django. */
+    (() => {
+
+
+    /* =============================================================
+       SAVAGE SELECT — Desplegables con estética del sistema
+       Mantiene el <select> original como fuente de valores, por lo
+       tanto no cambia los formularios ni los datos enviados a Django.
+       Se aplica también a selectores agregados dinámicamente.
+       ============================================================= */
+    const sgSelect = (() => {
+        const controles = new WeakMap();
+        let actual = null;
+        let menu = null;
+        let opcionesAbiertas = [];
+        let indiceResaltado = -1;
+        let prefijoBusqueda = '';
+        let relojBusqueda;
+
+        function crearMenu() {
+            if (menu) return menu;
+            menu = document.createElement('div');
+            menu.id = 'sg-select-listado';
+            menu.className = 'sg-select-list';
+            menu.setAttribute('role', 'listbox');
+            menu.setAttribute('aria-label', 'Opciones de selección');
+            menu.hidden = true;
+            document.body.appendChild(menu);
+            return menu;
+        }
+
+        function etiquetaDe(select) {
+            const etiquetas = select.labels ? Array.from(select.labels) : [];
+            const etiqueta = etiquetas[0];
+            if (etiqueta) return (etiqueta.textContent || '').replace(/\*/g, '').trim();
+            return select.getAttribute('aria-label') || 'Seleccionar una opción';
+        }
+
+        function actualizarBoton(select) {
+            const ref = controles.get(select);
+            if (!ref) return;
+            const opcion = select.options[select.selectedIndex];
+            ref.valor.textContent = opcion?.textContent || 'Seleccioná una opción';
+            ref.boton.classList.toggle('sg-select-placeholder', !select.value);
+            ref.boton.disabled = select.disabled;
+            ref.boton.setAttribute('aria-label', `${etiquetaDe(select)}: ${ref.valor.textContent}`);
+            if (actual?.select === select && !menu.hidden) {
+                actual = ref;
+                mostrarOpciones();
+            }
+        }
+
+        function cerrar({ devolverFoco = false } = {}) {
+            if (!actual) return;
+            const ref = actual;
+            actual = null;
+            if (menu) {
+                menu.hidden = true;
+                menu.replaceChildren();
+            }
+            opcionesAbiertas = [];
+            indiceResaltado = -1;
+            ref.boton.setAttribute('aria-expanded', 'false');
+            ref.boton.removeAttribute('aria-activedescendant');
+            if (devolverFoco && ref.boton.isConnected) ref.boton.focus();
+        }
+
+        function ubicarMenu() {
+            if (!actual || !menu || menu.hidden) return;
+            const r = actual.boton.getBoundingClientRect();
+            if (!r.width || !r.height) { cerrar(); return; }
+            const margen = 8;
+            const ancho = Math.max(160, Math.min(r.width, window.innerWidth - margen * 2));
+            menu.style.width = `${ancho}px`;
+            const izquierdo = Math.max(margen, Math.min(r.left, window.innerWidth - ancho - margen));
+            menu.style.left = `${izquierdo}px`;
+            menu.style.top = `${r.bottom + 6}px`;
+            menu.style.maxHeight = `${Math.min(300, Math.max(100, window.innerHeight - 24))}px`;
+            const alto = menu.getBoundingClientRect().height;
+            const debajo = window.innerHeight - r.bottom - 8;
+            const arriba = r.top - 8;
+            if (debajo < Math.min(alto, 190) && arriba > debajo) {
+                menu.style.top = `${Math.max(margen, r.top - alto - 6)}px`;
+            } else if (debajo < alto) {
+                menu.style.maxHeight = `${Math.max(90, debajo - 6)}px`;
+            }
+        }
+
+        function resaltar(indice) {
+            const habilitadas = opcionesAbiertas
+                .map((registro, idx) => ({ registro, idx }))
+                .filter(({ registro }) => !registro.option.disabled);
+            if (!habilitadas.length) return;
+            const encontrada = habilitadas.find(x => x.idx === indice);
+            if (!encontrada) return;
+            indiceResaltado = indice;
+            opcionesAbiertas.forEach(({ nodo }, idx) => {
+                nodo.classList.toggle('sg-select-highlight', idx === indice);
+            });
+            actual.boton.setAttribute('aria-activedescendant', encontrada.registro.nodo.id);
+            encontrada.registro.nodo.scrollIntoView({ block: 'nearest' });
+        }
+
+        function mostrarOpciones() {
+            if (!actual) return;
+            const lista = crearMenu();
+            lista.replaceChildren();
+            opcionesAbiertas = [];
+            const opciones = Array.from(actual.select.options);
+            opciones.forEach((option, index) => {
+                const fila = document.createElement('div');
+                fila.className = 'sg-select-option';
+                fila.id = `sg-select-opcion-${index}`;
+                fila.setAttribute('role', 'option');
+                fila.setAttribute('aria-selected', String(option.selected));
+                fila.setAttribute('aria-disabled', String(option.disabled));
+                fila.textContent = option.textContent;
+                fila.addEventListener('pointerdown', e => e.preventDefault());
+                fila.addEventListener('click', () => elegir(index));
+                lista.appendChild(fila);
+                opcionesAbiertas.push({ option, nodo: fila, index });
+            });
+            lista.hidden = false;
+            ubicarMenu();
+            const seleccionado = opciones.findIndex(o => o.selected && !o.disabled);
+            const primeroHabilitado = opciones.findIndex(o => !o.disabled);
+            resaltar(seleccionado >= 0 ? seleccionado : primeroHabilitado);
+        }
+
+        function abrir(ref) {
+            if (ref.select.disabled) return;
+            if (actual === ref) { cerrar({ devolverFoco: true }); return; }
+            cerrar();
+            actual = ref;
+            ref.boton.setAttribute('aria-expanded', 'true');
+            mostrarOpciones();
+        }
+
+        function elegir(indice) {
+            if (!actual) return;
+            const registro = opcionesAbiertas[indice];
+            if (!registro || registro.option.disabled) return;
+            const { select } = actual;
+            const antes = select.value;
+            select.selectedIndex = indice;
+            actualizarBoton(select);
+            cerrar({ devolverFoco: true });
+            if (select.value !== antes) {
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function recorrer(direccion) {
+            if (!actual) return;
+            const habilitadas = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+            if (!habilitadas.length) return;
+            let pos = habilitadas.indexOf(indiceResaltado);
+            if (pos < 0) pos = 0;
+            resaltar(habilitadas[(pos + direccion + habilitadas.length) % habilitadas.length]);
+        }
+
+        function manejarTeclado(evento, ref) {
+            const abierto = actual === ref;
+            if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+                evento.preventDefault();
+                if (!abierto) abrir(ref);
+                else recorrer(evento.key === 'ArrowDown' ? 1 : -1);
+                return;
+            }
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                if (abierto && indiceResaltado >= 0) elegir(indiceResaltado);
+                else abrir(ref);
+                return;
+            }
+            if (evento.key === 'Escape' && abierto) {
+                evento.preventDefault();
+                cerrar({ devolverFoco: true });
+                return;
+            }
+            if (evento.key === 'Tab' && abierto) { cerrar(); return; }
+            if (!abierto) return;
+            if (evento.key === 'Home' || evento.key === 'End') {
+                evento.preventDefault();
+                const lista = opcionesAbiertas.map((x, i) => i).filter(i => !opcionesAbiertas[i].option.disabled);
+                resaltar(evento.key === 'Home' ? lista[0] : lista.at(-1));
+                return;
+            }
+            if (evento.key.length === 1 && !evento.ctrlKey && !evento.altKey && !evento.metaKey) {
+                clearTimeout(relojBusqueda);
+                prefijoBusqueda += evento.key.toLocaleLowerCase('es');
+                const posicion = opcionesAbiertas.findIndex(x => !x.option.disabled &&
+                    (x.option.textContent || '').trim().toLocaleLowerCase('es').startsWith(prefijoBusqueda));
+                if (posicion >= 0) resaltar(posicion);
+                relojBusqueda = setTimeout(() => { prefijoBusqueda = ''; }, 700);
+            }
+        }
+
+        function mejorar(select) {
+            if (!select || controles.has(select) || select.multiple || select.size > 1) return;
+            const padre = select.parentNode;
+            if (!padre) return;
+            const wrapper = document.createElement('span');
+            wrapper.className = 'sg-select-shell';
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.className = 'sg-select-button';
+            boton.setAttribute('aria-haspopup', 'listbox');
+            boton.setAttribute('aria-controls', 'sg-select-listado');
+            boton.setAttribute('aria-expanded', 'false');
+            const valor = document.createElement('span');
+            valor.className = 'sg-select-value';
+            const flecha = document.createElement('span');
+            flecha.className = 'sg-select-arrow';
+            flecha.setAttribute('aria-hidden', 'true');
+            boton.append(valor, flecha);
+            padre.insertBefore(wrapper, select);
+            wrapper.append(select, boton);
+            select.classList.add('sg-select-native');
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+            const ref = { select, boton, valor };
+            controles.set(select, ref);
+            boton.addEventListener('click', () => abrir(ref));
+            boton.addEventListener('keydown', evento => manejarTeclado(evento, ref));
+            select.addEventListener('change', () => actualizarBoton(select));
+            select.addEventListener('invalid', evento => {
+                evento.preventDefault();
+                boton.focus();
+                boton.setAttribute('aria-invalid', 'true');
+            });
+            boton.addEventListener('focus', () => {
+                boton.removeAttribute('aria-invalid');
+                actualizarBoton(select);
+            });
+            const observarOpciones = new MutationObserver(() => actualizarBoton(select));
+            observarOpciones.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label', 'value'] });
+            actualizarBoton(select);
+        }
+
+        function mejorarTodos(raiz = document) {
+            if (raiz instanceof HTMLSelectElement) mejorar(raiz);
+            if (typeof raiz.querySelectorAll === 'function') {
+                raiz.querySelectorAll('select').forEach(mejorar);
+            }
+        }
+
+        function iniciar() {
+            mejorarTodos();
+            crearMenu();
+            const observador = new MutationObserver(cambios => {
+                for (const cambio of cambios) {
+                    for (const nodo of cambio.addedNodes) {
+                        if (nodo.nodeType === Node.ELEMENT_NODE) mejorarTodos(nodo);
+                    }
+                }
+            });
+            observador.observe(document.body, { childList: true, subtree: true });
+            document.addEventListener('pointerdown', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            }, true);
+            document.addEventListener('click', evento => {
+                const etiqueta = evento.target.closest?.('label[for]');
+                if (!etiqueta) return;
+                const select = document.getElementById(etiqueta.htmlFor);
+                const ref = select ? controles.get(select) : null;
+                if (!ref) return;
+                evento.preventDefault();
+                ref.boton.focus();
+                abrir(ref);
+            });
+            document.addEventListener('reset', () => setTimeout(() => {
+                document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton);
+            }, 0), true);
+            window.addEventListener('resize', ubicarMenu);
+            window.addEventListener('scroll', ubicarMenu, true);
+            document.addEventListener('focusin', evento => {
+                if (actual && !actual.boton.contains(evento.target) && !menu.contains(evento.target)) cerrar();
+            });
+        }
+
+        return { iniciar, actualizar: () => document.querySelectorAll('select.sg-select-native').forEach(actualizarBoton) };
+    })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            sgSelect.iniciar();
         });
+    })();
+    </script>
+
+    <script>
+    (() => {
+        const abrir = document.getElementById('cocina-salir');
+        const overlay = document.getElementById('cocina-modal-salida');
+        const cancelar = document.getElementById('cocina-cancelar-salida');
+        const confirmar = document.getElementById('cocina-confirmar-salida');
+        if (!abrir || !overlay || !cancelar || !confirmar) return;
+        function ocultar() { overlay.hidden = true; abrir.focus(); }
+        abrir.addEventListener('click', () => { overlay.hidden = false; cancelar.focus(); });
+        cancelar.addEventListener('click', ocultar);
+        overlay.addEventListener('click', e => { if (e.target === overlay) ocultar(); });
+        document.addEventListener('keydown', e => {
+            if (overlay.hidden) return;
+            if (e.key === 'Escape') { e.preventDefault(); ocultar(); }
+            if (e.key === 'Tab') {
+                const destino = e.shiftKey ? confirmar : cancelar;
+                if (e.shiftKey && document.activeElement === cancelar) { e.preventDefault(); destino.focus(); }
+                if (!e.shiftKey && document.activeElement === confirmar) { e.preventDefault(); destino.focus(); }
+            }
+        });
+        confirmar.addEventListener('click', () => {
+            // Mismas claves que el acceso de los demás roles (app.js).
+            sessionStorage.removeItem('savage_token');
+            sessionStorage.removeItem('savage_usuario');
+            window.location.replace('login.html');
+        });
+    })();
     </script>
 </body>
 </html>

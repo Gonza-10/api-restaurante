@@ -1,0 +1,104 @@
+/* Savage Grill P43 — Gerencia responsive. Diseño únicamente: conserva todas las acciones existentes. */
+.g-mobilebar,.g-mobile-overlay,.g-mobile-drawer-head{display:none}
+.g-theme-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:1px 3px;color:var(--text-muted);font-size:12px;font-weight:800}
+.g-theme-wrap .sg-theme-popup{left:0;right:auto;top:auto;bottom:calc(100% + 9px)}
+.g-sidebar .g-theme[hidden]{display:none!important}
+.g-main,.g-grid,.g-panel,.g-employee,.g-kpi,.g-form,.g-toolbar,.g-modal-dialog{min-width:0}
+.g-main img,.g-main svg,.g-main input,.g-main select{max-width:100%}
+.g-bars .g-bar-row{min-width:0}
+.g-panel-head .g-btn{flex:0 0 auto}
+.g-employee-actions button{min-width:0}
+.g-theme-wrap .sg-theme-trigger{min-width:39px;min-height:39px}
+.g-brand.sg-brand-unified,.g-mobile-brand.sg-brand-unified{font-family:'Elemental End',sans-serif!important}
+/* Tabletas y teléfonos: reemplazar la columna fija por un cajón lateral accesible. */
+@media(max-width:1100px){
+ .g-shell{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto 1fr;min-height:100dvh;height:auto;overflow:visible}
+ .g-mobilebar{position:sticky;top:0;z-index:1000;display:flex;flex-direction:column;gap:10px;padding:12px clamp(12px,2vw,22px);background:rgba(11,11,11,.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--g-line);min-width:0}
+ .g-mobilebar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+ .g-mobile-brand.sg-brand-unified{font-size:clamp(20px,3.2vw,26px)!important;line-height:1.1!important;min-width:0}
+ .g-mobile-brand small.sg-role-unified{display:flex!important;align-items:center!important;gap:7px!important;width:max-content!important;margin-top:4px!important;font-size:9px!important;font-weight:850!important;letter-spacing:.13em!important}
+ .g-mobile-brand small.sg-role-unified::before{display:block!important;flex:0 0 2px!important;width:2px!important;min-width:2px!important;max-width:2px!important;height:11px!important}
+ .g-mobile-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+ .g-menu-trigger{display:flex;align-items:center;justify-content:center;gap:7px;min-height:39px;border:1px solid rgba(255,122,0,.46);border-radius:11px;background:rgba(255,122,0,.09);color:var(--g-accent);padding:8px 11px;font:800 13px inherit;font-family:inherit;cursor:pointer}
+ .g-menu-trigger:focus-visible,.g-menu-trigger:hover{outline:2px solid var(--g-accent);outline-offset:2px;background:rgba(255,122,0,.17)}
+ .g-mobile-current{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 11px;background:rgba(255,122,0,.055);border:1px solid rgba(255,122,0,.13);border-radius:10px}
+ .g-mobile-current span{font-size:9px;font-weight:850;letter-spacing:.12em;color:var(--text-muted)}
+ .g-mobile-current strong{font-size:12px;color:var(--g-accent);overflow-wrap:anywhere}
+ .g-sidebar{display:flex!important;position:fixed!important;top:0;bottom:0;left:0;width:min(325px,88vw);max-width:100vw;height:100dvh!important;min-width:0;z-index:1750;padding:16px 17px 19px!important;overflow-y:auto!important;overscroll-behavior:contain;transform:translateX(-105%);visibility:hidden;pointer-events:none;transition:transform .22s ease,visibility .22s ease;box-shadow:16px 0 55px rgba(0,0,0,.5)}
+ .g-mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--g-accent);font-size:12px;font-weight:850;margin-bottom:13px}
+ #g-menu-close{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--g-line);background:rgba(255,255,255,.05);border-radius:11px;color:var(--text-main);font-size:24px;line-height:1;cursor:pointer}
+ .g-sidebar .g-caption.sg-role-unified{margin-bottom:23px!important}
+ .g-sidebar .g-nav-label{display:block!important}
+ .g-sidebar .g-nav{display:grid!important;grid-template-columns:1fr!important;gap:8px}
+ .g-sidebar .g-nav-btn{display:flex!important;flex-direction:row!important;min-height:49px!important;justify-content:flex-start!important;text-align:left!important;font-size:14px!important;padding:12px 13px!important;gap:12px!important}
+ .g-sidebar .g-sidebar-footer{display:grid!important;grid-template-columns:1fr!important;gap:13px!important;padding-top:18px;margin-top:auto;align-items:stretch}
+ .g-sidebar .g-profile .g-avatar{display:grid}
+ .g-sidebar .g-logout{font-size:14px;padding:13px}
+ .g-mobile-overlay:not([hidden]){display:block!important;position:fixed;inset:0;z-index:1700;background:rgba(0,0,0,.74);backdrop-filter:blur(3px)}
+ body.g-nav-open .g-sidebar{visibility:visible;pointer-events:auto;transform:translateX(0)}
+ body.g-nav-open{overflow:hidden!important}
+ .g-main{padding:clamp(18px,3vw,32px) clamp(14px,3vw,30px) 65px!important;min-width:0}
+ .g-col-6{grid-column:span 6}
+ .g-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .g-panel{padding:clamp(16px,2.2vw,24px)}
+ .g-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .g-theme-wrap{justify-content:space-between}
+ .g-mobilebar .sg-theme-popup{right:0;left:auto;top:calc(100% + 9px);bottom:auto}
+}
+@media(max-width:700px){
+ .g-main{padding:20px 12px 65px!important}
+ .g-view-title{font-size:clamp(24px,6vw,30px);overflow-wrap:break-word}
+ .g-lead{font-size:13px;line-height:1.55;margin-bottom:21px}
+ .g-grid{gap:14px}
+ .g-col-6,.g-col-12{grid-column:span 12}
+ .g-panel{padding:16px 14px;border-radius:15px}
+ .g-panel h3{font-size:19px}
+ .g-form{grid-template-columns:minmax(0,1fr);gap:13px}
+ .g-field.wide,.g-form-actions{grid-column:1}
+ .g-form-actions{align-items:stretch}
+ .g-form-actions .g-btn{min-height:46px}
+ .g-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
+ .g-toolbar .g-input,.g-toolbar .sg-select-shell,.g-toolbar select{width:100%;min-width:0;max-width:100%;flex:auto}
+ .g-dashboard-actions>.g-toolbar{width:100%}
+ .g-employee-actions{gap:7px}
+ .g-employee-actions .g-btn{flex:1 1 120px;min-height:43px}
+ .g-employees{grid-template-columns:minmax(0,1fr)}
+ .g-panel-head{align-items:flex-start}
+ .g-panel-head .g-btn{max-width:100%}
+ .g-bars{min-height:180px;gap:10px}
+ .g-bar-row{grid-template-columns:minmax(67px,105px) minmax(0,1fr) auto;gap:8px}
+ .g-modal{padding:12px}
+ .g-modal-dialog{width:100%;padding:18px!important;max-height:min(90dvh,820px);overflow-y:auto}
+ .g-modal-head h3{font-size:21px}
+ .g-confirm-actions,.g-modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .g-confirm-actions .g-btn,.g-modal-actions .g-btn{min-width:0;padding:10px 8px}
+}
+@media(max-width:430px){
+ .g-mobile-brand.sg-brand-unified{font-size:clamp(19px,5.7vw,23px)!important}
+ .g-mobile-actions{gap:6px}
+ .g-menu-trigger{padding:7px 9px;font-size:12px;min-height:36px}
+ .g-mobilebar{padding:11px 10px}
+ .g-kpis{grid-template-columns:minmax(0,1fr);gap:10px;margin:14px 0}
+ .g-kpi{padding:16px 18px}
+ .g-kpi-value{margin-top:7px}
+ .g-form-actions .g-btn{width:100%}
+ .g-modal-dialog{padding:15px!important}
+ .g-employee{padding:15px}
+}
+@media(max-width:365px){
+ .g-mobile-brand.sg-brand-unified{font-size:18px!important}
+ .g-mobile-brand small.sg-role-unified{font-size:8px!important}
+ .g-menu-trigger{gap:5px}
+}
+body.light-mode .g-mobilebar{background:rgba(255,255,255,.97);border-color:#e0e0e0}
+body.light-mode .g-mobile-current{background:#fff4eb}
+body.light-mode .g-mobile-overlay{background:rgba(0,0,0,.4)}
+@media(prefers-reduced-motion:reduce){.g-sidebar{transition:none}}
+
+/* P44 · Movimiento sutil de las opciones del menú gerencial. */
+.g-sidebar .g-nav-btn {transition:transform .2s cubic-bezier(.2,.7,.2,1),background-color .2s,border-color .2s,color .2s,box-shadow .2s!important}
+@media(hover:hover) and (pointer:fine){
+ .g-sidebar .g-nav-btn:hover:not(:disabled){transform:translateX(5px);background:rgba(255,122,0,.11);border-color:rgba(255,122,0,.22);box-shadow:inset 3px 0 0 rgba(255,122,0,.68)}
+ .g-sidebar .g-nav-btn:active:not(:disabled){transform:translateX(2px) scale(.995)}
+}
+@media(prefers-reduced-motion:reduce){.g-sidebar .g-nav-btn{transition:none!important;transform:none!important}}
