@@ -7,8 +7,8 @@ Este repositorio contiene el desarrollo del backend para un sistema de gestión 
 El proyecto se desarrolla de forma incremental a lo largo del cuatrimestre:
 
 - **AE1** (versión grupal 1.0): CRUD base sobre las entidades centrales del restaurante — menú, mesas, empleados y pedidos.
-- **AE2** (evolución individual 2.0 — este documento): profundización del flujo de comandas mediante arquitectura distribuida y asíncrona (RabbitMQ, Redis), idempotencia, concurrencia y generación de comprobantes.
-- **AE4** (integración final): pendiente — pagos, autenticación real, alta disponibilidad, observabilidad.
+- **AE2** (evolución individual 2.0): profundización del flujo de comandas mediante arquitectura distribuida y asíncrona (RabbitMQ, Redis), idempotencia, concurrencia y generación de comprobantes.
+- **AE4** (integración final): **completado** — reservas, stock con recetas, cobros (caja, cotización oficial del BCRA, efectivo, tarjeta y Mercado Pago), autenticación por roles, mesa grupal, barra y bebidas, y despliegue con HTTPS en una máquina virtual de Azure. Versión final: tag `v4.0-ae4`. Detalle en «Estado actual y próximas entregas» y en el informe de AE4.
 
 La API expone operaciones sobre las entidades centrales de un restaurante, organizadas en una arquitectura en capas sobre Django REST Framework, con un flujo de comandas desacoplado mediante mensajería asíncrona.
 
@@ -22,19 +22,24 @@ La API expone operaciones sobre las entidades centrales de un restaurante, organ
 - **Caché y estado efímero:** Redis (vía `redis-py`)
 - **Generación de comprobantes:** `fpdf2`
 - **Configuración:** variables de entorno con `python-decouple`
-- **Contenedores (infraestructura de RabbitMQ/Redis):** Docker / Docker Compose
+- **Contenedores:** Docker / Docker Compose (en desarrollo, la infraestructura de RabbitMQ/Redis; en producción, `docker-compose.prod.yml` con la API, los workers, SQL Server, RabbitMQ y Redis)
+- **Servidor de aplicación y HTTPS (producción):** gunicorn y Caddy 2 (certificado TLS automático)
+- **Pagos:** Mercado Pago Checkout Pro (modos `simulado`, `prueba` y `produccion`)
+- **Frontend:** HTML, CSS y JavaScript sin frameworks
 
 ## Cómo crear tu propio entorno
 
 El proyecto se ejecuta de forma local — cada persona que quiera trabajar sobre él necesita armar su propio entorno en su máquina, siguiendo estos pasos:
 
-### 1. Clonar el repositorio y ubicarse en la rama correspondiente
+### 1. Clonar el repositorio y ubicarse en la versión final
 
 ```powershell
 git clone https://github.com/Gonza-10/api-restaurante.git
 cd api-restaurante
-git checkout AE2/Noguera_David-Backend
+git checkout main            # versión final integrada (equivale al tag v4.0-ae4)
 ```
+
+Las versiones anteriores se recuperan por tag: `v1.0-ae1` (AE1) y `ae2-david-base` (punto de partida individual de AE2). La rama individual de AE2, `AE2/Noguera_David-Backend`, queda como historial.
 
 ### 2. Crear y activar un entorno virtual propio
 
@@ -661,6 +666,21 @@ Cómo usarlo:
 
 Después de correr las colecciones de Postman, que vuelven a crear datos de prueba y consumen stock, repetir el script para volver al estado de la demo.
 
+## Pruebas de carga y latencia (AE4)
+
+Se midió la latencia de la API con una prueba de carga corta, junto con una prueba de blindaje (entradas maliciosas), ambas parte de la Actividad N3.
+
+| Dato | Valor |
+|---|---|
+| Fecha de la medición | 21/10/2026 |
+| Entorno | Local (máquina de desarrollo, no la VM de Azure) |
+| Solicitudes | 20 |
+| **Latencia media** | **124 ms** |
+| Errores | 0 |
+| Blindaje | Las entradas con inyección fueron rechazadas con `400` |
+
+**Limitaciones de esta medición.** El percentil 95 (p95) **no se midió**: con 20 solicitudes sería poco representativo, y no se hizo un análisis formal de cuellos de botella ni una prueba con usuarios concurrentes sostenida. Es un dato de referencia, no una garantía de rendimiento en producción.
+
 ## Estructura del repositorio
 
 ```
@@ -672,7 +692,9 @@ Después de correr las colecciones de Postman, que vuelven a crear datos de prue
 ├── tickets/           tickets de comanda en PDF (no se versiona)
 ├── Facturas/          facturas en PDF de las mesas pagadas que las pidieron (no se versiona)
 ├── media/             fotos de productos subidas (no se versiona)
-├── docker-compose.yml RabbitMQ + Redis
+├── Tests/             pruebas: scripts de prueba (Scripts/probar_*.py) y colecciones de Postman
+├── docker-compose.yml RabbitMQ + Redis (desarrollo)
+├── docker-compose.prod.yml  despliegue completo en la VM (Caddy, API, workers, SQL Server, RabbitMQ, Redis)
 ├── manage.py · requirements.txt · .env.example
 └── README.md · CLAUDE.md
 ```
@@ -713,7 +735,7 @@ Django (ComandaEstadoUpdateView) ──si estado="listo"──► RabbitMQ (coma
 
 ## Estado actual y próximas entregas
 
-**Completado en AE2 (individual, backend):**
+**AE2 (individual, backend) — completado:**
 - Flujo de comandas con RabbitMQ (dos flujos asíncronos independientes: creación de comanda y generación de comprobante).
 - Idempotencia garantizada a nivel de base de datos (restricción `UNIQUE` sobre el UUID de la comanda).
 - Concurrencia resuelta en la apertura de sesión de mesa (índice único filtrado en SQL Server).
@@ -722,14 +744,24 @@ Django (ComandaEstadoUpdateView) ──si estado="listo"──► RabbitMQ (coma
 - Generación asíncrona de comprobante PDF.
 - Script de datos semilla (`sql/99_Seed_AE4.sql`, reemplaza al de AE2), idempotente.
 
-**Diferido explícitamente a AE4 (fuera del alcance de AE2):**
-- `Reserva` — gestión de reservas.
-- `MetodoPago`, `Pago`, `Factura`, `CotizacionMoneda` — cobro y conversión de moneda.
-- `Caja`, `MovimientoCaja` — apertura/cierre de caja y movimientos de dinero.
-- `ProductoSugerido` — sugerencias de productos adicionales en el menú.
-- Integración con la API de Mercado Pago (pagos ficticios).
-- Panel de estadísticas para el rol Jefe.
-- Alta disponibilidad, observabilidad, CI/CD y resiliencia (timeouts, reintentos, Circuit Breaker).
+**AE4 (integración final) — completado:**
+- Autenticación y permisos por rol (token firmado, rol y estado leídos de la base en cada pedido).
+- Reservas, jornadas y turnos, y calendario de especiales.
+- Stock con recetas, descuento por lote (FEFO), extras, modificadores, elaboraciones, vencimientos, reposición y pérdidas.
+- Cobros: caja con arqueo por moneda, cotización oficial del BCRA actualizada cada 30 minutos, pagos en efectivo, tarjeta y Mercado Pago (Checkout Pro), plan de pago combinado, propina, vuelto y comprobante PDF con auditoría.
+- Mesa grupal con comensales y PIN, barra y bebidas del mozo, y carga de fotos de productos.
+- Despliegue con Docker Compose y HTTPS (Caddy) en una máquina virtual de Azure.
+- Pruebas: scripts `Tests/Scripts/probar_*.py`, colecciones de Postman y pruebas de carga y blindaje (ver «Pruebas de carga y latencia (AE4)»).
+
+**Limitaciones declaradas (lo que el sistema no hace hoy):**
+- **Alta disponibilidad:** el despliegue es una sola máquina virtual, sin réplicas; la base es SQL Server Express.
+- **CI/CD y registry:** no hay integración continua ni registry de imágenes; la imagen se construye a mano en la VM.
+- **Observabilidad:** hay logs y auditoría funcional, pero no métricas, trazas distribuidas ni dashboards.
+- **Resiliencia:** hay tolerancia a fallas de Mercado Pago y del BCRA y reinicio automático de contenedores, pero no un *circuit breaker* formal.
+- **Contrato de la API:** documentado en este README y en las colecciones de Postman; no hay un archivo OpenAPI.
+- **Performance:** solo se midió la latencia media (124 ms, 20 solicitudes, local); no hay p95.
+- **Seguridad:** el token no tiene revocación, CORS está abierto y los usuarios de demostración usan la clave de prueba `1234`, que debe cambiarse en un uso real.
+- **Pagos:** la factura es interna, sin validez fiscal; Mercado Pago se confirma por consulta periódica (cada 15 segundos), no por *webhook*.
 
 ## Gestión de tareas
 
