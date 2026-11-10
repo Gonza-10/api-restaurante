@@ -497,7 +497,7 @@ La rueda sigue donde terminaba el hito 1: **receta → pedido → descuento**.
 5. **Un rechazo no termina el cobro:** el cliente puede reintentar con el mismo link. El pago termina cuando se **aprueba**, cuando **vence el link** (`Expirado`, con unos minutos de margen y solo si no hay un pago en proceso) o cuando se **cancela** (`Cancelado`). Cancelar y vencer solo se hacen si Mercado Pago confirma que no se pagó; si no responde, el pago queda pendiente (por seguridad).
 6. **Al aprobarse:** el pago pasa a `Aprobado` y la caja anota un ingreso `Venta` y otro `Propina` con el medio **MercadoPago** (sin cajero: lo registra el sistema). El arqueo los muestra aparte del efectivo y, al cerrar la caja, se declara cuánto se acreditó en la cuenta de Mercado Pago. Se registra el monto **bruto**; el neto (después de la comisión) queda como dato informativo.
 7. **Controles:** si Mercado Pago informa un monto distinto al esperado, el pago **no se aprueba solo** (queda anotado en el historial para revisarlo). Un pago de Mercado Pago no se registra dos veces (`UQ_Pago_MpPagoId`). Una aprobación tardía (el link ya estaba vencido o cancelado pero el cliente pagó) igual se registra durante 3 horas, con el evento «Aprobacion tardia». Mientras haya un pago pendiente no se cierra la mesa ni la caja, ni se anula la factura. Los pagos de Mercado Pago no se anulan desde el sistema (la devolución se hace en Mercado Pago).
-8. **Tres modos (`MP_MODO`):** `simulado` (por defecto; sin internet ni credenciales: el cobro lo «paga» un Admin o Gerente con `POST /pagos/{id}/simular`), `prueba` (Mercado Pago real con el *Access Token* de prueba) y `produccion`. Con `prueba` o `produccion` hace falta `MP_ACCESS_TOKEN` en el `.env`.
+8. **Tres modos (`MP_MODO`):** `simulado` (por defecto; sin internet ni credenciales: el cobro lo «paga» un Admin o Gerente con `POST /pagos/{id}/simular`), `prueba` (Mercado Pago real con el *Access Token* de prueba) y `produccion`. Con `prueba` o `produccion` hace falta `MP_ACCESS_TOKEN` en el `.env`. En `prueba` se usa el *Access Token de prueba* de la aplicación (Mercado Pago Developers → Credenciales → entorno de prueba) y el mismo link `init_point`; para pagar en el checkout de prueba se usan las tarjetas de prueba de Mercado Pago, donde el resultado lo decide el nombre del titular (`APRO` aprobado, `OTHE` rechazado, `CONT` pendiente). En la VM el token se carga a mano en el `.env` y se reinician `api` y `worker_mercadopago`.
 
 - **Probarlo:** `python Tests\Scripts\probar_cuenta_dobles.py` (incluye la lógica de Mercado Pago con una pasarela simulada: parcial con propina, combinación con efectivo, rechazo, en proceso, monto distinto, aprobación, vencimiento, aprobación tardía, cancelación, caída de Mercado Pago, caja cerrada) y la carpeta «4. Mercado Pago (hito 4)» de la colección `Savage_Grill_Cobros` (requiere el script SQL 20, `MP_MODO=simulado`, `runserver`, `worker.py`, RabbitMQ y Redis; usa la mesa 5 y deja la caja cerrada). El vencimiento del link (mínimo 5 minutos) solo se prueba con los dobles.
 
@@ -606,6 +606,21 @@ Cada producto se prepara o se entrega en un **destino**:
 - **Seguridad.** Se cerraron las rutas que estaban públicas: el tablero de cocina solo lo leen Cocina, Mozo, Admin y Gerente, y mover una comanda exige Cocina, Admin o Gerente (la barra, Bartender, Admin o Gerente). Los pedidos sin token responden 401.
 
 **Probarlo:** `python Tests\Scripts\probar_destinos_calculos.py` (41 chequeos), `python Tests\Scripts\probar_estado_comandas.py` (34, con un Redis de mentira) y la colección `Tests/Postman/Savage_Grill_Barra.postman_collection.json` (87 pasos; con `runserver`, `worker.py`, RabbitMQ y Redis activos, el script 26 aplicado y el seed 99 para el usuario `tbarrios`; la primera vez esperar un minuto tras reiniciar el servidor, porque el menú está cacheado 60 s).
+
+## Carga de fotos de productos
+
+Las fotos del menú se cargan de una vez desde un `.zip` (con las fotos en `media/productos/`) y un `.csv` sin encabezado, separado por `;`, con una fila por producto: `id;nombre;/media/productos/<32 hex>.jpg|png|webp`. El comando busca cada producto **por nombre** (sin importar mayúsculas ni acentos; el `id` del CSV puede no coincidir con el de la base), copia la foto a `media/productos/`, guarda su ruta en el producto y actualiza el menú de los clientes.
+
+```powershell
+python manage.py cargar_imagenes_productos fotos.zip imagenes.csv --simular   # solo muestra qué haría
+python manage.py cargar_imagenes_productos fotos.zip imagenes.csv             # carga
+python manage.py cargar_imagenes_productos fotos.zip imagenes.csv --pisar     # también reemplaza las fotos ya cargadas
+```
+
+- **Se puede repetir:** un producto que ya tiene foto no se toca (salvo `--pisar`), así que correrlo dos veces no duplica nada. Al final informa qué productos del CSV no existen en la base, cuáles tienen nombre repetido (no se adivina) y cuáles siguen sin foto.
+- **Seguridad:** solo se aceptan archivos `media/productos/<32 hex>.jpg|png|webp` dentro del zip (nada de rutas con `..`), de hasta 2 MB y cuyo contenido sea realmente esa imagen.
+- **En la VM:** la base y la carpeta de fotos de la VM son propias, por eso se corre ahí también: `docker compose -f docker-compose.prod.yml cp fotos.zip api:/tmp/` y `cp imagenes.csv api:/tmp/`, y luego `docker compose -f docker-compose.prod.yml exec api python manage.py cargar_imagenes_productos /tmp/fotos.zip /tmp/imagenes.csv`. Las fotos quedan en el volumen `media`, que es el que sirve Caddy.
+- **Probarlo:** `python Tests\Scripts\probar_imagenes_carga.py` (22 chequeos de las reglas, sin Django ni base).
 
 ## Estructura del repositorio
 

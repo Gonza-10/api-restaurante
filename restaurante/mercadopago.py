@@ -99,7 +99,6 @@ class PasarelaMercadoPago:
         self.token = config('MP_ACCESS_TOKEN', default='').strip()
         self.front = config('MP_FRONT_URL', default='http://localhost:8080').rstrip('/')
         self.notificacion = config('MP_NOTIFICATION_URL', default='').strip()
-        self.sandbox = modo() == 'prueba'
 
     def _pedir(self, metodo, ruta, cuerpo=None):
         if not self.token:
@@ -141,7 +140,8 @@ class PasarelaMercadoPago:
         if self.notificacion:
             cuerpo['notification_url'] = self.notificacion
         respuesta = self._pedir('POST', '/checkout/preferences', cuerpo)
-        url = (respuesta.get('sandbox_init_point') if self.sandbox else None) or respuesta.get('init_point')
+        # con el Access Token de PRUEBA, init_point ya lleva al checkout de prueba (sandbox_init_point quedo en desuso)
+        url = respuesta.get('init_point')
         if not respuesta.get('id') or not url:
             raise MercadoPagoError('Mercado Pago no devolvio el link de pago.')
         return {'id': str(respuesta['id']), 'url': url}
