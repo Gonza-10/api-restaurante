@@ -17,7 +17,7 @@ class WatchError(Exception):
 
 class FakePipe:
     def __init__(self, redis):
-        self.redis, self.cola, self.vigilada, self.version = redis, None, None, None
+        self.redis, self.cola, self.vigiladas = redis, None, {}
 
     def __enter__(self):
         return self
@@ -25,11 +25,12 @@ class FakePipe:
     def __exit__(self, *a):
         return False
 
-    def watch(self, clave):
-        self.vigilada, self.version = clave, self.redis.versiones.get(clave, 0)
+    def watch(self, *claves):
+        for clave in claves:
+            self.vigiladas[clave] = self.redis.versiones.get(clave, 0)
 
     def unwatch(self):
-        self.vigilada = None
+        self.vigiladas = {}
 
     def get(self, clave):
         return self.redis.datos.get(clave)
@@ -44,7 +45,7 @@ class FakePipe:
         self.cola.append(('delete', clave))
 
     def execute(self):
-        if self.vigilada and self.redis.versiones.get(self.vigilada, 0) != self.version:
+        if any(self.redis.versiones.get(c, 0) != v for c, v in self.vigiladas.items()):
             raise WatchError()
         for op in self.cola:
             if op[0] == 'set':
@@ -133,6 +134,46 @@ r.set(ec.clave_de(u), 'pendiente')
 r.interferir = lambda: r.set(ec.clave_de(u), 'proceso')
 resultado = ec.transicionar(u, ('retenida', 'pendiente'), None)
 comprobar('carrera: gana la cocina, no se cancela', resultado == (False, 'proceso') and ec.estado_de(u) == 'proceso')
+
+# ---------- varios destinos (cocina, barra, mozo) ----------
+v = 'bbbbbbbb-0000-0000-0000-000000000002'
+claves = lambda: {d: ec.estado_de(v, d) for d in ('COCINA', 'BARRA', 'MOZO')}
+comprobar('claves por destino', ec.clave_de(v) == f'comanda:estado:{v}' and ec.clave_de(v, 'BARRA') == f'comanda:estado:{v}:barra'
+          and ec.clave_de(v, 'MOZO') == f'comanda:estado:{v}:mozo')
+
+ec.crear(v, {'COCINA': 'retenida', 'BARRA': 'retenida', 'MOZO': 'retenida'})
+comprobar('crear deja una clave por destino', ec.estados_de(v) == {'COCINA': 'retenida', 'BARRA': 'retenida', 'MOZO': 'retenida'})
+comprobar('todo retenido: estado global retenida', ec.estado_global(v) == 'retenida' and ec.estado_cancelable(v) == 'retenida')
+comprobar('liberar cambia cada destino a su estado de salida', ec.liberar(v) is True)
+comprobar('cocina y barra pendiente, mozo listo', claves() == {'COCINA': 'pendiente', 'BARRA': 'pendiente', 'MOZO': 'listo'})
+comprobar('liberar de nuevo no hace nada', ec.liberar(v) is False)
+comprobar('el estado global es el mas atrasado', ec.estado_global(v) == 'pendiente')
+comprobar('se puede cancelar', ec.estado_cancelable(v) == 'pendiente')
+
+# la barra empieza el trago: ya no se puede cancelar nada (y no se toca ningun destino)
+ec.transicionar(v, ('pendiente',), 'proceso', destino='BARRA')
+comprobar('barra en proceso: global sigue pendiente (cocina)', ec.estado_global(v) == 'pendiente')
+comprobar('barra en proceso: ya no se cancela', ec.estado_cancelable(v) == 'proceso')
+comprobar('cancelar_todo no hace nada', ec.cancelar_todo(v) is False and claves() == {'COCINA': 'pendiente', 'BARRA': 'proceso', 'MOZO': 'listo'})
+
+# la cocina y la barra avanzan por su cuenta
+comprobar('cocina listo', ec.transicionar(v, ('pendiente',), 'proceso')[0] and ec.transicionar(v, ('proceso',), 'listo')[0])
+comprobar('el mozo no confirma lo que no esta listo', ec.transicionar(v, ('listo',), None, destino='BARRA') == (False, 'proceso'))
+comprobar('el mozo confirma sus bebidas', ec.transicionar(v, ('listo',), None, destino='MOZO') == (True, 'listo'))
+comprobar('quedan cocina y barra', ec.estados_de(v) == {'COCINA': 'listo', 'BARRA': 'proceso'})
+comprobar('entregar_todo deja la comanda cerrada', ec.entregar_todo(v) is True and ec.estados_de(v) == {} and ec.estado_global(v) is None)
+comprobar('entregar_todo sin nada no cambia', ec.entregar_todo(v) is False)
+
+# cancelar con todo sin empezar: se borran todas las claves juntas; las bebidas listas del mozo no lo impiden
+ec.crear(v, {'COCINA': 'pendiente', 'MOZO': 'listo'})
+comprobar('cancelar_todo borra todo', ec.cancelar_todo(v) is True and ec.estados_de(v) == {})
+ec.crear(v, {'BARRA': 'retenida'})
+comprobar('retenida se cancela', ec.cancelar_todo(v) is True and ec.estados_de(v) == {})
+
+# carrera: la barra empieza justo mientras se cancela -> se reevalua y NO se cancela
+ec.crear(v, {'COCINA': 'pendiente', 'BARRA': 'pendiente'})
+r.interferir = lambda: r.set(ec.clave_de(v, 'BARRA'), 'proceso')
+comprobar('carrera: gana la barra, no se cancela', ec.cancelar_todo(v) is False and claves()['BARRA'] == 'proceso' and claves()['COCINA'] == 'pendiente')
 
 print(f'{total - len(fallos)} de {total} chequeos correctos.')
 sys.exit(1 if fallos else 0)

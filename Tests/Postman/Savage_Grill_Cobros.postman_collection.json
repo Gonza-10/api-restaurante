@@ -1993,7 +1993,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t3_prod', p.id);"
                 ]
@@ -2732,6 +2732,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t3_uuid_a}}/estado",
@@ -2775,6 +2779,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t3_uuid_b}}/estado",
@@ -4117,6 +4125,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t3_uuid_c}}/estado",
@@ -4807,7 +4819,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t4_prod', p.id);"
                 ]
@@ -5078,6 +5090,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t4_uuid_a}}/estado",
@@ -6603,6 +6619,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t4_uuid_c}}/estado",
@@ -7467,7 +7487,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => parseFloat(x.precio) >= 100);",
+                  "const p = ps.find(x => x.destino_efectivo === 'COCINA' && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato sin receta (si falla: cargar el seed 99 o desasignar recetas)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t5_prod', p.id);"
                 ]
@@ -10468,6 +10488,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/cocina/tablero",
@@ -11193,7 +11217,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t6_prod', p.id);"
                 ]
@@ -11345,6 +11369,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t6_uuid_a}}/estado",
@@ -13240,6 +13268,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t6_uuid_b}}/estado",
@@ -13292,6 +13324,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t6_uuid_b}}/estado",
@@ -13389,6 +13425,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t6_uuid_c}}/estado",
@@ -13441,6 +13481,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{t6_uuid_c}}/estado",

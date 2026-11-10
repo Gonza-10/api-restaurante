@@ -19,7 +19,7 @@ BEGIN TRANSACTION;
 -- Roles
 INSERT INTO Rol (Nombre)
 SELECT v.Nombre
-FROM (VALUES (N'Mozo'), (N'Cocina'), (N'Admin'), (N'Gerente')) AS v(Nombre)
+FROM (VALUES (N'Mozo'), (N'Cocina'), (N'Bartender'), (N'Admin'), (N'Gerente')) AS v(Nombre)
 WHERE NOT EXISTS (SELECT 1 FROM Rol r WHERE r.Nombre = v.Nombre);
 
 -- Empleados de demostracion. Contrasena de TODOS: 1234 (solo para desarrollo).
@@ -32,6 +32,7 @@ FROM (VALUES
     (N'Juan', N'Perez', N'Mozo', N'jperez'),
     (N'Marcos', N'Vera', N'Mozo', N'mvera'),
     (N'Carla', N'Ruiz', N'Cocina', N'cruiz'),
+    (N'Tomas', N'Barrios', N'Bartender', N'tbarrios'),
     (N'Ana', N'Gomez', N'Admin', N'agomez'),
     (N'Luis', N'Martinez', N'Gerente', N'lmartinez')
 ) AS v(Nombre, Apellido, Rol, Usuario)
@@ -40,7 +41,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Empleado e WHERE e.Usuario = v.Usuario);
 
 -- Si estos usuarios ya existian (seed anterior), se les unifica la clave de demostracion
 UPDATE Empleado SET [ContraseñaHash] = @HashDemo
-WHERE Usuario IN (N'jperez', N'mvera', N'cruiz', N'agomez', N'lmartinez');
+WHERE Usuario IN (N'jperez', N'mvera', N'cruiz', N'tbarrios', N'agomez', N'lmartinez');
 
 -- Mesas (Numero, CapacidadMaxima)
 INSERT INTO Mesa (Numero, CapacidadMaxima, Estado, Activa)

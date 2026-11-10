@@ -125,6 +125,9 @@ class Producto(models.Model):
     receta = models.ForeignKey(
         'Receta', null=True, blank=True, on_delete=models.PROTECT, db_column='IdReceta', related_name='productos'
     )
+    # donde se prepara o entrega: COCINA, BARRA (tragos, los prepara el bartender) o MOZO (bebidas que lleva el mozo). NULL = el
+    # que le corresponde a su categoria (Tragos -> BARRA, Bebidas -> MOZO, el resto -> COCINA); ver destinos_calculos
+    destino = models.CharField(max_length=10, null=True, blank=True, db_column='Destino')
 
     class Meta:
         db_table = 'Producto'
@@ -272,6 +275,8 @@ class PedidoDetalle(models.Model):
     sub_total = models.DecimalField(max_digits=10, decimal_places=2, db_column='SubTotal')
     identificador_comensal = models.CharField(max_length=50, null=True, blank=True, db_column='IdentificadorComensal')
     estado_cocina = models.BooleanField(default=False, db_column='EstadoCocina')
+    # destino del item al pedirse (COCINA / BARRA / MOZO): no cambia si despues se edita el destino del producto
+    destino = models.CharField(max_length=10, default='COCINA', db_column='Destino')
     # a que comanda pertenece el item; NULL en los items anteriores a esta columna
     comanda = models.ForeignKey(
         'ComandaRecibida', on_delete=models.PROTECT, null=True, blank=True,

@@ -115,6 +115,7 @@ MP_SYNC_INTERVALO_SEG=15     # cada cuanto el worker de Mercado Pago confirma lo
    | 23 | `23_AE4_Reservas_Migraciones.sql` | Reservas: en `Reserva` suma el turno (`IdTurno`), la cantidad de personas, notas, origen (Llamada, Mensaje u Otro), quién y cuándo la canceló, cuándo se resolvió y qué sesión de mesa la cumplió; estados `Confirmada`, `Cancelada`, `Cumplida` y `No se presentó`; y un índice único que impide dos reservas confirmadas para la misma mesa, fecha y turno. Requiere el 00 y el 08 |
    | 24 | `24_AE4_PagoTarjeta_Migraciones.sql` | Pago con tarjeta: agrega el método `Tarjeta` a `MetodoPago` y `PedidoCabecera.MetodoPagoSolicitado` (con qué medio dijo el cliente que quiere pagar al pedir la cuenta: Efectivo, MercadoPago o Tarjeta). Requiere el 19 |
    | 25 | `25_AE4_Comensales_Seguridad_Migraciones.sql` | Comensales y seguridad de la mesa: `PedidoCabecera` suma la modalidad (Familiar o Grupal), si la primera ronda ya salió a cocina y el aviso de PIN nuevo (quién lo pidió, los PIN anteriores y si el mozo ya lo vio); tabla `Comensal` (nombre único por sesión, activo o retirado, OK de la primera ronda); `ComandaRecibida` suma el comensal y el estado `Cancelada`. Requiere el 00, el 05 y el 12 |
+   | 26 | `26_AE4_Barra_Destinos_Migraciones.sql` | Barra y destinos: `Producto.Destino` (COCINA, BARRA o MOZO; NULL = el de su categoría), `PedidoDetalle.Destino` (el del ítem al pedirse; los anteriores quedan en COCINA) y el rol `Bartender`. |
    | 99 | `99_Seed_AE4.sql` | Datos de prueba reproducibles: 4 roles, empleados de cada rol, 9 mesas, categorías y 35 productos. No carga sesiones de mesa: las abre el mozo desde la API. Usuarios y contraseñas de prueba: ver la tabla de abajo |
 
 4. Verificar el entorno: ejecutar `Tests/Scripts/diagnostico_entorno.sql` en SSMS (solo lectura). Cada fila dice `OK` o `FALTA` e indica qué script correr. Cuidado: Django no crea tablas (los modelos son `managed=False`), así que `python manage.py migrate` no reemplaza a los scripts SQL.
@@ -208,6 +209,7 @@ Con los tres procesos corriendo, los frontends de la carpeta `frontend/` (`catal
 | **Solicitar cuenta** | `POST /api/v1/solicitar-cuenta` | El cliente pide la cuenta: `{"numero_mesa": 2, "pin": "4821"}`. Guarda la hora (`fecha_hora_solicita_cuenta`) en la sesión; pedirla de nuevo conserva la primera hora. El mozo la ve como `solicita_cuenta` en `sesiones-mesa` y `mesas` |
 | **Comensales de la mesa (cliente)** | `POST /api/v1/mesa/comensales` · `/mesa/comensales/estado` · `/mesa/comensales/ok` · `POST /mesa/regenerar-pin` | Ver «Comensales y seguridad de la mesa» |
 | **Comensales (personal)** | `GET /sesiones-mesa/{id}/comensales` · `POST /sesiones-mesa/{id}/liberar-ronda` · `POST /sesiones-mesa/{id}/regenerar-pin` · `POST /sesiones-mesa/{id}/pin/visto` · `POST /pedidos/{uuid}/cancelar` | Ver «Comensales y seguridad de la mesa» |
+| **Barra y bebidas** | `GET /barra/tablero` · `PATCH /barra/pedidos/{uuid}/estado` · `GET /mozo/bebidas` · `POST /pedidos/{uuid}/bebidas/entregar` | Ver «Barra, bartender y bebidas del mozo». |
 | **Historial de la mesa (cliente)** | `POST /api/v1/mesa/historial` | `{"numero_mesa": 2, "pin": "4821"}` → comandas de la sesión con sus ítems (`cantidad`, `sub_total`), `estado` y `total`. Todos los dispositivos de la mesa ven lo mismo. El estado es el de Redis; si ya no está, es `entregado`. Una comanda que el worker rechazó por falta de insumos viene con `estado: "rechazada"`, sin ítems y con `mensaje` para mostrarle al cliente |
 | **Comandas de una sesión (mozo)** | `GET /api/v1/sesiones-mesa/{id}/comandas` | Lo mismo que el historial de la mesa, para el mozo (un Mozo solo ve sus sesiones) |
 | **Estado del local** | `GET /api/v1/jornada/actual` | Si hay jornada abierta, de qué turno, desde cuándo, `sugerir_cierre` (pasó el horario del turno) y el turno que corresponde a esta hora. Público; los nombres del personal solo se ven con sesión iniciada |
@@ -315,8 +317,10 @@ Los endpoints protegidos exigen el encabezado `Authorization: Bearer <token>`. S
 | Configuración del stock (`/configuracion/stock`) y lista de reposición (`/stock/reposicion`) | Admin, Gerente | Admin, Gerente |
 | Pérdidas y sus motivos (`/perdidas`) | Cocina, Admin, Gerente (Cocina no ve valores ni costos) | Cocina, Admin, Gerente |
 | Resumen de pérdidas (`/perdidas/resumen`) | Admin, Gerente | — |
-| Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Admin, Gerente | — |
-| Cambio de estado de comanda | — | Cocina, Admin, Gerente |
+| Tablero de cocina (`GET /pedidos`, `/cocina/tablero`) | Cocina, Mozo, Admin, Gerente (el mozo arma con esto sus avisos) | — |
+| Cambio de estado de comanda (`PATCH /pedidos/{uuid}/estado`) | — | Cocina, Admin, Gerente |
+| Tablero de la barra (`GET /barra/tablero`) y su cambio de estado (`PATCH /barra/pedidos/{uuid}/estado`) | Bartender, Admin, Gerente | Bartender, Admin, Gerente |
+| Bebidas del mozo (`GET /mozo/bebidas`, `POST /pedidos/{uuid}/bebidas/entregar`) | Mozo (solo sus mesas), Admin, Gerente | Mozo (solo sus mesas), Admin, Gerente |
 | Enviar comanda (`POST /pedidos`), acceso por PIN, solicitar cuenta e historial de la mesa | — | Público, protegido por el PIN de la mesa (máx. 10 PIN erróneos cada 5 min por IP) |
 | Comprobante PDF | Público | — |
 
@@ -581,6 +585,27 @@ Manual y tercerizado: no hay pasarela ni API. El cliente pide pagar con tarjeta 
 **Cierre y cobro.** Con pedidos sin entregar (`retenida`, `pendiente`, `proceso` o `listo`) la mesa no se cierra (409 `comandas_pendientes`, con la lista). Un Admin o Gerente puede forzar el cierre con `forzar` y `motivo`: lo que no empezó a prepararse se cancela con devolución de stock y lo demás se da por entregado. Si la mesa ya se pagó, el mozo la cierra a mano cuando quiera (sobremesa). Una comanda `retenida` también impide cobrar. En el historial del cliente cada comanda trae el `comensal` que la pidió.
 
 **Probarlo:** `python Tests\Scripts\probar_comensales_calculos.py` (52 chequeos) y `python Tests\Scripts\probar_estado_comandas.py` (14, con un Redis de mentira); no necesitan nada corriendo. Y la colección `Savage_Grill_Comensales` de Postman (requiere el script SQL 25, `runserver`, `worker.py`, RabbitMQ y Redis; usa las mesas 6 a 9 y las deja cerradas).
+
+## Barra, bartender y bebidas del mozo
+
+Cada producto se prepara o se entrega en un **destino**:
+
+| Destino | Qué es | Quién lo ve |
+|---|---|---|
+| `COCINA` | Entradas, principales, postres… (lo de siempre) | Tablero de cocina |
+| `BARRA` | Los tragos: los prepara el bartender | Tablero de la barra |
+| `MOZO` | Las bebidas: no se preparan, solo se llevan a la mesa | Aviso «Bebidas» del mozo de esa mesa |
+
+- **Cómo se decide.** Por la categoría del producto: *Tragos* → `BARRA`, *Bebidas* → `MOZO`, el resto → `COCINA`. Un producto puede tener su propio destino (`destino` en `POST/PATCH /productos`: `COCINA`, `BARRA`, `MOZO` o `null` para volver al de la categoría) y ese gana. `GET /productos` informa `destino` (el propio, o `null`) y `destino_efectivo` (el que rige hoy). El destino de cada ítem se guarda al pedirse (`PedidoDetalle.Destino`): editar el producto después no mueve los pedidos ya hechos.
+- **Una comanda se divide por destino.** Un pedido con plato, trago y bebida es una sola comanda (un solo UUID, una sola cuenta, un solo stock) pero tiene **un estado por destino** en Redis (`comanda:estado:<uuid>` para cocina, `…:barra`, `…:mozo`). Cada sector avanza por su cuenta y cada tablero muestra **solo sus ítems**. Para el cliente y para el cierre de mesa, la comanda está «tan avanzada como su sector más atrasado»; está entregada cuando ya no queda ningún sector pendiente.
+- **Bartender.** Rol nuevo (`Bartender`; usuario de demostración `tbarrios`, clave `1234`). `GET /barra/tablero` tiene el mismo formato que el de cocina y `PATCH /barra/pedidos/{uuid}/estado` `{estado}` avanza `pendiente → proceso → listo → entregado`. Cocina no mueve los tragos ni el bartender los platos (403).
+- **Bebidas del mozo.** Nacen listas para llevar (`listo`). `GET /mozo/bebidas` devuelve las de **sus** mesas (un Admin o Gerente ve todas): `id_comanda_uuid`, `numero_mesa`, `mesa_id`, `id_sesion`, `comensal`, `items` (`nombre`, `cantidad`) y `timestamp`. La única acción del mozo es `POST /pedidos/{uuid}/bebidas/entregar` (**Entregado**); un mozo no puede confirmar las de una mesa ajena (404). Se consulta cada pocos segundos: lo entregado desaparece solo.
+- **Mesa grupal.** En la primera ronda los tres sectores nacen `retenida`: ni cocina, ni barra, ni el aviso del mozo la ven hasta que todos dan el OK o el mozo libera la ronda; entonces cocina y barra pasan a `pendiente` y las bebidas a `listo`.
+- **Cancelar.** `POST /pedidos/{uuid}/cancelar` cancela la comanda entera mientras **ni cocina ni barra empezaron** (`retenida` o `pendiente`) y las bebidas no se llevaron al servirse; en cuanto un sector empieza, responde 409 `no_cancelable`. Las bebidas listas del mozo no impiden cancelar.
+- **Stock.** Sin cambios: el stock de todos los ítems (platos, tragos y bebidas con receta) se descuenta al aceptar la comanda y se devuelve al cancelarla, sin importar el destino.
+- **Seguridad.** Se cerraron las rutas que estaban públicas: el tablero de cocina solo lo leen Cocina, Mozo, Admin y Gerente, y mover una comanda exige Cocina, Admin o Gerente (la barra, Bartender, Admin o Gerente). Los pedidos sin token responden 401.
+
+**Probarlo:** `python Tests\Scripts\probar_destinos_calculos.py` (41 chequeos), `python Tests\Scripts\probar_estado_comandas.py` (34, con un Redis de mentira) y la colección `Tests/Postman/Savage_Grill_Barra.postman_collection.json` (92 pasos; con `runserver`, `worker.py`, RabbitMQ y Redis activos, el script 26 aplicado y el seed 99 para el usuario `tbarrios`; la primera vez esperar un minuto tras reiniciar el servidor, porque el menú está cacheado 60 s).
 
 ## Estructura del repositorio
 

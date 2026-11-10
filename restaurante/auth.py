@@ -19,6 +19,7 @@ SALT_TOKEN = 'savagegrill.auth.v1'
 
 ROL_MOZO = 'Mozo'
 ROL_COCINA = 'Cocina'
+ROL_BARTENDER = 'Bartender'
 ROL_ADMIN = 'Admin'
 ROL_GERENTE = 'Gerente'
 
@@ -26,6 +27,7 @@ ADMIN_GERENTE = frozenset({ROL_ADMIN, ROL_GERENTE})
 SOLO_GERENTE = frozenset({ROL_GERENTE})
 SALON = frozenset({ROL_MOZO, ROL_ADMIN, ROL_GERENTE})
 COCINA = frozenset({ROL_COCINA, ROL_ADMIN, ROL_GERENTE})
+BARRA = frozenset({ROL_BARTENDER, ROL_ADMIN, ROL_GERENTE})
 
 
 def ttl_token_segundos():

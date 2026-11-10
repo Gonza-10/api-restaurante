@@ -47,7 +47,8 @@ from .comensales_calculos import (
     FAMILIAR, RETIRADO, mensaje_comensal_requerido, mensaje_comensal_retirado, mensaje_pin_cambiado, pin_fue_anterior,
     GRUPAL,
 )
-from .estado_comandas import transicionar
+from .destinos_calculos import COCINA as DEST_COCINA
+from .estado_comandas import estado_de, estado_global, transicionar
 from .auth import (
     emitir_token, ttl_token_segundos,
     ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
@@ -592,7 +593,9 @@ def _publicar_evento_comanda_lista(id_comanda_uuid: str):
 
 # ==================== TABLERO DE COCINA (armado compartido) ====================
 
-def _armar_tablero_cocina():
+def _armar_tablero_cocina(destino=DEST_COCINA):
+    """Tablero de un destino (cocina por defecto, o la barra): las comandas con algo pendiente ahi, solo con los items de ese
+    destino y con el estado de ese destino. Una comanda sin items del destino no aparece."""
     comandas = ComandaRecibida.objects.select_related(
         'pedido_cabecera__mesa'
     ).prefetch_related(
@@ -602,7 +605,7 @@ def _armar_tablero_cocina():
     resultado = []
     for comanda in comandas:
         uuid_str = str(comanda.id_comanda_uuid)
-        estado = redis_client.get(f'comanda:estado:{uuid_str}')
+        estado = estado_de(uuid_str, destino)
 
         if estado is None or estado == 'retenida':   # la primera ronda de una mesa grupal no se ve en cocina hasta que sale
             continue
@@ -611,8 +614,10 @@ def _armar_tablero_cocina():
         items = [
             {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad, 'sin': nombres_quitados(d),
              'extras': texto_extras(d)}
-            for d in comanda.detalles.all()
+            for d in comanda.detalles.all() if d.destino == destino
         ]
+        if not items:
+            continue
 
         resultado.append({
             'id_comanda_uuid': uuid_str,
@@ -628,7 +633,7 @@ def _armar_tablero_cocina():
 # ==================== COMANDAS ====================
 
 class ComandaCreateView(APIView):
-    roles_lectura = None   # GET: tablero de cocina
+    roles_lectura = COCINA | SALON   # GET: tablero de cocina (lo leen cocina y el salon, que muestra los avisos)
     roles_escritura = None   # POST: el cliente envia su comanda (mas adelante, protegido por PIN)
 
     def get(self, request):
@@ -798,7 +803,9 @@ class ComandaCreateView(APIView):
 
 
 class TableroCocinaView(APIView):
-    roles_lectura = None
+    """GET /cocina/tablero. Cocina, Mozo, Admin y Gerente (el mozo arma con esto los avisos del salon). Solo lo que se prepara
+    en cocina: los tragos van al tablero de la barra y las bebidas al aviso del mozo."""
+    roles_lectura = COCINA | SALON
 
     def get(self, request):
         resultado = _armar_tablero_cocina()
@@ -807,7 +814,10 @@ class TableroCocinaView(APIView):
 
 
 class ComandaEstadoUpdateView(APIView):
-    roles_escritura = None
+    """PATCH /pedidos/{uuid}/estado. Cocina (y Admin/Gerente) avanza lo que se prepara en cocina:
+    pendiente -> proceso -> listo -> entregado. La barra tiene su propia ruta (PATCH /barra/pedidos/{uuid}/estado)."""
+    roles_escritura = COCINA
+    destino = DEST_COCINA
     ESTADOS_VALIDOS = {'pendiente', 'proceso', 'listo', 'entregado'}
 
     def patch(self, request, uuid_comanda):
@@ -822,7 +832,8 @@ class ComandaEstadoUpdateView(APIView):
         # atomico: una comanda retenida (esperando el OK de todos) no la mueve la cocina, y si en el mismo instante se cancela
         # gana uno solo de los dos
         cambio, anterior = transicionar(
-            uuid_comanda, ('pendiente', 'proceso', 'listo'), None if nuevo_estado == 'entregado' else nuevo_estado)
+            uuid_comanda, ('pendiente', 'proceso', 'listo'), None if nuevo_estado == 'entregado' else nuevo_estado,
+            destino=self.destino)
         if not cambio:
             if anterior == 'retenida':
                 return Response(
@@ -1021,7 +1032,7 @@ def _comandas_de_sesion(sesion):
         resultado.append({
             'id_comanda_uuid': str(comanda.id_comanda_uuid),
             'estado': 'rechazada' if rechazada else 'cancelada' if cancelada
-            else (redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') or 'entregado'),
+            else (estado_global(comanda.id_comanda_uuid) or 'entregado'),
             'mensaje': comanda.mensaje_cliente if rechazada else ('Este pedido se canceló antes de prepararse.' if cancelada else None),
             'comensal': comanda.comensal.nombre if comanda.comensal_id else None,
             'timestamp': comanda.fecha_hora_recepcion,

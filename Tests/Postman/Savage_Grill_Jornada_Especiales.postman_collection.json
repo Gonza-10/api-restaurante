@@ -10407,7 +10407,12 @@
           "name": "8.26 Cocina lo ve en el tablero con el \"sin\"",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
+              }
+            ],
             "url": "{{base_url}}/cocina/tablero",
             "auth": {
               "type": "noauth"
@@ -10891,6 +10896,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{uuid_a4}}/estado",
@@ -10934,6 +10943,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
               }
             ],
             "url": "{{base_url}}/pedidos/{{uuid_b4}}/estado",
@@ -10973,7 +10986,12 @@
           "name": "8.41 El tablero queda sin esos pedidos",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
+              }
+            ],
             "url": "{{base_url}}/cocina/tablero",
             "auth": {
               "type": "noauth"

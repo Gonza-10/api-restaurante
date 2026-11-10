@@ -1,0 +1,3483 @@
+{
+  "info": {
+    "name": "Savage Grill - Barra, bartender y bebidas del mozo",
+    "description": "Cada producto tiene un destino (cocina, barra o mozo; por categoria o cargado a mano). Una comanda con items de varios destinos se divide: cocina ve solo el plato, la barra solo el trago y el mozo recibe el aviso de bebidas, cada uno avanzando por su cuenta. Incluye los permisos por rol de los tableros (el bartender es un rol nuevo), cancelar y cerrar la mesa con pedidos de varios destinos y la mesa grupal (todo retenido hasta la primera ronda). Requiere runserver (8080), worker.py, RabbitMQ, Redis y el script SQL 26 (mas el seed 99 para el usuario tbarrios). Se corre entera con Run collection; usa las mesas 6, 7 y 8 y las deja cerradas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparacion (logins)",
+      "item": [
+        {
+          "name": "0.1 Login gerente (lmartinez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"lmartinez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_gerente', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Login mozo (jperez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"jperez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_mozo', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.3 Login admin (agomez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"agomez\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_admin', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.4 Login cocina (cruiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"cruiz\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_cocina', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.5 Login bartender (tbarrios)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"tbarrios\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_bartender', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.6 Login otro mozo (mvera)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"usuario\": \"mvera\", \"contrasena\": \"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto (200)', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token_mozo2', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P. Preparar jornada y productos",
+      "item": [
+        {
+          "name": "P.1 Preparar: cerrar las sesiones abiertas de las mesas 6, 7 y 8 (cierre forzado del gerente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/sesiones-mesa?estado=Abierto&mesa=6,7,8",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const sesiones = pm.response.json();",
+                  "const base = pm.variables.replaceIn('{{base_url}}'); const token = pm.collectionVariables.get('token_gerente');",
+                  "const cerrar = (id) => new Promise((ok) => pm.sendRequest({ url: base + '/sesiones-mesa/' + id + '/cerrar', method: 'POST', header: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ forzar: true, motivo: 'Limpieza de la prueba' }) } }, () => ok()));",
+                  "(async () => { for (const s of sesiones) { await cerrar(s.id); } })();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.2 Preparar: turno para la jornada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/turnos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "const cena = t.find(x => /cena/i.test(x.nombre)) || t[0];",
+                  "pm.test('Hay un turno', () => pm.expect(cena).to.not.be.undefined);",
+                  "pm.collectionVariables.set('t3_turno', cena.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.3 Preparar: jornada abierta (si no la habia, la abre el gerente y la cierra la limpieza)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/jornada/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"turno\": {{t3_turno}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Abierta ahora (201) o ya habia una (409)', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "pm.collectionVariables.set('t3_jornada_propia', pm.response.code === 201 ? '1' : '0');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.4 Preparar: un plato de cocina pedible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100 && x.destino_efectivo === 'COCINA');",
+                  "pm.test('Hay un producto pedible con destino COCINA (si falla: cargar el seed 99 y el stock)', () => pm.expect(p).to.not.be.undefined);",
+                  "pm.collectionVariables.set('b_prod', p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.5 Preparar: un trago pedible (va a la barra)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100 && x.destino_efectivo === 'BARRA');",
+                  "pm.test('Hay un producto pedible con destino BARRA (si falla: cargar el seed 99 y el stock)', () => pm.expect(p).to.not.be.undefined);",
+                  "pm.collectionVariables.set('b_trago', p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P.6 Preparar: una bebida pedible (la lleva el mozo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "const p = ps.find(x => x.activo && x.disponible && x.visible && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100 && x.destino_efectivo === 'MOZO');",
+                  "pm.test('Hay un producto pedible con destino MOZO (si falla: cargar el seed 99 y el stock)', () => pm.expect(p).to.not.be.undefined);",
+                  "pm.collectionVariables.set('b_bebida', p.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Destino de cada producto",
+      "item": [
+        {
+          "name": "1.1 El menu informa el destino de cada producto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/productos",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const ps = pm.response.json();",
+                  "pm.test('Todos traen destino_efectivo valido', () => ps.forEach(p => pm.expect(['COCINA', 'BARRA', 'MOZO']).to.include(p.destino_efectivo)));",
+                  "const por = (n) => ps.find(p => p.id === Number(pm.collectionVariables.get(n)));",
+                  "pm.test('El plato va a cocina, el trago a la barra y la bebida al mozo', () => { pm.expect(por('b_prod').destino_efectivo).to.eql('COCINA'); pm.expect(por('b_trago').destino_efectivo).to.eql('BARRA'); pm.expect(por('b_bebida').destino_efectivo).to.eql('MOZO'); });",
+                  "pm.test('Sin destino propio: destino es null', () => pm.expect(por('b_prod').destino).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Un destino que no existe es invalido (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{b_prod}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"destino\": \"COCINERO\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Marca el campo', () => pm.expect(pm.response.json()).to.have.property('destino'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 El gerente manda el plato a la barra (destino propio gana sobre la categoria)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{b_prod}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"destino\": \"barra\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Guardado en mayusculas', () => { pm.expect(p.destino).to.eql('BARRA'); pm.expect(p.destino_efectivo).to.eql('BARRA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Un mozo no cambia destinos (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{b_prod}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"destino\": \"COCINA\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Vaciar el destino vuelve al de la categoria",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/productos/{{b_prod}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"destino\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Vuelve a cocina', () => { pm.expect(p.destino).to.eql(null); pm.expect(p.destino_efectivo).to.eql('COCINA'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Permisos de los tableros",
+      "item": [
+        {
+          "name": "2.1 Sin token no se ve el tablero de cocina (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Sin token no se mueve una comanda (401)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Sin token no se ve la barra (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 La barra es del bartender: cocina no entra (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 La barra es del bartender: el mozo no entra (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 El bartender ve su tablero (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 El gerente tambien ve la barra (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 El bartender no ve el tablero de cocina (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.9 Cocina ve su tablero (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.10 El mozo lee el tablero de cocina para sus avisos (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.11 El mozo no mueve comandas de cocina (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.12 El bartender no mueve comandas de cocina (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.13 Cocina no mueve comandas de la barra (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.14 Sin token no se ven las bebidas del mozo (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.15 Cocina no ve las bebidas del mozo (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.16 El bartender no ve las bebidas del mozo (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.17 Sin token no se entregan bebidas (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/bebidas/entregar",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.18 Entregar bebidas de una comanda que no existe (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/00000000-0000-4000-8000-000000000000/bebidas/entregar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.19 Estado invalido en la barra (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"volando\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.20 Comanda inexistente en la barra (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/00000000-0000-4000-8000-000000000000/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Un pedido con plato, trago y bebida",
+      "item": [
+        {
+          "name": "3.1 El mozo abre la mesa 6 (Familiar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('b6_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('b6_sesion', s.id);",
+                  "pm.test('Mesa 6' , () => pm.expect(s.numero_mesa).to.eql(6));",
+                  "pm.test('Modalidad Familiar', () => pm.expect(s.modalidad).to.eql('Familiar'));",
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 La mesa pide un plato, un trago y una bebida (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{b_uuid_mix}}\", \"mesa_id\": 6, \"pin\": \"{{b6_pin}}\", \"items\": [{\"id\": {{b_prod}}}, {\"id\": {{b_trago}}}, {\"id\": {{b_bebida}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('b_uuid_mix', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Se espera al worker de comandas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Cocina ve la comanda solo con el plato (1 item, pendiente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 La barra ve la comanda solo con el trago (1 item, pendiente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 El mozo de la mesa ve la bebida en su aviso (1 item)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.7 Otro mozo no ve esa bebida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.8 El aviso del mozo trae la mesa y el nombre de la bebida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('Mesa 6', () => { pm.expect(c.numero_mesa).to.eql(6); pm.expect(c.mesa_id).to.eql('06'); });",
+                  "pm.test('La bebida con su cantidad', () => { pm.expect(c.items[0].cantidad).to.eql(1); pm.expect(c.items[0].nombre).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.9 El cliente ve la comanda pendiente (la parte mas atrasada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{b6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('Pendiente', () => pm.expect(c.estado).to.eql('pendiente'));",
+                  "pm.test('Con los tres items', () => pm.expect(c.items.length).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.10 La barra empieza el trago: proceso (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/{{b_uuid_mix}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.11 La barra la ve en proceso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado proceso', () => pm.expect(c.estado).to.eql('proceso'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.12 Cocina sigue pendiente: cada sector avanza por su cuenta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.13 Con el trago en preparacion la comanda ya no se cancela (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_mix}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Dice que ya empezo', () => pm.expect(pm.response.json().codigo).to.eql('no_cancelable'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.14 La mesa no se cierra con pedidos sin entregar (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b6_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Comandas pendientes', () => pm.expect(pm.response.json().codigo).to.eql('comandas_pendientes'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.15 La barra marca el trago listo (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/{{b_uuid_mix}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"listo\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.16 La barra lo ve listo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado listo', () => pm.expect(c.estado).to.eql('listo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.17 La barra entrega el trago (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/{{b_uuid_mix}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.18 La barra ya no lo tiene",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.19 Cocina sigue con su plato pendiente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.20 El otro mozo no puede confirmar las bebidas de una mesa ajena (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_mix}}/bebidas/entregar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.21 El mozo de la mesa confirma que llevo las bebidas (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_mix}}/bebidas/entregar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entregado', () => pm.expect(pm.response.json().estado).to.eql('entregado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.22 Confirmar de nuevo no hace nada (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_mix}}/bebidas/entregar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.23 El aviso de bebidas desaparece",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.24 El cliente sigue viendo la comanda pendiente (falta cocina)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{b6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('Pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.25 Cocina entrega su plato (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_mix}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"entregado\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.26 Ahora la comanda figura entregada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{b6_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_mix'));",
+                  "pm.test('Entregado', () => pm.expect(c.estado).to.eql('entregado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.27 Con todo entregado ya no hay pedidos pendientes, pero el consumo sigue sin pagar (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b6_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Falta cobrar, no entregar', () => { const d = pm.response.json(); pm.expect(d.error).to.include('consumo sin pagar'); pm.expect(d).to.not.have.property('comandas_pendientes'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.28 El gerente cierra la mesa con saldo, con motivo (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b6_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Fin de la prueba de barra\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Cancelar un pedido de varios destinos",
+      "item": [
+        {
+          "name": "4.1 El mozo abre la mesa 7 (Familiar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 7, \"cantidad_comensales\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('b7_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('b7_sesion', s.id);",
+                  "pm.test('Mesa 7' , () => pm.expect(s.numero_mesa).to.eql(7));",
+                  "pm.test('Modalidad Familiar', () => pm.expect(s.modalidad).to.eql('Familiar'));",
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 La mesa pide plato, trago y bebida (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{b_uuid_canc}}\", \"mesa_id\": 7, \"pin\": \"{{b7_pin}}\", \"items\": [{\"id\": {{b_prod}}}, {\"id\": {{b_trago}}}, {\"id\": {{b_bebida}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('b_uuid_canc', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Se espera al worker de comandas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Las bebidas ya estan avisadas al mozo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_canc'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 El mozo cancela el pedido entero antes de que se prepare (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_canc}}/cancelar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"motivo\": \"Se arrepintieron\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cancelada', () => pm.expect(pm.response.json().estado).to.eql('Cancelada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Cocina ya no la ve",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_canc'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.7 La barra ya no la ve",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_canc'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.8 El mozo ya no tiene bebidas para llevar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_canc'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.9 El cliente la ve cancelada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/historial",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 7, \"pin\": \"{{b7_pin}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().comandas.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_canc'));",
+                  "pm.test('Cancelada', () => pm.expect(c.estado).to.eql('cancelada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.10 La mesa se cierra (no queda nada sin entregar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b7_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Mesa grupal: todo retenido hasta la primera ronda",
+      "item": [
+        {
+          "name": "5.1 El mozo abre la mesa 8 como Grupal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/abrir",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 8, \"cantidad_comensales\": 2, \"modalidad\": \"Grupal\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.collectionVariables.set('b8_pin', s.codigo_pin);",
+                  "pm.collectionVariables.set('b8_sesion', s.id);",
+                  "pm.test('Mesa 8' , () => pm.expect(s.numero_mesa).to.eql(8));",
+                  "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
+                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Ana ingresa a la mesa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/mesa/comensales",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"numero_mesa\": 8, \"pin\": \"{{b8_pin}}\", \"nombre\": \"Ana\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set('b_ana', d.comensal.id);",
+                  "pm.test('Situacion nuevo', () => pm.expect(d.situacion).to.eql('nuevo'));",
+                  "pm.test('Nombre Ana', () => pm.expect(d.comensal.nombre).to.eql('Ana'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Ana pide plato, trago y bebida (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id_comanda_uuid\": \"{{b_uuid_gru}}\", \"mesa_id\": 8, \"pin\": \"{{b8_pin}}\", \"id_comensal\": {{b_ana}}, \"items\": [{\"id\": {{b_prod}}}, {\"id\": {{b_trago}}}, {\"id\": {{b_bebida}}}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('b_uuid_gru', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Se espera al worker de comandas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mesas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Cocina no ve la comanda retenida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 La barra no ve la comanda retenida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 El mozo no tiene todavia bebidas para llevar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.8 Ni cocina ni barra pueden mover una comanda retenida (409 / 404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/barra/pedidos/{{b_uuid_gru}}/estado",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"estado\": \"proceso\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.9 El mozo no puede entregar bebidas retenidas (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/pedidos/{{b_uuid_gru}}/bebidas/entregar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.10 El mozo libera la primera ronda (espera al worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b8_sesion}}/liberar-ronda",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.11 Ahora cocina ve su plato, pendiente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.12 La barra ve su trago, pendiente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));",
+                  "pm.test('Estado pendiente', () => pm.expect(c.estado).to.eql('pendiente'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.13 El mozo ve la bebida para llevar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda esta', () => pm.expect(c).to.not.be.undefined);",
+                  "pm.test('Con 1 item(s)', () => pm.expect(c.items.length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.14 Cierre de la mesa forzado por el gerente (da todo por entregado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{b8_sesion}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"forzar\": true, \"motivo\": \"Fin de la prueba de barra\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.15 Tras el cierre forzado la barra no tiene nada de esa comanda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/barra/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bartender}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.16 Ni cocina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cocina}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.17 Ni el mozo tiene bebidas por llevar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/mozo/bebidas",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
+                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Limpieza",
+      "item": [
+        {
+          "name": "6.1 Limpieza: cerrar la jornada si la abrio esta prueba",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/jornada/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_gerente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('t3_jornada_propia') !== '1') { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

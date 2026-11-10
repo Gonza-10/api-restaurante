@@ -128,6 +128,8 @@ sys.modules['restaurante.comprobante'] = comp
 REDIS = {}
 rc = types.ModuleType('restaurante.redis_client'); rc.redis_client = types.SimpleNamespace(get=lambda k: REDIS.get(k), set=lambda k, v, ex=None: REDIS.__setitem__(k, v))
 sys.modules['restaurante.redis_client'] = rc
+ecf = types.ModuleType('restaurante.estado_comandas'); ecf.estado_global = lambda u: REDIS.get(f'comanda:estado:{u}')
+sys.modules['restaurante.estado_comandas'] = ecf
 
 decouple = types.ModuleType('decouple'); decouple.config = lambda nombre, default=None, cast=None: default; sys.modules['decouple'] = decouple
 from restaurante import caja as C, cuenta as U  # noqa

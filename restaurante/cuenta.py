@@ -34,6 +34,7 @@ from .modificadores import nombres_quitados
 from .models import (
     Factura, FacturaDetalle, MetodoPago, Pago, PagoEvento, PedidoCabecera, PedidoDetalle,
 )
+from .estado_comandas import estado_global
 from .redis_client import redis_client
 
 ESTADOS_QUE_BLOQUEAN_EL_COBRO = ('retenida', 'pendiente', 'proceso')   # retenida: la primera ronda de una mesa grupal todavia no salio
@@ -61,7 +62,7 @@ def comandas_en_cocina(sesion):
     El estado vive en Redis; una comanda que ya no esta ahi fue entregada. Las rechazadas no cuentan."""
     en_cocina = []
     for comanda in sesion.comandas.filter(estado='Aceptada'):
-        estado = redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}')
+        estado = estado_global(comanda.id_comanda_uuid)
         if estado in ESTADOS_QUE_BLOQUEAN_EL_COBRO:
             en_cocina.append(str(comanda.id_comanda_uuid))
     return en_cocina
@@ -72,7 +73,7 @@ def comandas_sin_entregar(sesion):
     de ellas la mesa no se puede cerrar. Una comanda entregada o cancelada ya no tiene estado en Redis."""
     activas = []
     for comanda in sesion.comandas.filter(estado='Aceptada'):
-        if redis_client.get(f'comanda:estado:{comanda.id_comanda_uuid}') in ESTADOS_ACTIVOS:
+        if estado_global(comanda.id_comanda_uuid) in ESTADOS_ACTIVOS:
             activas.append(str(comanda.id_comanda_uuid))
     return activas
 

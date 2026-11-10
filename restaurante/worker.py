@@ -18,7 +18,9 @@ from restaurante.models import (
     ComandaRecibida, Comensal, Factura, PedidoCabecera, PedidoDetalle, PedidoDetalleCompartido, PedidoDetalleExtra, PedidoDetalleModificador,
     Producto, RecetaExtra,
 )
-from restaurante.comensales_calculos import RETIRADO, estado_inicial_de_comanda, mensaje_comensal_retirado
+from restaurante.comensales_calculos import RETIRADO, mensaje_comensal_retirado
+from restaurante.destinos_calculos import destino_de_producto, destinos_presentes, estado_inicial
+from restaurante.estado_comandas import crear
 from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
 from restaurante.recetas import consumir_pedido, mensaje_para_cliente, motivo_para_personal
 from restaurante.stock import StockInsuficiente
@@ -63,6 +65,7 @@ def procesar_comanda(ch, method, properties, body):
 
     uuid_str = str(uuid_valido)  # forma canonica, segura para embeber en SQL
     rechazo = None  # (motivo, mensaje) si la comanda no se pudo preparar por falta de stock
+    destinos_usados = []  # destinos de los items aceptados (cocina, barra, mozo): cada uno lleva su propio estado
 
     try:
         with transaction.atomic():
@@ -122,7 +125,9 @@ def procesar_comanda(ch, method, properties, body):
                             rechazo = (motivo_para_personal(faltantes), mensaje_para_cliente(faltantes))
                         else:
                             for (id_producto, precio_visto, sin, compartido, extras), cantidad in conteo.items():
-                                producto = Producto.objects.get(id=id_producto)
+                                producto = Producto.objects.select_related('categoria').get(id=id_producto)
+                                destino = destino_de_producto(producto.destino, producto.categoria.nombre)
+                                destinos_usados.append(destino)
                                 precio = precio_segun_lo_que_vio(precio_a_cobrar(producto, precios_esp), precio_visto)
                                 # cada extra se cobra al precio que el cliente vio (o menos, si bajo); el renglon = plato + recargos
                                 filas_extra = []
@@ -138,7 +143,8 @@ def procesar_comanda(ch, method, properties, body):
                                     precio_unitario=precio,
                                     sub_total=precio * cantidad,
                                     identificador_comensal=comensal,
-                                    estado_cocina=False
+                                    estado_cocina=False,
+                                    destino=destino
                                 )
                                 if sin:  # lo quitado no se descuenta (ya lo resolvio consumir_pedido); aca solo se registra
                                     PedidoDetalleModificador.objects.bulk_create(
@@ -167,7 +173,9 @@ def procesar_comanda(ch, method, properties, body):
                 # toma por entregada y no bloquearia el cobro). Si el commit fallara, la clave queda sola y es inofensiva.
                 # una mesa grupal, antes de la primera ronda, deja la comanda 'retenida': descuenta stock pero la cocina no la ve
                 # hasta que todos dan el OK (o el mozo la libera). La sesion esta bloqueada, asi que no se cruza con la liberacion.
-                r.set(f'comanda:estado:{uuid_str}', estado_inicial_de_comanda(pedido_cabecera.modalidad, pedido_cabecera.ronda_liberada))
+                # un pedido con items de varios destinos (cocina, barra, mozo) tiene un estado por destino
+                retenida = pedido_cabecera.modalidad == 'Grupal' and not pedido_cabecera.ronda_liberada
+                crear(uuid_str, {d: estado_inicial(d, retenida) for d in destinos_presentes(destinos_usados)}, cliente=r)
 
         if rechazo is not None:
             print(f'[RECHAZADA] Comanda {uuid_str}: {rechazo[0]}')

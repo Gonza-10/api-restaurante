@@ -7,6 +7,7 @@ from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from .destinos_calculos import destino_de_producto, destino_valido
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 from .comensales_calculos import modalidad_valida
 from .especiales import precios_especiales_vigentes
@@ -46,18 +47,34 @@ class ProductoSerializer(serializers.ModelSerializer):
     # extras que se le pueden sumar al plato con recargo (cobros, hito 5): id, nombre, precio y maximo por unidad. El menu del
     # cliente solo trae los activos y con stock; el listado de gestion (incluir_inactivos) trae todos con sus datos internos
     extras = serializers.SerializerMethodField()
+    # donde se prepara o entrega: COCINA, BARRA (tragos) o MOZO (bebidas que lleva el mozo). `destino` es el que se carga a mano
+    # (null = el de su categoria); `destino_efectivo` es el que rige hoy (solo lectura)
+    destino = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    destino_efectivo = serializers.SerializerMethodField()
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'precio', 'categoria', 'vegetariano', 'sin_tacc', 'categoria_nombre', 'activo', 'descripcion', 'imagen_url',
                   'tiempo_estimado', 'porciones', 'precio_especial', 'es_especial_hoy',
-                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible', 'quitables', 'extras']
+                  'disponible', 'agotado_manual', 'agotado_desde', 'agotado_por', 'visible', 'quitables', 'extras',
+                  'destino', 'destino_efectivo']
         extra_kwargs = {
             'descripcion': {'required': False, 'allow_null': True, 'allow_blank': True},
             'imagen_url': {'required': False, 'allow_null': True, 'allow_blank': True},
             'tiempo_estimado': {'required': False, 'allow_null': True, 'min_value': 1},
             'porciones': {'required': False, 'allow_null': True, 'min_value': 1},
         }
+
+    def validate_destino(self, valor):
+        if valor is None or not str(valor).strip():
+            return None   # sin destino propio: rige el de la categoria
+        destino = destino_valido(valor)
+        if destino is None:
+            raise serializers.ValidationError('Debe ser COCINA, BARRA o MOZO (o vacio para usar el de la categoria).')
+        return destino
+
+    def get_destino_efectivo(self, obj):
+        return destino_de_producto(obj.destino, obj.categoria.nombre)
 
     def _precio_especial_vigente(self, obj):
         precios = self.context.get('precios_especiales')

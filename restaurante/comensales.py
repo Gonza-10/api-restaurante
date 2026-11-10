@@ -8,6 +8,7 @@
   que todavia no se empezo a preparar.
 """
 import secrets
+import uuid
 
 from django.db import connection, transaction
 from django.utils import timezone
@@ -17,7 +18,7 @@ from .comensales_calculos import (
     faltan_por_ok, limpiar_nombre, mensaje_comensal_retirado, segundos_para_regenerar, texto_motivo_cancelacion, todos_dieron_ok,
 )
 from .cuenta import ReglaCuenta, factura_vigente
-from .estado_comandas import estado_de, transicionar
+from .estado_comandas import cancelar_todo, entregar_todo, estado_cancelable, estados_de, liberar
 from .models import ComandaRecibida, Comensal, PedidoCabecera, PedidoDetalle
 from .stock import devolver_comanda
 
@@ -36,10 +37,14 @@ def _bloquear(sesion_id):
 
 
 def _id_de_comanda(uuid_comanda):
-    """Id de la comanda a partir de su UUID, o None. Se consulta con SQL directo (igual que worker.py y worker_pdf.py): el filtro del
-    ORM por un UUID falla con el controlador de SQL Server."""
+    """Id de la comanda a partir de su UUID, o None. Se consulta con SQL directo y el UUID ya validado dentro del texto (igual que
+    worker.py: pyodbc tiene problemas al enviar un UUID como parametro)."""
+    try:
+        valido = str(uuid.UUID(str(uuid_comanda)))
+    except ValueError:
+        return None
     with connection.cursor() as cursor:
-        cursor.execute('SELECT Id FROM ComandaRecibida WHERE IdComandaUuid = %s', [str(uuid_comanda)])
+        cursor.execute(f"SELECT Id FROM ComandaRecibida WHERE IdComandaUuid = '{valido}'")
         fila = cursor.fetchone()
     return fila[0] if fila else None
 
@@ -114,8 +119,7 @@ def _liberar_bloqueado(sesion):
     sesion.save(update_fields=['ronda_liberada'])
     liberadas = 0
     for comanda in sesion.comandas.filter(estado='Aceptada'):
-        cambio, _ = transicionar(comanda.id_comanda_uuid, (RETENIDA,), PENDIENTE)
-        liberadas += 1 if cambio else 0
+        liberadas += 1 if liberar(comanda.id_comanda_uuid) else 0
     return liberadas
 
 
@@ -164,7 +168,7 @@ def liberar_primera_ronda(sesion_id):
 def _cancelar_bloqueado(sesion, comanda, motivo, empleado):
     """Cancela una comanda con la sesion ya bloqueada. Todo o nada: si la cocina la mueve justo ahora, lanza NoSePuedeCancelar y
     se deshace lo hecho (por eso el estado en Redis se cambia al final)."""
-    if estado_de(comanda.id_comanda_uuid) not in ESTADOS_CANCELABLES:
+    if estado_cancelable(comanda.id_comanda_uuid) not in ESTADOS_CANCELABLES:
         raise NoSePuedeCancelar()
     if factura_vigente(sesion) is not None:
         raise CuentaEnCurso()   # el total de la factura esta congelado: los renglones no se tocan
@@ -174,8 +178,7 @@ def _cancelar_bloqueado(sesion, comanda, motivo, empleado):
         detalle.delete()    # los renglones salen de la cuenta (con sus extras, quitados y platos compartidos)
     ComandaRecibida.objects.filter(pk=comanda.id).update(
         estado='Cancelada', motivo=texto_motivo_cancelacion(motivo, items), fecha_hora_cancelacion=timezone.now())
-    cambio, _ = transicionar(comanda.id_comanda_uuid, ESTADOS_CANCELABLES, None)
-    if not cambio:
+    if not cancelar_todo(comanda.id_comanda_uuid):
         raise NoSePuedeCancelar()
     return items
 
@@ -211,7 +214,7 @@ def resolver_comandas_sin_entregar(sesion, empleado, motivo):
     (canceladas, entregadas)."""
     canceladas = entregadas = 0
     for comanda in sesion.comandas.filter(estado='Aceptada'):
-        if estado_de(comanda.id_comanda_uuid) is None:
+        if not estados_de(comanda.id_comanda_uuid):
             continue
         try:
             with transaction.atomic():   # punto de guardado: si no se puede cancelar, se da por entregada
@@ -220,8 +223,7 @@ def resolver_comandas_sin_entregar(sesion, empleado, motivo):
             continue
         except NoSePuedeCancelar:
             pass
-        cambio, _ = transicionar(comanda.id_comanda_uuid, None, None)
-        entregadas += 1 if cambio else 0
+        entregadas += 1 if entregar_todo(comanda.id_comanda_uuid) else 0
     return canceladas, entregadas
 
 
@@ -272,7 +274,7 @@ def regenerar_pin(sesion_id, retirados_ids=(), quien='', empleado=None, respetar
         if retirados:
             ids_retirados = {c.id for c in retirados}
             nombre = {c.id: c.nombre for c in retirados}
-            candidatas = [(c.id, c.comensal_id, estado_de(c.id_comanda_uuid))
+            candidatas = [(c.id, c.comensal_id, estado_cancelable(c.id_comanda_uuid))
                           for c in sesion.comandas.filter(estado='Aceptada', comensal_id__in=ids_retirados)]
             for id_comanda in comandas_a_cancelar(candidatas, ids_retirados):
                 comanda = ComandaRecibida.objects.get(pk=id_comanda)

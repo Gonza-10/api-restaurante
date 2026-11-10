@@ -52,6 +52,7 @@ from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinReceta
 from .views_extras import RecetaExtrasView, RecetaExtrasCopiarView, ExtraDetalleView
 from .views_comprobante import CuentaFacturaClienteView, CuentaComprobanteClienteView, FacturaComprobanteView
 from .views_auditoria import AuditoriaView
+from .views_barra import BebidasEntregarView, BebidasMozoView, ComandaEstadoBarraView, TableroBarraView
 from .views_comensales import (
     ComandaCancelarView, MesaComensalesEstadoView, MesaComensalesView, MesaOkView, MesaRegenerarPinView, SesionComensalesView,
     SesionLiberarRondaView, SesionPinVistoView, SesionRegenerarPinView,
@@ -161,6 +162,10 @@ urlpatterns = [
     path('sesiones-mesa/<int:pk>/regenerar-pin', SesionRegenerarPinView.as_view(), name='sesion-regenerar-pin'),
     path('sesiones-mesa/<int:pk>/pin/visto', SesionPinVistoView.as_view(), name='sesion-pin-visto'),
     path('pedidos/<uuid:uuid_comanda>/cancelar', ComandaCancelarView.as_view(), name='comanda-cancelar'),
+    path('pedidos/<uuid:uuid_comanda>/bebidas/entregar', BebidasEntregarView.as_view(), name='bebidas-entregar'),
+    path('barra/tablero', TableroBarraView.as_view(), name='tablero-barra'),
+    path('barra/pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoBarraView.as_view(), name='barra-estado-comanda'),
+    path('mozo/bebidas', BebidasMozoView.as_view(), name='mozo-bebidas'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
     path('pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoUpdateView.as_view(), name='actualizar-estado-comanda'),
