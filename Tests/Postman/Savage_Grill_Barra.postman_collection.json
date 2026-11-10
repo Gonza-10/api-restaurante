@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Savage Grill - Barra, bartender y bebidas del mozo",
-    "description": "Cada producto tiene un destino (cocina, barra o mozo; por categoria o cargado a mano). Una comanda con items de varios destinos se divide: cocina ve solo el plato, la barra solo el trago y el mozo recibe el aviso de bebidas, cada uno avanzando por su cuenta. Incluye los permisos por rol de los tableros (el bartender es un rol nuevo), cancelar y cerrar la mesa con pedidos de varios destinos y la mesa grupal (todo retenido hasta la primera ronda). Requiere runserver (8080), worker.py, RabbitMQ, Redis y el script SQL 26 (mas el seed 99 para el usuario tbarrios). Se corre entera con Run collection; usa las mesas 6, 7 y 8 y las deja cerradas.",
+    "description": "Cada producto tiene un destino (cocina, barra o mozo; por categoria o cargado a mano). Una comanda con items de varios destinos se divide: cocina ve solo el plato, la barra solo el trago y el mozo recibe el aviso de bebidas, cada uno avanzando por su cuenta. Incluye los permisos por rol de los tableros (el bartender es un rol nuevo), cancelar y cerrar la mesa con pedidos de varios destinos y la mesa grupal (cada comensal pide cuando quiere). Requiere runserver (8080), worker.py, RabbitMQ, Redis y el script SQL 26 (mas el seed 99 para el usuario tbarrios). Se corre entera con Run collection; usa las mesas 6, 7 y 8 y las deja cerradas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -2793,7 +2793,7 @@
       ]
     },
     {
-      "name": "5. Mesa grupal: todo retenido hasta la primera ronda",
+      "name": "5. Mesa grupal: cada uno pide cuando quiere",
       "item": [
         {
           "name": "5.1 El mozo abre la mesa 8 como Grupal",
@@ -2838,7 +2838,7 @@
                   "pm.collectionVariables.set('b8_sesion', s.id);",
                   "pm.test('Mesa 8' , () => pm.expect(s.numero_mesa).to.eql(8));",
                   "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
-                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
                 ]
               }
             }
@@ -2885,7 +2885,7 @@
           ]
         },
         {
-          "name": "5.3 Ana pide plato, trago y bebida (202)",
+          "name": "5.3 Ana pide plato, trago y bebida sin esperar a nadie (202)",
           "request": {
             "method": "POST",
             "header": [
@@ -2968,234 +2968,7 @@
           ]
         },
         {
-          "name": "5.5 Cocina no ve la comanda retenida",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/cocina/tablero",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_cocina}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const lista = pm.response.json();",
-                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
-                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.6 La barra no ve la comanda retenida",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/barra/tablero",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_bartender}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const lista = pm.response.json();",
-                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
-                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.7 El mozo no tiene todavia bebidas para llevar",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/mozo/bebidas",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_mozo}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const lista = pm.response.json();",
-                  "const c = lista.find(x => x.id_comanda_uuid === pm.collectionVariables.get('b_uuid_gru'));",
-                  "pm.test('La comanda no esta', () => pm.expect(c).to.be.undefined);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.8 Ni cocina ni barra pueden mover una comanda retenida (409 / 404)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/barra/pedidos/{{b_uuid_gru}}/estado",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_bartender}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"estado\": \"proceso\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
-                  "pm.test('Retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.9 El mozo no puede entregar bebidas retenidas (409)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/pedidos/{{b_uuid_gru}}/bebidas/entregar",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_mozo}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
-                  "pm.test('Retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.10 El mozo libera la primera ronda (espera al worker)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/sesiones-mesa/{{b8_sesion}}/liberar-ronda",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_mozo}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "5.11 Ahora cocina ve su plato, pendiente",
+          "name": "5.5 Cocina ve el plato enseguida, pendiente",
           "request": {
             "method": "GET",
             "header": [],
@@ -3229,7 +3002,7 @@
           ]
         },
         {
-          "name": "5.12 La barra ve su trago, pendiente",
+          "name": "5.6 La barra ve el trago enseguida, pendiente",
           "request": {
             "method": "GET",
             "header": [],
@@ -3263,7 +3036,7 @@
           ]
         },
         {
-          "name": "5.13 El mozo ve la bebida para llevar",
+          "name": "5.7 El mozo ve la bebida para llevar",
           "request": {
             "method": "GET",
             "header": [],
@@ -3296,7 +3069,7 @@
           ]
         },
         {
-          "name": "5.14 Cierre de la mesa forzado por el gerente (da todo por entregado)",
+          "name": "5.8 Cierre de la mesa forzado por el gerente (cancela lo que no empezo)",
           "request": {
             "method": "POST",
             "header": [
@@ -3339,7 +3112,7 @@
           ]
         },
         {
-          "name": "5.15 Tras el cierre forzado la barra no tiene nada de esa comanda",
+          "name": "5.9 Tras el cierre forzado la barra no tiene nada de esa comanda",
           "request": {
             "method": "GET",
             "header": [],
@@ -3371,7 +3144,7 @@
           ]
         },
         {
-          "name": "5.16 Ni cocina",
+          "name": "5.10 Ni cocina",
           "request": {
             "method": "GET",
             "header": [],
@@ -3403,7 +3176,7 @@
           ]
         },
         {
-          "name": "5.17 Ni el mozo tiene bebidas por llevar",
+          "name": "5.11 Ni el mozo tiene bebidas por llevar",
           "request": {
             "method": "GET",
             "header": [],

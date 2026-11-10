@@ -371,7 +371,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = [...ps].sort((a, b) => (b.porciones == null ? 1e9 : b.porciones) - (a.porciones == null ? 1e9 : a.porciones)).find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t3_prod', p.id);"
                 ]

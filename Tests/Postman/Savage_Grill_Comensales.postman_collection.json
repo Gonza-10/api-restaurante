@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Savage Grill - Comensales y seguridad de la mesa",
-    "description": "Modalidad de la mesa (Familiar/Grupal), comensales con nombre, OK de todos en la primera ronda (comandas retenidas hasta que todos confirman o el mozo libera), cancelar comandas con devolucion de stock, PIN regenerable y cierre de mesa bloqueado con pedidos sin entregar. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y el script SQL 25. Se corre entera con Run collection; usa las mesas 6, 7, 8 y 9 y las deja cerradas (y la jornada, si la abrio esta prueba). Los pedidos pasan por el worker, asi que algunos pasos esperan unos segundos.",
+    "description": "Modalidad de la mesa (Familiar/Grupal), comensales con nombre (cada uno pide cuando quiere: su pedido sale a cocina enseguida, sin esperar el OK de los demas), cancelar comandas con devolucion de stock, PIN regenerable y cierre de mesa bloqueado con pedidos sin entregar. Requiere runserver (8080), worker.py, RabbitMQ y Redis activos y el script SQL 25. Se corre entera con Run collection; usa las mesas 6, 7, 8 y 9 y las deja cerradas (y la jornada, si la abrio esta prueba). Los pedidos pasan por el worker, asi que algunos pasos esperan unos segundos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -263,7 +263,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = [...ps].sort((a, b) => (b.porciones == null ? 1e9 : b.porciones) - (a.porciones == null ? 1e9 : a.porciones)).find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('c_prod', p.id);"
                 ]
@@ -363,7 +363,7 @@
                   "pm.collectionVariables.set('c6_sesion', s.id);",
                   "pm.test('Mesa 6' , () => pm.expect(s.numero_mesa).to.eql(6));",
                   "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
-                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
                 ]
               }
             }
@@ -395,7 +395,7 @@
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const lista = pm.response.json(); const arr = Array.isArray(lista) ? lista : lista.results;",
                   "const m = arr.find(x => x.numero === 6);",
-                  "pm.test('Grupal y la primera ronda sin liberar', () => { pm.expect(m.modalidad).to.eql('Grupal'); pm.expect(m.ronda_liberada).to.eql(false); });",
+                  "pm.test('Grupal, sin espera de OK (la ronda nace liberada)', () => { pm.expect(m.modalidad).to.eql('Grupal'); pm.expect(m.ronda_liberada).to.eql(true); });",
                   "pm.test('Sin aviso de PIN', () => pm.expect(m.aviso_pin).to.eql(null));"
                 ]
               }
@@ -434,7 +434,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test('Mesa 6, Grupal, ronda sin liberar', () => { pm.expect(d.numero_mesa).to.eql(6); pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.ronda_liberada).to.eql(false); });"
+                  "pm.test('Mesa 6, Grupal, sin espera de OK', () => { pm.expect(d.numero_mesa).to.eql(6); pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.ronda_liberada).to.eql(true); });"
                 ]
               }
             }
@@ -686,7 +686,7 @@
           ]
         },
         {
-          "name": "2.7 Estado de la mesa: dos activos, esperando el OK de ambos",
+          "name": "2.7 Estado de la mesa: dos activos y nadie espera a nadie",
           "request": {
             "method": "POST",
             "header": [
@@ -717,8 +717,8 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test('Grupal esperando el OK', () => { pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.espera_ok).to.eql(true); pm.expect(d.ronda_liberada).to.eql(false); });",
-                  "pm.test('Faltan Ana y Beto', () => pm.expect(d.faltan_por_ok).to.eql(['Ana', 'Beto']));",
+                  "pm.test('Grupal sin espera de OK', () => { pm.expect(d.modalidad).to.eql('Grupal'); pm.expect(d.espera_ok).to.eql(false); pm.expect(d.ronda_liberada).to.eql(true); });",
+                  "pm.test('Nadie falta por dar el OK', () => pm.expect(d.faltan_por_ok).to.eql([]));",
                   "pm.test('Dos comensales activos', () => pm.expect(d.comensales.filter(c => c.estado === 'Activo').length).to.eql(2));"
                 ]
               }
@@ -780,7 +780,7 @@
       ]
     },
     {
-      "name": "3. Primera ronda con el OK de todos (mesa grupal)",
+      "name": "3. Pedidos individuales en una mesa grupal",
       "item": [
         {
           "name": "3.1 En una mesa Grupal hay que ingresar el nombre antes de pedir (409)",
@@ -965,7 +965,7 @@
           ]
         },
         {
-          "name": "3.5 Las dos comandas quedan retenidas, cada una con su comensal (espera al worker)",
+          "name": "3.5 Las dos comandas salen directo a cocina, pendientes, cada una con su comensal (espera al worker)",
           "request": {
             "method": "POST",
             "header": [
@@ -1007,7 +1007,7 @@
                   "const cs = pm.response.json().comandas;",
                   "const a = cs.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana')); const b = cs.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_beto'));",
                   "pm.test('Las dos existen (si falla: worker.py apagado)', () => { pm.expect(a).to.not.be.undefined; pm.expect(b).to.not.be.undefined; });",
-                  "pm.test('Retenidas', () => { pm.expect(a.estado).to.eql('retenida'); pm.expect(b.estado).to.eql('retenida'); });",
+                  "pm.test('Pendientes, sin retener', () => { pm.expect(a.estado).to.eql('pendiente'); pm.expect(b.estado).to.eql('pendiente'); });",
                   "pm.test('Cada una con su comensal', () => { pm.expect(a.comensal).to.eql('Ana'); pm.expect(b.comensal).to.eql('Beto'); });"
                 ]
               }
@@ -1015,7 +1015,7 @@
           ]
         },
         {
-          "name": "3.6 La cocina NO ve las comandas retenidas",
+          "name": "3.6 La cocina ve las dos comandas enseguida, sin esperar a nadie",
           "request": {
             "method": "GET",
             "header": [
@@ -1036,56 +1036,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const ids = pm.response.json().map(x => x.id_comanda_uuid);",
-                  "pm.test('Ni la de Ana ni la de Beto', () => { pm.expect(ids).to.not.include(pm.collectionVariables.get('c_uuid_ana')); pm.expect(ids).to.not.include(pm.collectionVariables.get('c_uuid_beto')); });"
+                  "const l = pm.response.json(); const a = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana')); const b = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_beto'));",
+                  "pm.test('Pendientes', () => { pm.expect(a.estado).to.eql('pendiente'); pm.expect(b.estado).to.eql('pendiente'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "3.7 La cocina no puede mover una comanda retenida (409)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_gerente}}"
-              }
-            ],
-            "url": "{{base_url}}/pedidos/{{c_uuid_ana}}/estado",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"estado\": \"proceso\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
-                  "pm.test('Codigo comanda_retenida', () => pm.expect(pm.response.json().codigo).to.eql('comanda_retenida'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.8 La mesa no se cierra con pedidos sin entregar (409)",
+          "name": "3.7 La mesa no se cierra con pedidos sin entregar (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -1130,7 +1089,7 @@
           ]
         },
         {
-          "name": "3.9 Ana da el OK: todavia falta Beto",
+          "name": "3.8 Dar el OK ya no hace falta: no cambia nada (200)",
           "request": {
             "method": "POST",
             "header": [
@@ -1161,52 +1120,14 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test('Todavia no sale', () => { pm.expect(d.liberada_ahora).to.eql(false); pm.expect(d.ronda_liberada).to.eql(false); });",
-                  "pm.test('Falta Beto', () => pm.expect(d.faltan_por_ok).to.eql(['Beto']));"
+                  "pm.test('Nada que liberar', () => { pm.expect(d.liberada_ahora).to.eql(false); pm.expect(d.ronda_liberada).to.eql(true); pm.expect(d.faltan_por_ok).to.eql([]); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "3.10 Ana retira su OK para seguir pidiendo",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/mesa/comensales/ok",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}, \"ok\": false}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Vuelven a faltar los dos', () => pm.expect(pm.response.json().faltan_por_ok).to.eql(['Ana', 'Beto']));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.11 Un comensal que no es de la mesa no puede dar el OK (404)",
+          "name": "3.9 Un comensal que no es de la mesa no puede dar el OK (404)",
           "request": {
             "method": "POST",
             "header": [
@@ -1242,111 +1163,7 @@
           ]
         },
         {
-          "name": "3.12 Ana vuelve a dar el OK",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/mesa/comensales/ok",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_ana}}}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Todavia falta Beto', () => pm.expect(pm.response.json().faltan_por_ok).to.eql(['Beto']));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.13 Beto da el OK: la primera ronda sale junta a cocina",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/mesa/comensales/ok",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"numero_mesa\": 6, \"pin\": \"{{c6_pin}}\", \"id_comensal\": {{c_beto}}}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json();",
-                  "pm.test('Liberada ahora', () => { pm.expect(d.liberada_ahora).to.eql(true); pm.expect(d.ronda_liberada).to.eql(true); pm.expect(d.faltan_por_ok).to.eql([]); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.14 Ahora la cocina ve las dos comandas, pendientes",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_gerente}}"
-              }
-            ],
-            "url": "{{base_url}}/cocina/tablero",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const l = pm.response.json(); const a = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_ana')); const b = l.find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_beto'));",
-                  "pm.test('Pendientes', () => { pm.expect(a.estado).to.eql('pendiente'); pm.expect(b.estado).to.eql('pendiente'); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.15 Ya liberada la primera ronda, Ana pide un plato mas: sale directo",
+          "name": "3.10 Ana pide un plato mas cuando quiere: sale directo",
           "request": {
             "method": "POST",
             "header": [
@@ -1391,7 +1208,7 @@
           ]
         },
         {
-          "name": "3.16 La comanda nueva esta pendiente, sin esperar a nadie (espera al worker)",
+          "name": "3.11 La comanda nueva esta pendiente en cocina (espera al worker)",
           "request": {
             "method": "GET",
             "header": [
@@ -1429,7 +1246,7 @@
           ]
         },
         {
-          "name": "3.17 La cocina empieza la comanda de Ana: pasa a proceso",
+          "name": "3.12 La cocina empieza la comanda de Ana: pasa a proceso",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1471,7 +1288,7 @@
       ]
     },
     {
-      "name": "4. El mozo libera la primera ronda",
+      "name": "4. Cada comensal pide cuando quiere",
       "item": [
         {
           "name": "4.1 El mozo abre la mesa 7 como Grupal",
@@ -1516,7 +1333,7 @@
                   "pm.collectionVariables.set('c7_sesion', s.id);",
                   "pm.test('Mesa 7' , () => pm.expect(s.numero_mesa).to.eql(7));",
                   "pm.test('Modalidad Grupal', () => pm.expect(s.modalidad).to.eql('Grupal'));",
-                  "pm.test('Ronda liberada = false', () => pm.expect(s.ronda_liberada).to.eql(false));"
+                  "pm.test('Ronda liberada = true', () => pm.expect(s.ronda_liberada).to.eql(true));"
                 ]
               }
             }
@@ -1563,7 +1380,7 @@
           ]
         },
         {
-          "name": "4.3 Dani ingresa",
+          "name": "4.3 Dani ingresa y todavia no pidio nada",
           "request": {
             "method": "POST",
             "header": [
@@ -1648,7 +1465,45 @@
           ]
         },
         {
-          "name": "4.5 Sin token el mozo no libera la ronda (401)",
+          "name": "4.5 La cocina ve la comanda de Carla sin esperar a Dani (espera al worker)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_gerente}}"
+              }
+            ],
+            "url": "{{base_url}}/cocina/tablero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const a = pm.response.json().find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_carla'));",
+                  "pm.test('Pendiente', () => { pm.expect(a).to.not.be.undefined; pm.expect(a.estado).to.eql('pendiente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Sin token el mozo no usa liberar ronda (401)",
           "request": {
             "method": "POST",
             "header": [
@@ -1684,90 +1539,7 @@
           ]
         },
         {
-          "name": "4.6 Dani se demora: el mozo libera la primera ronda sin esperarlo (espera al worker)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/sesiones-mesa/{{c7_sesion}}/liberar-ronda",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_mozo}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json();",
-                  "pm.test('Salio la comanda de Carla', () => { pm.expect(d.liberadas).to.eql(1); pm.expect(d.ronda_liberada).to.eql(true); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "4.7 La cocina ve la comanda de Carla",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_gerente}}"
-              }
-            ],
-            "url": "{{base_url}}/cocina/tablero",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "const a = pm.response.json().find(x => x.id_comanda_uuid === pm.collectionVariables.get('c_uuid_carla'));",
-                  "pm.test('Pendiente', () => { pm.expect(a).to.not.be.undefined; pm.expect(a.estado).to.eql('pendiente'); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "4.8 Liberar otra vez no hace nada (0)",
+          "name": "4.7 Liberar la ronda ya no tiene nada que sacar (0)",
           "request": {
             "method": "POST",
             "header": [
@@ -1804,14 +1576,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('No sale nada', () => pm.expect(pm.response.json().liberadas).to.eql(0));"
+                  "pm.test('No sale nada: ya salio sola', () => pm.expect(pm.response.json().liberadas).to.eql(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "4.9 Cocina entrega la comanda de Carla",
+          "name": "4.8 Cocina entrega la comanda de Carla",
           "request": {
             "method": "PATCH",
             "header": [

@@ -1993,7 +1993,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = [...ps].sort((a, b) => (b.porciones == null ? 1e9 : b.porciones) - (a.porciones == null ? 1e9 : a.porciones)).find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t3_prod', p.id);"
                 ]
@@ -4073,52 +4073,7 @@
           ]
         },
         {
-          "name": "3.55 Con consumo sin pagar la mesa no se cierra (409; espera al worker)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion2}}/cerrar",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_mozo}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
-                  "const d = pm.response.json();",
-                  "pm.test('Avisa del consumo sin pagar y del total', () => { pm.expect(d.error).to.match(/sin pagar/i); pm.expect(parseFloat(d.total)).to.be.above(0); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "3.56 Cocina entrega el pedido",
+          "name": "3.55 Cocina entrega el pedido (espera al worker)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -4154,11 +4109,56 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "await new Promise(r => setTimeout(r, 3500)); // le damos tiempo al worker de comandas"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.56 Con consumo sin pagar la mesa no se cierra (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/sesiones-mesa/{{t3_sesion2}}/cerrar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mozo}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('Avisa del consumo sin pagar y del total', () => { pm.expect(d.error).to.match(/sin pagar/i); pm.expect(parseFloat(d.total)).to.be.above(0); });"
                 ]
               }
             }
@@ -4819,7 +4819,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = [...ps].sort((a, b) => (b.porciones == null ? 1e9 : b.porciones) - (a.porciones == null ? 1e9 : a.porciones)).find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t4_prod', p.id);"
                 ]
@@ -7487,7 +7487,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.destino_efectivo === 'COCINA' && parseFloat(x.precio) >= 100);",
+                  "const p = ps.find(x => parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato sin receta (si falla: cargar el seed 99 o desasignar recetas)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t5_prod', p.id);"
                 ]
@@ -7848,7 +7848,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "// el plato elegido puede ser de otro destino (bebida): se fija en cocina durante la prueba de extras (5.76 mira el tablero de cocina)",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}') + '/productos/' + pm.collectionVariables.get('t5_prod'), method: 'PATCH',",
+                  "  header: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.collectionVariables.get('token_gerente') },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ destino: 'COCINA' }) } }, (err, res) => {",
+                  "  pm.test('El plato queda con destino cocina para la prueba', () => { pm.expect(err).to.eql(null); pm.expect(res.code).to.eql(200); });",
+                  "});"
                 ]
               }
             }
@@ -10671,7 +10677,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "// se devuelve el destino original del plato (el de su categoria)",
+                  "pm.sendRequest({ url: pm.variables.replaceIn('{{base_url}}') + '/productos/' + pm.collectionVariables.get('t5_prod'), method: 'PATCH',",
+                  "  header: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.collectionVariables.get('token_gerente') },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ destino: null }) } }, (err, res) => {",
+                  "  pm.test('El plato recupera su destino de categoria', () => { pm.expect(err).to.eql(null); pm.expect(res.code).to.eql(200); });",
+                  "});"
                 ]
               }
             }
@@ -11217,7 +11229,7 @@
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
                   "const ps = pm.response.json();",
-                  "const p = ps.find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
+                  "const p = [...ps].sort((a, b) => (b.porciones == null ? 1e9 : b.porciones) - (a.porciones == null ? 1e9 : a.porciones)).find(x => x.activo && x.disponible && x.visible && x.destino_efectivo === 'COCINA' && !x.agotado_manual && (x.quitables || []).length === 0 && parseFloat(x.precio) >= 100);",
                   "pm.test('Hay un plato pedible (si falla: cargar el seed 99)', () => pm.expect(p).to.not.be.undefined);",
                   "pm.collectionVariables.set('t6_prod', p.id);"
                 ]

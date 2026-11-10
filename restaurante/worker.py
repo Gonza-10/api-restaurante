@@ -18,7 +18,7 @@ from restaurante.models import (
     ComandaRecibida, Comensal, Factura, PedidoCabecera, PedidoDetalle, PedidoDetalleCompartido, PedidoDetalleExtra, PedidoDetalleModificador,
     Producto, RecetaExtra,
 )
-from restaurante.comensales_calculos import RETIRADO, mensaje_comensal_retirado
+from restaurante.comensales_calculos import PRIMERA_RONDA_CON_OK, RETIRADO, mensaje_comensal_retirado
 from restaurante.destinos_calculos import destino_de_producto, destinos_presentes, estado_inicial
 from restaurante.estado_comandas import crear
 from restaurante.especiales import precios_especiales, precio_a_cobrar, precio_segun_lo_que_vio
@@ -174,7 +174,7 @@ def procesar_comanda(ch, method, properties, body):
                 # una mesa grupal, antes de la primera ronda, deja la comanda 'retenida': descuenta stock pero la cocina no la ve
                 # hasta que todos dan el OK (o el mozo la libera). La sesion esta bloqueada, asi que no se cruza con la liberacion.
                 # un pedido con items de varios destinos (cocina, barra, mozo) tiene un estado por destino
-                retenida = pedido_cabecera.modalidad == 'Grupal' and not pedido_cabecera.ronda_liberada
+                retenida = PRIMERA_RONDA_CON_OK and pedido_cabecera.modalidad == 'Grupal' and not pedido_cabecera.ronda_liberada
                 crear(uuid_str, {d: estado_inicial(d, retenida) for d in destinos_presentes(destinos_usados)}, cliente=r)
 
         if rechazo is not None:

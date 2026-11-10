@@ -44,7 +44,7 @@ from .redis_client import redis_client
 from .cuenta import ReglaCuenta, cerrar_sesion, factura_vigente
 from .comensales import comensal_de_sesion, generar_pin_libre, reiniciar_ok
 from .comensales_calculos import (
-    FAMILIAR, RETIRADO, mensaje_comensal_requerido, mensaje_comensal_retirado, mensaje_pin_cambiado, pin_fue_anterior,
+    FAMILIAR, PRIMERA_RONDA_CON_OK, RETIRADO, mensaje_comensal_requerido, mensaje_comensal_retirado, mensaje_pin_cambiado, pin_fue_anterior,
     GRUPAL,
 )
 from .destinos_calculos import COCINA as DEST_COCINA
@@ -500,7 +500,7 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
                         estado='Abierto',
                         jornada=jornada,
                         modalidad=modalidad,
-                        ronda_liberada=(modalidad == FAMILIAR),   # una mesa grupal espera el OK de todos en la primera ronda
+                        ronda_liberada=(modalidad == FAMILIAR) or not PRIMERA_RONDA_CON_OK,   # una mesa grupal solo espera el OK de todos si PRIMERA_RONDA_CON_OK
                     )
                     mesa.estado = True
                     mesa.save(update_fields=['estado'])

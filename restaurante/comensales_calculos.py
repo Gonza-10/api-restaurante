@@ -27,6 +27,11 @@ ENTREGADO = 'entregado'
 ESTADOS_ACTIVOS = (RETENIDA, PENDIENTE, PROCESO, LISTO)       # la comanda sigue sin entregarse: la mesa no se puede cerrar
 ESTADOS_CANCELABLES = (RETENIDA, PENDIENTE)                    # todavia no empezaron a prepararse
 
+# La primera ronda de una mesa Grupal sale a cocina cuando TODOS dieron el OK (o la libera el mozo)? Desactivado: cada comensal pide
+# cuando quiere y su pedido sale a cocina enseguida. Con True se vuelve a la espera del OK: las mesas Grupales nuevas abren con la
+# primera ronda sin liberar y sus comandas quedan `retenida`. El resto del codigo (OK, liberar ronda) ya lo soporta.
+PRIMERA_RONDA_CON_OK = False
+
 NOMBRE_MAXIMO = 50
 ESPERA_REGENERAR_PIN_SEGUNDOS = 30   # entre dos pedidos de PIN nuevo hechos desde un dispositivo de la mesa
 
