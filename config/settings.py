@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import warnings
 from pathlib import Path
+
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +23,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-es$*1z7fi5=q4iig&$i*@wmy235a6v_kd^hyvba0fh3jze7t$o'
+# La clave sale del .env (nunca del codigo): con ella se firman los tokens de login.
+SECRET_KEY = config('SECRET_KEY')
+if SECRET_KEY in ('', 'changeme') or SECRET_KEY.startswith('django-insecure') or len(SECRET_KEY) < 32:
+    warnings.warn('SECRET_KEY debil o de ejemplo: cualquiera podria falsificar tokens de login. Generar una propia (ver README).')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+# Servidores desde los que se acepta el trafico. Vacio = solo localhost (con DEBUG=True).
+# En produccion: ALLOWED_HOSTS=savagegrill.brazilsouth.cloudapp.azure.com (varios, separados por coma).
+ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='').split(',') if h.strip()]
+
+# Detras de Caddy (HTTPS): Django confia en el encabezado que le manda el proxy y acepta formularios de ese origen.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if o.strip()]
 
 
 # Application definition
@@ -83,6 +95,11 @@ DATABASES = {
         'ENGINE': 'mssql',
         'NAME': config('DB_NAME'),
         'HOST': config('DB_HOST'),
+        # Sin DB_USER se usa la autenticacion de Windows (la PC de desarrollo). En Docker/Linux se define DB_USER
+        # (sa) y DB_PASSWORD; DB_PORT es opcional (por defecto 1433).
+        'USER': config('DB_USER', default=''),
+        'PASSWORD': config('DB_PASSWORD', default=''),
+        'PORT': config('DB_PORT', default=''),
         'OPTIONS': {
             'driver': 'ODBC Driver 18 for SQL Server',
             'extra_params': 'TrustServerCertificate=yes',
@@ -127,6 +144,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Archivos subidos por los usuarios (fotos de productos). La carpeta media/ no se versiona.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
@@ -138,7 +159,14 @@ MAILERS = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': ['restaurante.auth.TokenEmpleadoAuthentication'],
+    'DEFAULT_PERMISSION_CLASSES': ['restaurante.auth.PermisoPorRol'],
     'EXCEPTION_HANDLER': 'restaurante.exception_handler.manejador_excepciones_personalizado',
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+# el front necesita leer la version del menu que viaja en el encabezado de GET /productos
+CORS_EXPOSE_HEADERS = ['X-Catalogo-Version']
+
+# Duracion de la sesion (token de login), en segundos
+TOKEN_TTL_SEGUNDOS = 12 * 60 * 60

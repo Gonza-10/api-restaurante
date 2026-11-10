@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+venv/
+.venv/
+__pycache__/
+*.pyc
+tickets/
+Facturas/
+media/
+Tests/
+legacy/
+frontend/
+sql/
+deploy/
+*.md

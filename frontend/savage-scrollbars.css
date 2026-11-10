@@ -1,0 +1,18 @@
+/* SAVAGE GRILL · Barras invisibles, desplazamiento intacto.
+   Compatible con Firefox, Chromium, Edge, Safari y navegadores móviles.
+   NO utiliza overflow:hidden: los menús, tablas y modales pueden desplazarse. */
+html, body, * {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* Edge clásico */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+    background: transparent !important;
+}
+/* Conservar scroll horizontal táctil en los grupos de pestañas. */
+[role="tablist"], .sg-categorias, .cocina-tabs, .cocina-estado-tabs {
+    -webkit-overflow-scrolling: touch;
+}

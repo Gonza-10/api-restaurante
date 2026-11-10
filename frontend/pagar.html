@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagar - Savage Grill</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <link rel="stylesheet" href="savage-ui.css">
+    <style>
+        .pg-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 28px; border-bottom: 1px solid var(--glass-border); }
+        .pg-top .logo-restaurante { margin: 0; cursor: pointer; font-size: 26px; }
+        .pg-top-der { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .pg-mesa { border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 14px; }
+        .pg-wrap { width: min(760px, 100%); margin: 0 auto; padding: 24px 20px 70px; display: grid; gap: 18px; }
+        .pg-paso { margin-top: 18px; }
+        .pg-paso .sg-subtitulo { margin-top: 0; }
+        .pg-metodos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+        .pg-comb { display: grid; gap: 10px; }
+        .pg-comb-fila { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 150px) auto; gap: 10px; align-items: center; }
+        .pg-comb-fila .sg-check { margin: 0; }
+        .pg-vista-sep { margin-top: 14px; }
+        #pg-resumen { margin-top: 16px; }
+        .pg-metodo { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 16px 10px; border: 1px solid var(--glass-border); border-radius: 14px; background: rgba(255,255,255,.03); color: var(--text-muted); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
+        body.light-mode .pg-metodo { background: #fff; border-color: #d6dce5; }
+        .pg-metodo svg { width: 30px; height: 30px; }
+        .pg-metodo:hover { border-color: rgba(255,122,0,.55); color: var(--text-main); }
+        .pg-metodo.activo { border-color: var(--primary-orange); background: rgba(255,122,0,.12); color: var(--primary-orange); }
+        .pg-metodo small { font-weight: 600; font-size: 11.5px; color: var(--text-muted); line-height: 1.3; }
+        .pg-gracias { text-align: center; padding: 10px 6px; }
+        .pg-gracias .sg-modal-icono { margin: 0 auto 14px; width: 60px; height: 60px; background: rgba(46,204,113,.14); color: var(--sg-ok); }
+        .pg-gracias .sg-modal-icono svg { width: 30px; height: 30px; }
+        .pg-gracias h2 { margin: 0 0 6px; font-size: 24px; font-weight: 900; }
+        .pg-comen { display: flex; flex-wrap: wrap; gap: 8px; }
+        @media (max-width: 900px) { .pg-metodos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 720px) { .pg-top { padding: 12px 14px; } .pg-metodos { grid-template-columns: 1fr; } .pg-comb-fila { grid-template-columns: 1fr 1fr; } .pg-comb-fila .sg-check { grid-column: 1 / -1; } .pg-comb-fila .sg-btn { grid-column: 1 / -1; } .pg-metodo { grid-template-columns: auto 1fr; justify-items: start; text-align: left; align-items: center; padding: 14px; } .pg-metodo small { grid-column: 2; } .pg-metodo svg { grid-row: span 2; } }
+    </style>
+</head>
+<body class="sg-body" style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+
+    <header class="pg-top">
+        <h1 class="logo-restaurante sg-brand-unified" onclick="window.location.href='catalogo.html'">SAVAGE<span>GRILL.</span></h1>
+        <div class="pg-top-der">
+            <div data-savage-theme="inline"></div>
+            <span class="pg-mesa">Mesa <span id="pg-mesa">--</span></span>
+            <a class="sg-btn chico" href="catalogo.html"><span data-ico="volver"></span><span>Volver al menú</span></a>
+        </div>
+    </header>
+
+    <main class="pg-wrap" id="pg-main" aria-live="polite">
+        <div class="sg-box"><div class="sg-vacio"><span class="sg-giro"></span> Cargando tu cuenta…</div></div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="savage-ui.js"></script>
+    <script src="savage-mesa.js"></script>
+    <script src="pagar.js"></script>
+</body>
+</html>

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Salón - Savage Grill</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-scrollbars.css">
+    <style>
+        .salon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            padding: 10px 0;
+        }
+        .mesa-card {
+            background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+            border: 2px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative; 
+        }
+        .mesa-card.libre:hover { 
+            transform: translateY(-5px); 
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.05);
+        }
+        .mesa-card.libre { border-color: rgba(46, 204, 113, 0.4); }
+        .mesa-card.ocupada { border-color: rgba(231, 76, 60, 0.4); opacity: 0.7; cursor: not-allowed; }
+
+        .mesa-card.pidiendo-cuenta {
+            border-color: #f1c40f !important;
+            background: rgba(241, 196, 15, 0.15) !important;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+            opacity: 1;
+            animation: pulseWarning 2s infinite;
+        }
+
+        @keyframes pulseWarning {
+            0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(241, 196, 15, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+        }
+
+        .mesa-numero { font-size: 36px; font-weight: 900; color: var(--text-main); }
+        .mesa-capacidad { font-size: 13px; color: var(--text-muted); }
+        .mesa-mozo { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+        .sesiones-panel {
+            background: var(--glass-bg, rgba(255, 255, 255, 0.02));
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: sticky;
+            top: 20px;
+        }
+        .sesion-card {
+            background: var(--input-bg, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        .sesion-card.pidiendo-cuenta {
+            border: 1px solid #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+        }
+
+        .pin-display {
+            font-family: monospace;
+            font-size: 26px;
+            color: var(--primary-orange);
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 0;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 30px;
+        }
+        #toast-exito {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ecc71;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 3000;
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+
+        /* P23 · Salón operativo, sin librerías ni imágenes externas */
+        :root { --salon-accent: #ff7900; --salon-green:#2ecc71; --salon-red:#e74c3c; --salon-yellow:#f5bf3b; }
+        html { scrollbar-color: #684b3b #101010; scrollbar-width: thin; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-track { background: #101010; }
+        ::-webkit-scrollbar-thumb { background:#674a3a; border:2px solid #101010; border-radius:12px; }
+        ::-webkit-scrollbar-thumb:hover { background:#ff7900; }
+        .salon-shell { max-width: 1510px; margin:0 auto; padding:0 28px 65px; }
+        .salon-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+        .salon-heading h2 { font-size:27px; margin:0 0 4px; }
+        .salon-heading p { color:var(--text-muted); margin:0; font-size:14px; }
+        .salon-columns { display:grid; grid-template-columns:minmax(0, 1fr) minmax(300px, 360px); align-items:start; gap:30px; }
+        .salon-column-main { min-width:0; }
+        .salon-column-side { min-width:0; display:flex; flex-direction:column; gap:22px; }
+        .top-bar { margin-bottom:24px; }
+        .salon-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:18px 0 22px; }
+        .overview-tile { padding:12px 14px; background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:12px; }
+        .overview-tile b { display:block; font-size:23px; line-height:1.3; }
+        .overview-tile small { font-size:12px; color:var(--text-muted); }
+        .overview-tile[data-status="libre"] b {color:#2ecc71;}
+        .overview-tile[data-status="ocupada"] b {color:#f0695a;}
+        .overview-tile[data-status="alerta"] b {color:#f5bf3b;}
+        .map-legend { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:9px 11px; background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:12px; }
+        .legend-chip { display:inline-flex; gap:7px; align-items:center; color:var(--text-muted); font-size:12px; font-weight:650; white-space:nowrap; }
+        .legend-dot { height:9px; width:9px; border:2px solid currentColor; border-radius:50%; }
+        .legend-free {color:#2ecc71;} .legend-busy {color:#e74c3c;} .legend-bill {color:#f5bf3b;} .legend-sobre {color:#3fa9f5;}
+        .salon-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(185px,1fr)); gap:16px; padding:0; }
+        .mesa-card { appearance:none; width:100%; min-width:0; border-radius:19px; padding:16px 12px 14px; display:flex; flex-direction:column; align-items:center; background:var(--glass-bg, #171717); border:1px solid var(--glass-border); gap:8px; text-align:center; transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease; cursor:default; opacity:1; color:var(--text-main); font-family:inherit; }
+        .mesa-card[data-clickable="true"] { cursor:pointer; }
+        .mesa-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,.16),0 0 19px rgba(255,121,0,.07); }
+        .mesa-card:focus-visible, .action-btn:focus-visible { outline:2px solid var(--salon-accent); outline-offset:3px; }
+        .mesa-card.libre { border-color:rgba(46,204,113,.32); }
+        .mesa-card.ocupada {border-color:rgba(231,76,60,.3);}
+        .mesa-card.pidiendo-cuenta {border-color:rgba(245,191,59,.75); background:linear-gradient(135deg,rgba(245,191,59,.08),rgba(16,16,16,.12)); box-shadow:0 0 20px rgba(245,191,59,.1); animation:mesaAttention 2.6s ease-in-out infinite; }
+        @keyframes mesaAttention {0%,100%{box-shadow:0 0 5px rgba(245,191,59,.07)}50%{box-shadow:0 0 21px rgba(245,191,59,.21)}}
+        .mesa-card.libre[data-clickable="true"]:hover { border-color:var(--salon-green); }
+        .mesa-card.ocupada[data-clickable="true"]:hover {border-color:var(--salon-accent);}
+        /* Mesas P25: las sillas quedan FUERA del tablero y visibles por los cuatro lados. */
+        .mesa-figure { width:100%; max-width:196px; height:178px; position:relative; display:flex; align-items:center; justify-content:center; margin:2px auto 3px; }
+        .table-surface { position:relative; z-index:2; box-sizing:border-box; width:142px; height:124px; flex:none; border:3px solid #584638; box-shadow:0 5px 9px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 14px rgba(0,0,0,.28); background:linear-gradient(142deg,#3a2d25,#201b1b 60%,#35251e); border-radius:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 8px; }
+        .mesa-figure.mesa-2 .table-surface { width:132px; height:132px; border-radius:50%; }
+        .mesa-figure.mesa-4 .table-surface { width:142px; height:124px; border-radius:27px; }
+        .mesa-figure.mesa-6 .table-surface { width:142px; height:124px; border-radius:35px; }
+        .mesa-figure.mesa-8 .table-surface { width:142px; height:124px; border-radius:35px; }
+        .mesa-card.libre .table-surface { border-color:rgba(46,204,113,.65); }
+        .mesa-card.ocupada .table-surface { border-color:rgba(231,76,60,.72); }
+        .mesa-card.pidiendo-cuenta .table-surface { border-color:rgba(245,191,59,.95); }
+        /* Sobre mesa: ya pagó la cuenta y se queda un rato; no va a pedir más. */
+        .mesa-card.sobremesa {border-color:rgba(63,169,245,.6); background:linear-gradient(135deg,rgba(63,169,245,.08),rgba(16,16,16,.12));}
+        .mesa-card.sobremesa .table-surface { border-color:rgba(63,169,245,.9); }
+        .mesa-card.sobremesa[data-clickable="true"]:hover {border-color:#3fa9f5;}
+        .badge-sobremesa{background:rgba(63,169,245,.16);color:#5db7f7;}
+        .sesion-card.sobremesa {border-color:rgba(63,169,245,.45);background:rgba(63,169,245,.04);}
+        .sesion-bill.sobremesa {color:#5db7f7;}
+        .table-seat { position:absolute; z-index:1; display:block; box-sizing:border-box; width:32px; height:17px; background:linear-gradient(180deg,#624b3c,#352a23); border:2px solid #99745b; border-radius:9px 9px 5px 5px; box-shadow:0 3px 8px rgba(0,0,0,.45); }
+        .table-seat.top {top:2px; left:50%; transform:translateX(-50%);}
+        .table-seat.bottom {bottom:2px; left:50%; transform:translateX(-50%) rotate(180deg);}
+        /* Las sillas de los lados son verticales: no quedan ocultas detrás del tablero. */
+        .table-seat.left, .table-seat.lt, .table-seat.lb {width:17px;height:32px;left:2px;border-radius:9px 5px 5px 9px;}
+        .table-seat.right, .table-seat.rt, .table-seat.rb {width:17px;height:32px;right:2px;border-radius:5px 9px 9px 5px;}
+        .table-seat.left,.table-seat.right {top:50%;transform:translateY(-50%);}
+        .table-seat.tl{top:2px;left:31%;transform:translateX(-50%)}
+        .table-seat.tr{top:2px;left:69%;transform:translateX(-50%)}
+        .table-seat.bl{bottom:2px;left:31%;transform:translateX(-50%) rotate(180deg)}
+        .table-seat.br{bottom:2px;left:69%;transform:translateX(-50%) rotate(180deg)}
+        .table-seat.lt,.table-seat.rt{top:29%;transform:translateY(-50%)}
+        .table-seat.lb,.table-seat.rb{top:71%;transform:translateY(-50%)}
+        /* Disposición: 2 sillas (arriba/abajo); 4 (+laterales); 6 (4 horizontales +2 laterales); 8 (4+4). */
+        .sesion-tiempo{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;color:#ffad62;font-size:12px;font-weight:800;margin-top:7px}
+        .sesion-tiempo strong{font-variant-numeric:tabular-nums}
+        .history-mesa-info{margin:0 0 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:11px 12px;border-radius:10px;background:rgba(255,122,0,.07);border:1px solid rgba(255,122,0,.14);font-size:12px;color:var(--text-muted)}
+        .history-mesa-info strong{color:var(--text-main);font-variant-numeric:tabular-nums}
+        .table-surface .mesa-numero {color:#fff; font-size:34px; line-height:1; font-weight:900;}
+        .mesa-figure.mesa-2 .mesa-numero{font-size:30px;}
+        .mesa-surface-label {font-size:10px; color:#d3c0b2; letter-spacing:.04em; text-transform:uppercase; font-weight:700;}
+        .mesa-surface-cap {font-size:11px; color:#ede1d5; font-weight:650;}
+        .mesa-badge {display:inline-flex; align-items:center; justify-content:center; font-size:11px; border-radius:999px; padding:5px 10px; font-weight:850; letter-spacing:.02em;}
+        .badge-libre{background:rgba(46,204,113,.13);color:#2ecc71;}
+        .badge-ocupada{background:rgba(231,76,60,.15);color:#ed7064;}
+        .badge-cuenta{background:rgba(245,191,59,.16);color:#ffd466;}
+        .mesa-mozo {display:block;margin:0; min-height:15px;font-size:11px; line-height:1.3; color:var(--text-muted);overflow-wrap:anywhere;}
+        .mesa-instruccion {font-size:11px; color:var(--salon-accent); min-height:14px;}
+        .salon-panel {background:var(--glass-bg, #191919); border:1px solid var(--glass-border); border-radius:17px; padding:21px; }
+        .salon-panel h2 {font-size:20px; margin:0;}
+        .panel-titleline {display:flex; align-items:center; gap:10px; justify-content:space-between; border-bottom:1px solid var(--glass-border); padding-bottom:14px; margin-bottom:15px;}
+        .panel-counter {font-size:12px; color:var(--salon-accent); font-weight:800; background:rgba(255,121,0,.12); padding:5px 10px; border-radius:999px;}
+        /* Mis mesas activas: información clara sin duplicar el cronómetro del mapa. */
+        .sesion-card {background:var(--input-bg, rgba(255,255,255,.035)); border:1px solid var(--glass-border); border-radius:13px; padding:0; display:flex;flex-direction:column; gap:0; margin:0; overflow:hidden;}
+        .sesion-card.pidiendo-cuenta {border-color:rgba(245,191,59,.5);background:rgba(245,191,59,.035);}
+        .sesion-card-top{padding:15px 15px 11px;}
+        .sesion-header {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+        .sesion-header strong {font-size:17px;line-height:1.2;}
+        .sesion-people {display:inline-flex;align-items:center;gap:5px;border-radius:999px;border:1px solid var(--glass-border);padding:5px 9px;color:var(--text-muted);font-size:11px;font-weight:750;white-space:nowrap;}
+        .sesion-bill {display:block;color:#ffd466;font-size:11px;font-weight:850;margin-top:10px;}
+        .sesion-meta {font-size:12px; color:var(--text-muted); line-height:1.35;}
+        .sesion-detail-grid {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:stretch;margin-top:13px;}
+        .sesion-opened, .sesion-pin-box {display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0;background:rgba(0,0,0,.15);border:1px solid var(--glass-border);border-radius:10px;padding:10px 11px;}
+        .sesion-opened span,.sesion-pin-box span {font-size:11px;color:var(--text-muted);}
+        .sesion-opened strong {font-size:12px;line-height:1.3;color:var(--text-main);font-weight:800;overflow-wrap:anywhere;}
+        .sesion-pin-box {min-width:97px;align-items:center;}
+        .sesion-pin {font-family:ui-monospace,monospace;font-size:22px;letter-spacing:3px;color:var(--salon-accent);font-weight:900;white-space:nowrap;line-height:1;}
+        .sesion-footer {display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--glass-border);padding:12px 15px 14px;}
+        .sesion-footer .action-btn {width:100%;padding:10px 7px;font-size:11px;white-space:normal;line-height:1.25;}
+        .action-btn { border:1px solid var(--glass-border); background:transparent;color:var(--text-main);border-radius:10px;padding:9px 12px;cursor:pointer;transition:transform .2s ease, background .2s ease, box-shadow .2s ease; font-family:inherit;font-size:12px;font-weight:800; }
+        .action-btn:hover {transform:translateY(-2px);box-shadow:0 6px 17px rgba(255,121,0,.16);border-color:rgba(255,121,0,.45);}
+        .action-btn-primary {background:var(--salon-accent); color:white; border-color:var(--salon-accent);}
+        .action-btn-warn{color:#f6c357;border-color:rgba(245,191,59,.35);}
+        .action-btn-danger{color:#f06a60;border-color:rgba(231,76,60,.35);}
+        .action-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+        .sesion-footer .btn-ancho{grid-column:1/-1;}
+        .pt-filas{display:grid;gap:8px;margin:14px 0;padding:14px 16px;border:1px solid var(--glass-border);border-radius:12px;background:rgba(255,255,255,.03);}
+        .pt-filas div{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:14px;color:var(--text-muted);}
+        .pt-filas b{color:var(--text-main);font-size:16px;}
+        .pt-filas .pt-total{border-top:1px solid var(--glass-border);padding-top:10px;margin-top:2px;}
+        .pt-filas .pt-total b{color:var(--primary-orange);font-size:20px;}
+        .pt-campo{display:grid;gap:6px;text-align:left;margin:0 0 12px;}
+        .pt-campo label{font-size:13px;font-weight:700;color:var(--text-main);}
+        .pt-campo input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid var(--glass-border);background:transparent;color:var(--text-main);font:inherit;font-size:15px;}
+        .pt-error{margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid rgba(231,76,60,.45);color:#f06a60;font-size:13px;line-height:1.45;text-align:left;}
+        .pt-aviso{margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,191,59,.4);color:#f6c357;font-size:13px;line-height:1.45;text-align:left;}
+        .alert-list {display:flex;flex-direction:column;gap:10px;}
+        .alert-item {display:flex;flex-direction:column;gap:8px; background:rgba(255,255,255,.025); border:1px solid var(--glass-border);border-left:3px solid var(--salon-accent);padding:12px;border-radius:10px;}
+        .alert-item.alert-cuenta{border-left-color:#f5bf3b;}
+        .alert-item.alert-listo{border-left-color:#2ecc71;}
+        .alert-item.alert-bebidas{border-left-color:#3fa9f5;}
+        .alert-item.alert-barra{border-left-color:#b777ff;}
+        .alert-item.alert-pin{border-left-color:#e74c3c;background:rgba(231,76,60,.08);border-color:rgba(231,76,60,.45);}
+        .alert-pin-valor{align-self:flex-start;font-size:30px;font-weight:900;letter-spacing:.35em;padding:6px 14px 6px 18px;border-radius:10px;border:1px solid rgba(231,76,60,.5);background:rgba(231,76,60,.12);color:var(--text-main);font-variant-numeric:tabular-nums;}
+        .reserva-box{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,122,0,.4);background:rgba(255,122,0,.08);font-size:13px;line-height:1.5}
+        .reserva-box label{display:flex;gap:10px;align-items:flex-start;font-weight:700;cursor:pointer;color:var(--text-main)}
+        .reserva-box input{width:18px;height:18px;margin-top:2px;accent-color:var(--primary-orange);flex:0 0 auto}
+        .modalidad-opciones{display:grid;gap:8px}
+        .modalidad-op{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;border:1px solid var(--glass-border);cursor:pointer;font-size:13px;line-height:1.45;color:var(--text-muted)}
+        .modalidad-op strong{display:block;color:var(--text-main);font-size:14px}
+        .modalidad-op input{width:18px;height:18px;margin-top:2px;accent-color:var(--primary-orange);flex:0 0 auto}
+        .modalidad-op:has(input:checked){border-color:var(--primary-orange);background:rgba(255,122,0,.1)}
+        .alert-item.alert-pendiente{border-left-color:#b777ff;}
+        /* Avisos para retirar/entregar: "Mesa N - Barra|Cocina|Bebidas" y debajo, bien resaltado, lo que hay que buscar. */
+        .alert-item.alert-retiro{gap:10px;padding:14px;border-left-width:5px;}
+        .alert-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+        .alert-item .alert-mesa{font-size:17px;font-weight:900;line-height:1.2;color:var(--text-main);}
+        .alert-tag{font-size:10.5px;font-weight:850;letter-spacing:.03em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-muted);}
+        .alert-retiro.alert-listo .alert-tag{background:rgba(46,204,113,.16);color:#2ecc71;}
+        .alert-retiro.alert-barra .alert-tag{background:rgba(183,119,255,.16);color:#c79bff;}
+        .alert-retiro.alert-bebidas .alert-tag{background:rgba(63,169,245,.16);color:#5db7f7;}
+        .alert-retiro-items{display:flex;flex-direction:column;gap:6px;}
+        .alert-retiro-linea{display:flex;align-items:baseline;gap:9px;padding:9px 11px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:15px;font-weight:800;color:var(--text-main);line-height:1.3;}
+        .alert-retiro-linea b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--salon-accent);}
+        .alert-retiro.alert-listo .alert-retiro-linea{border-color:rgba(46,204,113,.4);background:rgba(46,204,113,.08);}
+        .alert-retiro.alert-barra .alert-retiro-linea{border-color:rgba(183,119,255,.4);background:rgba(183,119,255,.08);}
+        .alert-retiro.alert-bebidas .alert-retiro-linea{border-color:rgba(63,169,245,.4);background:rgba(63,169,245,.08);}
+        .alert-retiro-quien{font-size:12px;color:var(--text-muted);}
+        .alert-item .action-btn.alert-entregado{width:100%;padding:11px 12px;font-size:13px;background:var(--salon-accent);border-color:var(--salon-accent);color:#fff;}
+        .alert-item .action-btn.alert-entregado:disabled{opacity:.6;cursor:wait;transform:none;box-shadow:none;}
+        body.light-mode .alert-retiro-linea{background:#fff;}
+        body.light-mode .badge-sobremesa,body.light-mode .sesion-bill.sobremesa{color:#1768a8;}
+        body.light-mode .alert-retiro.alert-listo .alert-tag{color:#16813f;}
+        body.light-mode .alert-retiro.alert-barra .alert-tag{color:#6b2fb0;}
+        body.light-mode .alert-retiro.alert-bebidas .alert-tag{color:#1768a8;}
+        .alert-item strong{font-size:13px;}
+        .alert-item p{color:var(--text-muted);font-size:12px;line-height:1.45;margin:0;}
+        .alert-empty {color:var(--text-muted);font-size:13px;line-height:1.5;margin:0;}
+        .salon-modal-box {width:min(650px,94vw)!important;max-width:94vw;}
+        .modal-history-head {display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:17px;}
+        .history-card{padding:14px;border:1px solid var(--glass-border);border-radius:13px;background:rgba(255,255,255,.025);margin-bottom:10px;}
+        .history-card-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:9px;}
+        .history-time{font-size:12px;color:var(--text-muted);}
+        .history-status{font-size:11px;font-weight:800;border:1px solid currentColor;border-radius:999px;padding:4px 9px;white-space:nowrap;}
+        .history-status.pendiente{color:#b777ff;} .history-status.proceso{color:#ff8800;} .history-status.listo{color:#2ecc71;} .history-status.entregado{color:#73b2ff;} .history-status.rechazada{color:#ed6458;}
+        .history-item{font-size:13px;line-height:1.5;display:flex;justify-content:space-between;gap:10px;margin-top:5px;}
+        .history-removed{font-size:11px; color:#ffb06a; margin:0 0 4px 16px;}
+        .history-total{font-size:12px;color:var(--text-muted);font-weight:700;text-align:right; margin-top:10px;}
+        .modal-note{font-size:12px;color:var(--text-muted);line-height:1.5;}
+        #toast-exito {background:#203a2b;color:#5ff2a2;border:1px solid rgba(46,204,113,.4);}
+        @media (max-width:1110px){.salon-columns{grid-template-columns:1fr;} .salon-column-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));} .salon-grid{grid-template-columns:repeat(auto-fit,minmax(185px,1fr));}}
+        @media (max-width:720px){.salon-shell{padding:0 15px 70px}.salon-column-side{display:flex;}.salon-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.salon-overview{grid-template-columns:repeat(2,minmax(0,1fr));}.mesa-card{padding:13px 8px}.mesa-figure{transform:scale(.9);margin:-5px auto}.top-bar{flex-wrap:wrap;gap:12px;}.salon-heading h2{font-size:23px;}}
+        @media (max-width:420px){.salon-grid{grid-template-columns:1fr 1fr;}.mesa-figure{transform:scale(.77); margin:-15px auto}.table-surface .mesa-numero{font-size:30px}.mesa-card{padding:9px 5px}.mesa-instruccion{font-size:10px}}
+        @media (prefers-reduced-motion:reduce){.mesa-card,.action-btn{transition:none!important;animation:none!important;}}
+
+
+        /* P40: Mozo adaptable sin alterar API, mapa de mesas ni estados de sesión. */
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { max-width:100%; overflow-x:clip; }
+        .salon-shell, .salon-columns, .salon-column-main, .salon-column-side { min-width:0; }
+        .top-bar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .sg-mozo-acciones { display:flex; align-items:center; justify-content:flex-end; gap:13px; flex-wrap:wrap; min-width:0; }
+        .sg-mozo-acciones #nombre-mozo { overflow-wrap:anywhere; }
+        .sg-mozo-acciones .sg-theme-host { order:0; }
+        .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+        .salon-columns > * { min-width:0; }
+        .map-legend { justify-content:center; }
+        .salon-grid { min-width:0; }
+        .salon-panel, .sesion-card, .mesa-card { min-width:0; }
+        #modal-abrir, #modal-pedidos, #modal-aviso, #modal-confirmar-cierre { padding:12px; overflow-y:auto; }
+        #modal-abrir > div, #modal-pedidos > div, #modal-aviso > div, #modal-confirmar-cierre > div { max-height:calc(100dvh - 24px); max-width:100%; overflow-y:auto; }
+        #modal-pedidos > div { width:min(650px,100%)!important; }
+        #modal-abrir > div { width:min(400px,100%)!important; }
+        @media (max-width:1110px) {
+            .salon-shell { padding-inline:clamp(12px,2.4vw,25px); }
+            .salon-columns { grid-template-columns:minmax(0,1fr); gap:18px; }
+            .salon-column-side { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:15px; }
+            .salon-grid { grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
+        }
+        @media (max-width:760px) {
+            .salon-column-side { grid-template-columns:minmax(0,1fr); }
+            .salon-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+            .salon-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+            .top-bar { gap:12px; align-items:flex-start; }
+            .salon-heading { align-items:flex-start; }
+            .salon-heading h2 { font-size:clamp(22px,5vw,28px); }
+            .salon-panel { padding:16px; }
+            .mesa-card { padding:11px 7px; }
+            .mesa-figure { transform:scale(.83); margin:-9px auto; }
+            .sg-mozo-acciones { gap:9px; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; }
+        }
+        @media (max-width:500px) {
+            .salon-shell { padding-inline:12px; padding-bottom:calc(45px + env(safe-area-inset-bottom)); }
+            .top-bar { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+            .top-bar .brand { min-width:0; }
+            .top-bar .logo-restaurante { font-size:24px!important; }
+            .sg-mozo-acciones { width:100%; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:center; justify-content:stretch; }
+            .sg-mozo-acciones #nombre-mozo { font-size:12px!important; text-align:center; }
+            .sg-mozo-acciones .sg-logout-cabecera { min-height:40px; padding:8px 10px!important; font-size:11px!important; }
+            .sg-mozo-acciones .sg-theme-popup { left:0; right:auto; }
+            .salon-heading { gap:12px; }
+            .map-legend { width:100%; justify-content:space-between; gap:4px; padding:9px 7px; }
+            .legend-chip { font-size:10px; gap:4px; }
+            .overview-tile { padding:10px 11px; }
+            .overview-tile b { font-size:21px; }
+            .overview-tile small { font-size:11px; }
+            .mesa-card { padding:10px 5px; gap:7px; }
+            .mesa-figure { transform:scale(.72); margin:-19px auto; }
+            .table-surface .mesa-numero { font-size:30px; }
+            .mesa-instruccion { font-size:10px; }
+            .sesion-detail-grid { grid-template-columns:minmax(0,1fr) auto; gap:6px; }
+            .sesion-opened,.sesion-pin-box { padding:9px 7px; }
+            .sesion-footer button { font-size:11px!important; padding:10px 6px!important; min-height:42px; }
+        }
+        @media (max-width:359px) {
+            .sg-mozo-acciones { grid-template-columns:auto minmax(0,1fr); }
+            .sg-mozo-acciones .sg-logout-cabecera { grid-column:1/-1; justify-self:end; }
+            .salon-grid { grid-template-columns:1fr; }
+            .mesa-figure { transform:scale(.95); margin:-3px auto; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .mesa-card.pidiendo-cuenta { animation:none!important; }
+        }
+
+        /* P40.1: avisos urgentes primero en celular; mapa primero en escritorio.
+           display:contents conserva nodos y eventos sin duplicar contenido. */
+        @media (max-width:720px) {
+            .salon-shell { display:flex; flex-direction:column; }
+            .salon-shell > .top-bar { order:0; }
+            .salon-columns, .salon-column-side { display:contents!important; }
+            .salon-column-side > section[aria-labelledby="avisos-title"] {
+                order:1; width:100%; margin:8px 0 17px;
+            }
+            /* Tareas prioritarias del mozo: avisos, accesos a mesas y luego plano. */
+            .salon-column-side > section[aria-labelledby="sesiones-title"] {
+                order:2; width:100%; margin:0 0 18px;
+            }
+            .salon-shell > .salon-heading { order:3; }
+            .salon-shell > .salon-overview { order:4; }
+            .salon-column-main { order:5; width:100%; }
+        }
+    </style>
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <script defer src="savage-modal-lock.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
+</head>
+<body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+    <div id="toast-exito">¡Mesa abierta con éxito!</div>
+
+
+    <div class="salon-shell">
+        <div class="top-bar">
+            <div class="brand sg-brand-lockup"><h1 class="logo-restaurante sg-brand-unified">SAVAGE<span>GRILL.</span></h1><div class="sg-role-unified">GESTIÓN DE SALÓN</div></div>
+            <div class="sg-mozo-acciones">
+                <a class="action-btn" href="cobros.html" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;font-weight:800;font-size:14px">Cobros</a>
+                <a class="action-btn" href="reservas.html" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;font-weight:800;font-size:14px">Reservas</a>
+                <div data-savage-theme="inline"></div>
+                <span id="nombre-mozo" style="font-size:14px;font-weight:800;">Cargando usuario...</span>
+                <button class="action-btn action-btn-danger sg-logout-unificado sg-logout-cabecera" type="button" onclick="cerrarSesion()"><svg class="sg-logout-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span>Cerrar sesión</span></button>
+            </div>
+        </div>
+        <div class="salon-heading"><div><h2>Mapa de Mesas</h2><p>Seleccioná una mesa libre para abrirla, o una de tus mesas para consultar los pedidos.</p></div><div class="map-legend" aria-label="Referencias de estado"><span class="legend-chip"><i class="legend-dot legend-free"></i>Libre</span><span class="legend-chip"><i class="legend-dot legend-busy"></i>Ocupada</span><span class="legend-chip"><i class="legend-dot legend-bill"></i>Pide cuenta</span><span class="legend-chip"><i class="legend-dot legend-sobre"></i>Sobre mesa</span></div></div>
+        <div class="salon-overview" id="salon-overview" aria-live="polite"><div class="overview-tile"><b>—</b><small>Mesas totales</small></div><div class="overview-tile"><b>—</b><small>Libres</small></div><div class="overview-tile"><b>—</b><small>Ocupadas</small></div><div class="overview-tile"><b>—</b><small>Avisos</small></div></div>
+        <div class="salon-columns">
+            <div class="salon-column-main"><div id="mapa-mesas" class="salon-grid" aria-live="polite"><p class="alert-empty">Cargando mapa...</p></div></div>
+            <aside class="salon-column-side">
+                <section class="salon-panel" aria-labelledby="avisos-title"><div class="panel-titleline"><h2 id="avisos-title">Avisos del salón</h2><span id="avisos-contador" class="panel-counter">0 avisos</span></div><div class="alert-list" id="avisos-salon" aria-live="polite"><p class="alert-empty">Consultando avisos...</p></div></section>
+                <section class="salon-panel" aria-labelledby="sesiones-title"><div class="panel-titleline"><h2 id="sesiones-title">Mis mesas activas</h2><span id="sesiones-contador" class="panel-counter">0</span></div><div id="mis-sesiones" style="display:flex;flex-direction:column;gap:12px"><p class="alert-empty">Consultando mesas...</p></div></section>
+            </aside>
+        </div>
+    </div>
+
+    <!-- MODAL ABRIR MESA -->
+    <div id="modal-abrir" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 2500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(400px, 90%); padding: 30px; position: relative; border: 1px solid var(--glass-border);">
+            <button type="button" onclick="cerrarModalAbrir()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+            
+            <h2 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 22px;">Abrir Mesa <span id="span-nro-mesa" style="color: var(--primary-orange);"></span></h2>
+            <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Capacidad de la mesa: <span id="span-capacidad" style="font-weight: bold; color: var(--text-main);"></span> comensales</p>
+
+            <form id="form-abrir-mesa" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="input-nro-mesa">
+                <input type="hidden" id="input-capacidad-max">
+
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="color: var(--text-main); font-size: 13px; font-weight: 700;">¿Cuántas personas se sientan?</label>
+                    <input type="number" id="input-comensales" min="1" required style="width: 100%; height: 52px; padding: 0 16px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--input-bg, #0b0b0b); color: var(--text-main); font-size: 15px; outline: none;">
+                </div>
+
+                <div id="reserva-box" class="reserva-box" style="display:none">
+                    <span id="reserva-texto"></span>
+                    <label><input type="checkbox" id="input-usar-reserva" checked><span>Son los clientes de esta reserva</span></label>
+                </div>
+
+                <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+                    <legend style="color: var(--text-main); font-size: 13px; font-weight: 700; padding:0; margin-bottom:6px;">¿Qué tipo de mesa es?</legend>
+                    <div class="modalidad-opciones">
+                        <label class="modalidad-op"><input type="radio" name="modalidad" value="Familiar" checked><span><strong>Familiar</strong>Un adulto pide por toda la mesa y no se cargan nombres. Pagan los padres, sin desglose por persona.</span></label>
+                        <label class="modalidad-op"><input type="radio" name="modalidad" value="Grupal"><span><strong>Grupo de amigos</strong>Cada uno se registra con su nombre antes de ver el menú y pide por su cuenta, sin esperar a los demás.</span></label>
+                    </div>
+                </fieldset>
+
+                <div id="error-abrir" class="message error" style="display: none; margin: 0;"></div>
+
+                <button type="submit" id="btn-abrir" style="padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-orange); color: white; margin-top: 10px; font-size: 15px;">
+                    Generar PIN y Abrir Mesa
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE SEGUIMIENTO DE COCINA -->
+    <div id="modal-pedidos" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center;">
+        <div class="product-card" class="salon-modal-box" style="width: min(650px, 94vw); padding: 28px; position: relative; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
+            <button type="button" onclick="cerrarModalPedidos()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+            <h2 style="margin: 0 0 20px 0; color: var(--text-main); font-size: 22px;">Mesa <span id="span-pedidos-mesa" style="color: var(--primary-orange);"></span> — Historial y seguimiento</h2>
+            <div class="history-mesa-info" id="info-tiempo-historial" aria-live="off"><span>Sesión abierta: <strong id="historial-fecha-apertura">—</strong></span><span>Tiempo transcurrido: <strong class="js-tiempo-mesa" id="historial-tiempo-abierto">—</strong></span><span>Comensales: <strong id="historial-comensales">—</strong></span></div>
+            <p class="modal-note" style="margin:0 0 14px">Incluye todas las comandas de la sesión actual, también las entregadas.</p>
+            <div id="lista-pedidos-mozo" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                <p style="color: var(--text-muted);">Cargando estado...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM ESTÉTICO PARA AVISOS GENERALES -->
+    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="color:var(--primary-orange);font-size:23px;font-weight:900;margin-bottom:10px">SAVAGE GRILL</div>
+            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso del Sistema</h2>
+            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;"></p>
+            <button onclick="cerrarModalAviso()" style="width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer;">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAR PAGO CON TARJETA (el mozo lleva el posnet y confirma el cobro) -->
+    <div id="modal-pago-tarjeta" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;" role="dialog" aria-modal="true" aria-labelledby="pt-titulo">
+        <div class="product-card" style="width: min(440px, 92%); max-height: 92vh; overflow-y: auto; padding: 30px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="color:var(--primary-orange);font-size:23px;font-weight:900;margin-bottom:6px">COBRO CON TARJETA</div>
+            <h2 id="pt-titulo" style="margin: 0 0 8px 0; color: var(--text-main); font-size: 22px;">Confirmar pago</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0; line-height: 1.5;">Cobrá con el posnet y confirmá solo cuando el pago ya fue aprobado.</p>
+            <div id="pt-cuerpo"></div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="cerrarModalPagoTarjeta()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">Cancelar</button>
+                <button type="button" id="pt-confirmar" onclick="confirmarPagoTarjeta()" style="flex: 1.3; padding: 12px; border-radius: 10px; font-weight: bold; background: var(--primary-orange); color: white; border: none; cursor: pointer;">Confirmar pago</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM PARA CONFIRMAR CIERRE DE MESA (T.12) -->
+    <div id="modal-confirmar-cierre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+        <div class="product-card" style="width: min(420px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+            <div style="color:var(--primary-orange);font-size:23px;font-weight:900;margin-bottom:10px">GESTIÓN DE MESA</div>
+            <h2 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Cerrar mesa</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">Confirmá que el cobro se haya realizado antes de cerrar la mesa. Esta acción registra el cierre y libera el lugar, pero no procesa el pago.</p>
+            <input type="hidden" id="input-sesion-a-cerrar">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="cerrarModalCierre()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer;">
+                    Cancelar
+                </button>
+                <button onclick="ejecutarCierreMesa()" style="flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; background: #e74c3c; color: white; border: none; cursor: pointer;">
+                    Confirmar cierre
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+
+        const API_MOZO = window.SAVAGE_CONFIG.API_BASE_URL;
+        let intervaloPedidosMozo = null;
+        let sesionesActivasCache = [];
+        let mesasCache = [];
+        let listosCache = [];
+        let historialSesionSeleccionada = null;
+        let cargandoTablero = false;
+        let avisosDatosValidos = true;
+        let bebidasCache = [];
+        let bebidasValidas = true;
+        const entregando = new Set();
+
+        const escapeHTML = (s) => String(s ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const num = x => Number(x) || 0;
+        const mesaNum = x => parseInt(x,10);
+        const formatearMonto = valor => Number(valor || 0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+        const moment = fecha => {if(!fecha) return 'Sin fecha'; const f=new Date(fecha); return Number.isNaN(f.getTime()) ? 'Sin fecha' : f.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+        // Todas las pantallas calculan el tiempo desde la misma fecha del servidor.
+        function duracionDesdeApertura(fecha){
+            if(!fecha)return 'Sin horario';
+            const inicio=new Date(fecha).getTime();
+            if(!Number.isFinite(inicio))return 'Sin horario';
+            const segundos=Math.max(0,Math.floor((Date.now()-inicio)/1000));
+            const h=Math.floor(segundos/3600),m=Math.floor((segundos%3600)/60),s=segundos%60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+        function actualizarTiemposMesas(){
+            document.querySelectorAll('.js-tiempo-mesa[data-apertura]').forEach(el=>{
+                el.textContent=duracionDesdeApertura(el.dataset.apertura);
+            });
+        }
+        function etiquetaTiempoMesa(fecha){
+            if(!fecha)return '<span class="sesion-tiempo">Tiempo abierta: no disponible</span>';
+            const segura=escapeHTML(fecha);
+            return `<span class="sesion-tiempo">Tiempo abierta: <strong class="js-tiempo-mesa" data-apertura="${segura}">${escapeHTML(duracionDesdeApertura(fecha))}</strong></span>`;
+        }
+        const enSobremesa = s => Boolean(s && s.en_sobremesa === true);
+        // una mesa que ya pagó deja de "pedir la cuenta": pasa a estar sobre mesa
+        const pideCuenta = s => Boolean(s && !enSobremesa(s) && (s.cuenta_solicitada === true || s.solicita_cuenta === true || s.fecha_hora_solicita_cuenta));
+        const usuarioNombre = () => {const u=obtenerUsuarioActual();return u?[u.nombre,u.apellido].filter(Boolean).join(' ').trim():'';};
+        const estadoTexto = s => ({pendiente:'Pendiente',proceso:'En preparación',listo:'Listo para servir',entregado:'Entregado',rechazada:'Rechazada'}[String(s||'').toLowerCase()] || String(s||'Sin estado'));
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuario = obtenerUsuarioActual();
+            if(!usuario || !['Mozo','Admin','Gerente'].includes(usuario.rol)) {
+                window.location.href='login.html'; return;
+            }
+            document.getElementById('nombre-mozo').textContent=`${usuario.rol}: ${usuarioNombre()}`;
+            document.getElementById('mapa-mesas').addEventListener('click',ev=>{
+                const elem=ev.target.closest('[data-action]'); if(!elem)return;
+                const n=Number(elem.dataset.mesa);
+                if(elem.dataset.action==='abrir'){
+                    const m=mesasCache.find(x=>Number(x.numero)===n); if(m)abrirModalMesa(m);
+                } else if(elem.dataset.action==='historial'){
+                    const s=sesionesActivasCache.find(x=>Number(x.numero_mesa)===n);if(s)verPedidosMesa(s.id,n);
+                }
+            });
+            document.getElementById('mis-sesiones').addEventListener('click',event=>{
+                const el=event.target.closest('[data-action]');if(!el)return;
+                const s=sesionesActivasCache.find(x=>Number(x.id)===Number(el.dataset.sesion));if(!s)return;
+                if(el.dataset.action==='historial')verPedidosMesa(s.id,s.numero_mesa);
+                if(el.dataset.action==='confirmar-pago'){abrirPagoTarjeta(s.id);return;}
+                if(el.dataset.action==='cobrar'){window.location.href=`cobros.html?sesion=${encodeURIComponent(s.id)}`;return;}
+                if(el.dataset.action==='cerrar')confirmarCierreMesa(s.id,s.numero_mesa);
+            });
+            document.getElementById('avisos-salon').addEventListener('click',event=>{
+                const el=event.target.closest('[data-action]');if(!el)return;
+                if(el.dataset.action==='bebidas'){entregarBebidas(el.dataset.uuid);return;}
+                if(el.dataset.action==='listo-entregado'){entregarListo(el.dataset.uuid,el.dataset.destino);return;}
+                if(el.dataset.action==='pin-visto'){marcarPinVisto(el.dataset.sesion);return;}
+                if(el.dataset.action==='confirmar-pago'){abrirPagoTarjeta(el.dataset.sesion);return;}
+                if(el.dataset.action==='cobrar'){window.location.href=`cobros.html?sesion=${encodeURIComponent(el.dataset.sesion)}`;return;}
+                const s=sesionesActivasCache.find(x=>Number(x.id)===Number(el.dataset.sesion));if(!s)return;
+                if(el.dataset.action==='historial')verPedidosMesa(s.id,s.numero_mesa);
+                if(el.dataset.action==='cerrar')confirmarCierreMesa(s.id,s.numero_mesa);
+            });
+            cargarTablero();
+            setInterval(cargarTablero,5000);
+            setInterval(actualizarTiemposMesas,1000);
+        });
+
+        function mostrarToast(mensaje) {
+            const toast=document.getElementById('toast-exito');toast.textContent=mensaje;toast.style.display='block';
+            clearTimeout(mostrarToast.timer);mostrarToast.timer=setTimeout(()=>toast.style.display='none',3500);
+        }
+        function mostrarAviso(titulo,mensaje){document.getElementById('aviso-titulo').textContent=titulo;document.getElementById('aviso-mensaje').textContent=mensaje;document.getElementById('modal-aviso').style.display='flex';}
+        function cerrarModalAviso(){document.getElementById('modal-aviso').style.display='none';}
+        function cerrarModalCierre(){document.getElementById('modal-confirmar-cierre').style.display='none';}
+        function cerrarModalAbrir(){document.getElementById('modal-abrir').style.display='none';}
+        function cerrarModalPedidos(){document.getElementById('modal-pedidos').style.display='none'; historialSesionSeleccionada=null;if(intervaloPedidosMozo){clearInterval(intervaloPedidosMozo);intervaloPedidosMozo=null;}}
+
+        async function apiMozo(ruta, options={}) {
+            const resp=await apiFetch(API_MOZO+ruta,options);
+            if(!resp.ok) throw new Error(`La API respondió HTTP ${resp.status}`);
+            return resp.json();
+        }
+        async function cargarTablero() {
+            if(cargandoTablero)return;
+            cargandoTablero=true;
+            try {
+                await cargarMisSesiones();
+                await Promise.all([cargarMesas(),cargarListos(),cargarBebidas()]);
+                renderizarAvisos();
+                renderizarResumen();
+            } finally {cargandoTablero=false;}
+        }
+        async function cargarMisSesiones(){
+            try {
+                const sesiones=await apiMozo('/sesiones-mesa?estado=Abierto');
+                if(!Array.isArray(sesiones))throw new Error('Formato inesperado');
+                sesionesActivasCache=sesiones;
+                const cont=document.getElementById('mis-sesiones');
+                document.getElementById('sesiones-contador').textContent=String(sesiones.length);
+                if(!sesiones.length){cont.innerHTML='<p class="alert-empty">No tenés mesas abiertas en este momento.</p>';return;}
+                cont.innerHTML=sesiones.map(s=>{
+                    const cuenta=pideCuenta(s);
+                    const sobre=enSobremesa(s);
+                    return `<article class="sesion-card ${cuenta?'pidiendo-cuenta':''} ${sobre?'sobremesa':''}">
+                        <div class="sesion-card-top">
+                            <div class="sesion-header"><strong>Mesa ${num(s.numero_mesa)}</strong><span class="sesion-people">${num(s.cantidad_comensales)} comensales</span></div>
+                            ${cuenta?'<span class="sesion-bill">SOLICITA LA CUENTA</span>':sobre?'<span class="sesion-bill sobremesa">SOBRE MESA · YA PAGÓ</span>':''}
+                            <div class="sesion-detail-grid">
+                                <div class="sesion-opened"><span>Fecha y hora de apertura</span><strong>${escapeHTML(moment(s.fecha_hora_apertura))}</strong></div>
+                                <div class="sesion-pin-box"><span>PIN cliente</span><strong class="sesion-pin">${escapeHTML(s.codigo_pin)}</strong></div>
+                            </div>
+                        </div>
+                        <div class="sesion-footer"><button type="button" class="action-btn action-btn-primary" data-action="historial" data-sesion="${num(s.id)}">Ver historial</button>${cuenta?(soloTarjeta(s)?`<button type="button" class="action-btn action-btn-warn" data-action="confirmar-pago" data-sesion="${num(s.id)}">Confirmar pago</button>`:`<button type="button" class="action-btn action-btn-warn" data-action="cobrar" data-sesion="${num(s.id)}">Ir a cobrar</button>`):''}<button type="button" class="action-btn action-btn-danger ${cuenta?'btn-ancho':''}" data-action="cerrar" data-sesion="${num(s.id)}" ${cuenta?'disabled title="Se habilita cuando se confirma el pago de la cuenta"':''}>${cuenta?'Cerrar mesa · se habilita al cobrar':'Gestionar cierre'}</button></div></article>`;
+                }).join('');
+            } catch(e) {
+                console.error('No fue posible cargar las sesiones:',e);
+                document.getElementById('mis-sesiones').innerHTML='<p class="alert-empty">No se pudo consultar las mesas activas. Reintentando...</p>';
+            }
+        }
+        function figuraMesa(m){
+            const capacidad=num(m.capacidad_maxima);
+            const seats= capacidad<=2 ? ['top','bottom'] : capacidad<=4 ? ['top','bottom','left','right'] : capacidad<=6 ? ['tl','tr','bl','br','left','right'] : ['tl','tr','bl','br','lt','lb','rt','rb'];
+            const figura=capacidad<=2?'mesa-2':capacidad<=4?'mesa-4':capacidad<=6?'mesa-6':'mesa-8';
+            return `<div class="mesa-figure ${figura}" aria-hidden="true">${seats.map(p=>`<i class="table-seat ${p}"></i>`).join('')}<div class="table-surface"><span class="mesa-surface-label">Mesa</span><strong class="mesa-numero">${num(m.numero)}</strong><span class="mesa-surface-cap">Máx. ${capacidad} personas</span></div></div>`;
+        }
+        async function cargarMesas(){
+            const cont=document.getElementById('mapa-mesas');
+            try {
+                const mesas=await apiMozo('/mesas');
+                if(!Array.isArray(mesas))throw new Error('Formato inesperado');
+                mesasCache=mesas;
+                if(!mesas.length){cont.innerHTML='<p class="alert-empty">No hay mesas registradas.</p>';return;}
+                cont.innerHTML=mesas.map(m=>{
+                    const sesion=sesionesActivasCache.find(s=>Number(s.numero_mesa)===Number(m.numero));
+                    const ocupada=Boolean(m.estado);
+                    const sobre=ocupada&&(m.en_sobremesa===true||enSobremesa(sesion));
+                    const cuenta=!sobre&&pideCuenta(sesion);
+                    const state=sobre?'sobremesa':cuenta?'pidiendo-cuenta':ocupada?'ocupada':'libre';
+                    const reservada=!ocupada&&m.reserva;
+                    const label=sobre?'SOBRE MESA':cuenta?'PIDE CUENTA':ocupada?'OCUPADA':reservada?'RESERVADA':'LIBRE';
+                    const badge=sobre?'badge-sobremesa':cuenta?'badge-cuenta':ocupada?'badge-ocupada':'badge-libre';
+                    const action=!ocupada?'abrir':sesion?'historial':null;
+                    const usuario=sesion?`Mozo: ${escapeHTML(usuarioNombre())}`:ocupada?'Mozo asignado: no disponible':'Sin mozo asignado';
+                    const extra=sesion?`${num(sesion.cantidad_comensales)} comensales · ${escapeHTML(usuarioNombre())}`:reservada?`${escapeHTML(m.reserva.apellido)} · ${escapeHTML(m.reserva.hora)} · ${num(m.reserva.cantidad_personas)} pers.`:usuario;
+                    const tag=action?'button':'div';
+                    return `<${tag} ${action?'type="button"':''} class="mesa-card ${state}" data-clickable="${Boolean(action)}" ${action?`data-action="${action}" data-mesa="${num(m.numero)}"`:''} aria-label="Mesa ${num(m.numero)}. ${label}. Capacidad ${num(m.capacidad_maxima)}. ${escapeHTML(extra)}" ${!action?'title="Solo podés abrir mesas libres o consultar tus propias mesas"':''}>
+                        ${figuraMesa(m)}<span class="mesa-badge ${badge}">${label}</span><span class="mesa-mozo">${extra}</span>${sesion?etiquetaTiempoMesa(sesion.fecha_hora_apertura):''}<span class="mesa-instruccion">${!ocupada?(reservada?'Abrir por la reserva':'Abrir mesa'):sesion?'Ver pedidos e historial':' '}</span>
+                    </${tag}>`;
+                }).join('');
+            } catch(e) {console.error('No se pudieron consultar mesas:',e);cont.innerHTML='<p class="alert-empty">Error al cargar las mesas. Reintentando...</p>';}
+        }
+        // Platos de cocina y tragos de la barra que ya están listos para retirar: solo se avisa, no se cambia ningún estado.
+        async function cargarListos(){
+            try {const data=await apiMozo('/mozo/listos');if(!Array.isArray(data))throw new Error('Formato inesperado');listosCache=data;avisosDatosValidos=true;}
+            catch(e){console.error('No se pudieron consultar los pedidos listos:',e);avisosDatosValidos=false;}
+        }
+        async function marcarPinVisto(idSesion){
+            try {
+                const resp=await apiFetch(`${API_MOZO}/sesiones-mesa/${encodeURIComponent(idSesion)}/pin/visto`,{method:'POST'});
+                if(!resp.ok){const err=await resp.json().catch(()=>({}));mostrarAviso('No se pudo confirmar',err.error||'Probá de nuevo en unos segundos.');return;}
+            } catch(e){mostrarAviso('No se pudo confirmar','Revisá la conexión e intentá de nuevo.');return;}
+            await cargarMesas();renderizarAvisos();
+        }
+        async function cargarBebidas(){
+            try {const data=await apiMozo('/mozo/bebidas');if(!Array.isArray(data))throw new Error('Formato inesperado');bebidasCache=data;bebidasValidas=true;}
+            catch(e){console.error('No se pudieron consultar las bebidas:',e);bebidasValidas=false;}
+        }
+        async function entregarBebidas(uuid){
+            if(!uuid||entregando.has(uuid))return;
+            entregando.add(uuid);renderizarAvisos();
+            try {
+                const resp=await apiFetch(`${API_MOZO}/pedidos/${encodeURIComponent(uuid)}/bebidas/entregar`,{method:'POST'});
+                if(!resp.ok){const err=await resp.json().catch(()=>({}));mostrarAviso('No se pudo confirmar la entrega',err.error||'Probá de nuevo en unos segundos.');}
+                else bebidasCache=bebidasCache.filter(b=>b.id_comanda_uuid!==uuid);
+            } catch(e){mostrarAviso('No se pudo confirmar la entrega','Revisá la conexión e intentá de nuevo.');}
+            finally {entregando.delete(uuid);await cargarBebidas();renderizarAvisos();}
+        }
+        // El mozo confirma que ya llevó a la mesa lo que salió de cocina o de la barra: recién ahí desaparece el aviso.
+        async function entregarListo(uuid,destino){
+            const clave=`${uuid}:${destino}`;
+            if(!uuid||!destino||entregando.has(clave))return;
+            entregando.add(clave);renderizarAvisos();
+            try {
+                const resp=await apiFetch(`${API_MOZO}/mozo/listos/${encodeURIComponent(uuid)}/entregado`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destino})});
+                if(!resp.ok){const err=await resp.json().catch(()=>({}));mostrarAviso('No se pudo confirmar la entrega',err.error||'Probá de nuevo en unos segundos.');}
+                else listosCache=listosCache.filter(l=>!(l.id_comanda_uuid===uuid&&l.destino===destino));
+            } catch(e){mostrarAviso('No se pudo confirmar la entrega','Revisá la conexión e intentá de nuevo.');}
+            finally {entregando.delete(clave);await cargarListos();renderizarAvisos();}
+        }
+        const METODO_TXT={efectivo:'efectivo',tarjeta:'tarjeta',mercadopago:'Mercado Pago'};
+        // ---- Cobro con tarjeta: el mozo lleva el posnet y confirma el pago desde la mesa ----
+        const partesDePlan=plan=>plan&&Array.isArray(plan.partes)?plan.partes:[];
+        // Solo tarjeta: el plan del cliente es todo con tarjeta (o, sin plan, dijo que quería pagar con tarjeta).
+        const soloTarjeta=s=>{const partes=partesDePlan(s&&s.plan_pago);return partes.length?partes.every(p=>p.metodo==='Tarjeta'):String((s&&s.metodo_pago_solicitado)||'').toLowerCase()==='tarjeta';};
+        const dineroPesos=v=>{const n=Number(v);return Number.isFinite(n)?'$'+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';};
+        let pagoTarjeta=null;
+        function leerPropinaPT(){
+            const caja=document.getElementById('pt-propina');if(!caja)return 0;
+            const txt=caja.value.trim();if(!txt)return 0;
+            const n=Number(txt.replace(/\./g,'').replace(',','.'));
+            return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;
+        }
+        function bloqueoPT(c){
+            if(!c)return 'No se pudo consultar la cuenta.';
+            if(!(Number(c.total)>0))return 'La mesa no tiene consumo para cobrar.';
+            if(!(Number(c.saldo)>0))return 'La cuenta ya está paga. Ya podés cerrar la mesa.';
+            if(!c.caja_abierta)return 'No hay una caja abierta. Un Admin o Gerente debe abrirla antes de cobrar.';
+            if(Number(c.pedidos_en_cocina)>0)return 'Todavía hay pedidos en preparación: se cobra cuando la mesa tenga todo lo pedido.';
+            return '';
+        }
+        function pintarPagoTarjeta(){
+            const e=pagoTarjeta;if(!e)return;
+            document.getElementById('pt-titulo').textContent=`Mesa ${e.mesa}`;
+            const cuerpo=document.getElementById('pt-cuerpo');const boton=document.getElementById('pt-confirmar');
+            if(e.cargando){cuerpo.innerHTML='<p style="color:var(--text-muted);font-size:14px;margin:18px 0">Consultando la cuenta...</p>';boton.disabled=true;return;}
+            const bloqueo=e.error||bloqueoPT(e.cuenta);
+            if(bloqueo){cuerpo.innerHTML=`<p class="pt-aviso" style="margin-top:16px" role="alert">${escapeHTML(bloqueo)}</p>`;boton.disabled=true;boton.style.opacity='.55';return;}
+            const prop=document.getElementById('pt-propina')?leerPropinaPT():e.propina;
+            const propTxt=document.getElementById('pt-propina')?document.getElementById('pt-propina').value:(e.propina>0?String(e.propina).replace('.',','):'');
+            const saldoQueda=Number(e.cuenta.saldo)-e.monto;
+            cuerpo.innerHTML=`<div class="pt-filas" aria-live="polite">
+                    <div><span>De la cuenta</span><b>${escapeHTML(dineroPesos(e.monto))}</b></div>
+                    <div class="pt-prop-fila" ${prop?'':'hidden'}><span>Propina</span><b>${escapeHTML(dineroPesos(prop||0))}</b></div>
+                    <div class="pt-total"><span>Total a pasar por el posnet</span><b>${escapeHTML(dineroPesos(e.monto+(prop||0)))}</b></div>
+                    ${saldoQueda>0.004?`<div><span>Saldo que queda en la cuenta</span><b>${escapeHTML(dineroPesos(saldoQueda))}</b></div>`:''}
+                </div>
+                <div class="pt-campo"><label for="pt-propina">Propina para el mozo (en pesos, opcional)</label>
+                    <input id="pt-propina" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${escapeHTML(propTxt)}"></div>
+                <p id="pt-error" class="pt-error" role="alert" hidden></p>`;
+            boton.disabled=false;boton.style.opacity='1';
+            document.getElementById('pt-propina').addEventListener('input',()=>{
+                pagoTarjeta.clave=null;
+                const p=leerPropinaPT();
+                const fila=document.querySelector('.pt-prop-fila');const tot=document.querySelector('.pt-total b');
+                const err=document.getElementById('pt-error');
+                if(p===null){err.textContent='La propina no es un número válido.';err.hidden=false;return;}
+                err.hidden=true;
+                fila.hidden=!(p>0);fila.querySelector('b').textContent=dineroPesos(p);
+                tot.textContent=dineroPesos(pagoTarjeta.monto+p);
+            });
+        }
+        async function abrirPagoTarjeta(idSesion){
+            const s=sesionesActivasCache.find(x=>Number(x.id)===Number(idSesion));if(!s)return;
+            pagoTarjeta={idSesion:Number(idSesion),mesa:num(s.numero_mesa),cargando:true,enviando:false,cuenta:null,monto:0,propina:0,clave:null,error:''};
+            document.getElementById('modal-pago-tarjeta').style.display='flex';
+            pintarPagoTarjeta();
+            const mia=pagoTarjeta;
+            try{
+                const resp=await apiFetch(`${API_MOZO}/sesiones-mesa/${encodeURIComponent(idSesion)}/cuenta`);
+                const c=await resp.json().catch(()=>({}));
+                if(mia!==pagoTarjeta)return;
+                if(!resp.ok)mia.error=c.error||'No se pudo consultar la cuenta.';
+                else{
+                    mia.cuenta=c;
+                    const saldo=Number(c.saldo)||0;
+                    const parte=partesDePlan(c.plan_pago||s.plan_pago).find(p=>p.metodo==='Tarjeta');
+                    const deseado=parte?Number(parte.monto):0;
+                    mia.monto=Math.round((deseado>0?Math.min(saldo,deseado):saldo)*100)/100;
+                    mia.propina=parte&&Number(parte.propina)>0?Number(parte.propina):0;
+                }
+            }catch(e){if(mia!==pagoTarjeta)return;mia.error='No se pudo consultar la cuenta. Revisá la conexión.';}
+            mia.cargando=false;pintarPagoTarjeta();
+        }
+        function cerrarModalPagoTarjeta(){document.getElementById('modal-pago-tarjeta').style.display='none';pagoTarjeta=null;}
+        function errorPT(msg){const err=document.getElementById('pt-error');if(err){err.textContent=msg;err.hidden=false;}else mostrarAviso('No se pudo confirmar el pago',msg);}
+        async function confirmarPagoTarjeta(){
+            const e=pagoTarjeta;if(!e||e.enviando||e.cargando||!e.cuenta||bloqueoPT(e.cuenta))return;
+            const propina=leerPropinaPT();
+            if(propina===null){errorPT('La propina no es un número válido.');return;}
+            e.enviando=true;
+            const boton=document.getElementById('pt-confirmar');boton.disabled=true;boton.textContent='Confirmando…';
+            try{
+                let factura=e.cuenta.factura;
+                if(!factura){
+                    // todavía no se fijó la cuenta: se prepara (congela el consumo) y recién ahí se cobra
+                    const rf=await apiFetch(`${API_MOZO}/sesiones-mesa/${encodeURIComponent(e.idSesion)}/factura`,{method:'POST',body:JSON.stringify({})});
+                    const df=await rf.json().catch(()=>({}));
+                    if(!rf.ok){errorPT(df.error||'No se pudo preparar la cuenta.');return;}
+                    factura=df.factura;
+                }
+                if(!e.clave)e.clave=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('t'+Date.now().toString(36)+Math.random().toString(36).slice(2,12));
+                const cuerpo={monto_cuenta:e.monto.toFixed(2),clave:e.clave};
+                if(propina>0)cuerpo.propina=propina.toFixed(2);
+                const resp=await apiFetch(`${API_MOZO}/facturas/${encodeURIComponent(factura.id)}/pagos/tarjeta`,{method:'POST',body:JSON.stringify(cuerpo)});
+                const datos=await resp.json().catch(()=>({}));
+                if(!resp.ok){errorPT(datos.error||'No se pudo registrar el pago.');return;}
+                const queda=Number(datos.cuenta&&datos.cuenta.saldo)||0;
+                cerrarModalPagoTarjeta();
+                mostrarToast(queda>0.004?`Pago con tarjeta registrado. Falta cobrar ${dineroPesos(queda)}: usá "Ir a cobrar".`:'Pago confirmado. Ya podés cerrar la mesa.');
+                await cargarTablero();
+            }catch(err){errorPT('No se pudo registrar el pago. Revisá la conexión e intentá de nuevo.');}
+            finally{
+                if(pagoTarjeta===e){e.enviando=false;boton.textContent='Confirmar pago';boton.disabled=false;}
+            }
+        }
+        function resumenItems(comanda){
+            const items=Array.isArray(comanda.items)?comanda.items:[];
+            return items.map(i=>`${num(i.cantidad)||1}× ${String(i.nombre||'Producto')}`).join(', ');
+        }
+        // Cómo piensan pagar: el plan que arma el cliente en "Pagar" (efectivo y tarjeta los cobra el mozo; Mercado Pago se cobra solo).
+        function detallePago(s,metodo){
+            const plan=s&&s.plan_pago; const partes=plan&&Array.isArray(plan.partes)?plan.partes:[];
+            let txt;
+            if(partes.length){
+                const nombres={Efectivo:'efectivo',Tarjeta:'tarjeta',MercadoPago:'Mercado Pago'};
+                const aire=partes.filter(p=>p.metodo!=='MercadoPago').map(p=>`${nombres[p.metodo]} ${dineroAviso(p.monto)}${Number(p.propina)>0?` + propina ${dineroAviso(p.propina)}`:''}`);
+                const mp=partes.filter(p=>p.metodo==='MercadoPago').map(p=>`Mercado Pago ${dineroAviso(p.monto)} (se cobra solo)`);
+                txt=`Plan de pago: ${[...aire,...mp].join(' + ')}.`;
+            } else txt=metodo?`Quiere pagar con ${metodo}.`:'Todavía no eligió cómo va a pagar.';
+            if(s&&s.gestor_pago&&s.gestor_pago.nombre) txt+=` ${s.gestor_pago.nombre} está gestionando el pago desde su celular.`;
+            return txt;
+        }
+        function dineroAviso(v){const n=Number(v);return Number.isFinite(n)?'$'+n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
+        function renderizarAvisos(){
+            const avisos=[];
+            for(const s of sesionesActivasCache){
+                if(pideCuenta(s)){const metodo=METODO_TXT[String(s.metodo_pago_solicitado||'').toLowerCase()];const tj=soloTarjeta(s);avisos.push({type:'cuenta',priority:0,mesa:num(s.numero_mesa),sesion:num(s.id),title:`Mesa ${num(s.numero_mesa)} pidió la cuenta`,detail:detallePago(s,metodo),action:tj?'confirmar-pago':'cobrar',text:tj?'Confirmar pago':'Ir a cobrar'});}
+            }
+            // Urgente: un comensal pidió un PIN nuevo. El PIN vigente es el de la mesa; hay que dárselo a quienes se quedan.
+            for(const m of mesasCache){
+                if(!m.aviso_pin)continue;
+                const sesion=sesionesActivasCache.find(s=>num(s.numero_mesa)===num(m.numero));
+                if(!sesion)continue;
+                avisos.push({type:'pin',priority:-1,mesa:num(m.numero),sesion:num(sesion.id),title:`Mesa ${num(m.numero)} · PIN nuevo`,detail:`${m.aviso_pin.solicitado_por||'Un comensal'} pidió un PIN nuevo. Dáselo a quienes se quedan en la mesa.`,pin:sesion.codigo_pin,action:'pin-visto',text:'Ya se lo di'});
+            }
+            // Para retirar: platos de cocina y tragos de la barra listos en tus mesas (solo aviso).
+            // El aviso queda hasta que el mozo toca "Entregado", aunque cocina o barra ya lo hayan despachado.
+            for(const l of listosCache){
+                const esBarra=l.destino==='barra';
+                const clave=`${l.id_comanda_uuid}:${l.destino}`;
+                avisos.push({type:esBarra?'barra':'listo',retiro:true,priority:1,mesa:num(l.numero_mesa),
+                    title:`Mesa ${num(l.numero_mesa)} - ${esBarra?'Barra':'Cocina'}`,
+                    tag:l.despachado?`Ya lo despachó ${esBarra?'la barra':'cocina'}`:`Listo para retirar`,
+                    items:Array.isArray(l.items)?l.items:[],quien:l.comensal?`Lo pidió ${l.comensal}`:'',
+                    action:'listo-entregado',uuid:l.id_comanda_uuid,destino:l.destino,text:entregando.has(clave)?'Confirmando…':'Entregado',disabled:entregando.has(clave)});
+            }
+            for(const b of bebidasCache){
+                avisos.push({type:'bebidas',retiro:true,priority:1,mesa:num(b.numero_mesa),
+                    title:`Mesa ${num(b.numero_mesa)} - Bebidas`,tag:'Listas para llevar',
+                    items:Array.isArray(b.items)?b.items:[],quien:b.comensal?`Las pidió ${b.comensal}`:'',
+                    action:'bebidas',uuid:b.id_comanda_uuid,text:entregando.has(b.id_comanda_uuid)?'Confirmando…':'Entregado',disabled:entregando.has(b.id_comanda_uuid)});
+            }
+            avisos.sort((a,b)=>a.priority-b.priority||a.mesa-b.mesa);
+            const c=document.getElementById('avisos-salon');
+            document.getElementById('avisos-contador').textContent=`${avisos.length} aviso${avisos.length===1?'':'s'}`;
+            if(!avisosDatosValidos||!bebidasValidas){c.innerHTML='<p class="alert-empty">No se pudieron actualizar los avisos. Verificá la conexión e intentá de nuevo en unos segundos.</p>';return;}
+            if(!avisos.length){c.innerHTML='<p class="alert-empty">Sin avisos pendientes en tus mesas. Se actualiza automáticamente.</p>';return;}
+            c.innerHTML=avisos.map(a=>{
+                const boton=a.action?`<div><button type="button" class="action-btn ${a.retiro?'alert-entregado':a.type==='cuenta'?'action-btn-warn':''}" data-action="${a.action}" data-sesion="${a.sesion??''}" data-uuid="${escapeHTML(a.uuid||'')}" data-destino="${escapeHTML(a.destino||'')}" ${a.disabled?'disabled':''}>${escapeHTML(a.text)}</button></div>`:'';
+                if(a.retiro){
+                    const lineas=a.items.map(i=>`<div class="alert-retiro-linea"><b>${num(i.cantidad)||1}×</b><span>${escapeHTML(String(i.nombre||'Producto'))}</span></div>`).join('');
+                    return `<div class="alert-item alert-retiro alert-${a.type}"><div class="alert-cab"><strong class="alert-mesa">${escapeHTML(a.title)}</strong><span class="alert-tag">${escapeHTML(a.tag)}</span></div><div class="alert-retiro-items">${lineas}</div>${a.quien?`<span class="alert-retiro-quien">${escapeHTML(a.quien)}</span>`:''}${boton}</div>`;
+                }
+                return `<div class="alert-item alert-${a.type}"><strong>${escapeHTML(a.title)}</strong><p>${escapeHTML(a.detail)}</p>${a.pin?`<div class="alert-pin-valor" aria-label="PIN nuevo de la mesa">${escapeHTML(a.pin)}</div>`:''}${boton}</div>`;
+            }).join('');
+        }
+        function renderizarResumen(){
+            const libres=mesasCache.filter(m=>!m.estado).length;
+            const pedidos=sesionesActivasCache.filter(pideCuenta).length;
+            const tarjetas=[['Mesas registradas',mesasCache.length,'total'],['Mesas libres',libres,'libre'],['Mesas ocupadas',mesasCache.length-libres,'ocupada'],['Solicitan cuenta',pedidos,'alerta']];
+            document.getElementById('salon-overview').innerHTML=tarjetas.map(([label,v,status])=>`<div class="overview-tile" data-status="${status}"><b>${v}</b><small>${label}</small></div>`).join('');
+        }
+        async function confirmarCierreMesa(idSesion,numeroMesa){
+            try {
+                // Cierre conservador: no permitir si no podemos comprobar comandas pendientes.
+                const comandas=await apiMozo(`/sesiones-mesa/${idSesion}/comandas`);
+                if(!Array.isArray(comandas))throw new Error('Respuesta no válida');
+                const hayPendientes=comandas.some(c=>['pendiente','proceso','listo'].includes(String(c.estado).toLowerCase()));
+                if(hayPendientes){mostrarAviso('Mesa con pedidos activos',`La mesa ${numeroMesa} todavía tiene comandas pendientes, en preparación o listas para entregar. Verificá el historial antes de cerrarla.`);return;}
+            } catch(e) {mostrarAviso('No se puede verificar el cierre','No pudimos comprobar el estado de los pedidos. Por seguridad, no vamos a cerrar esta mesa hasta restablecer la conexión.');return;}
+            document.getElementById('input-sesion-a-cerrar').value=idSesion;
+            document.getElementById('modal-confirmar-cierre').style.display='flex';
+        }
+        async function verPedidosMesa(idSesion,numeroMesa){
+            historialSesionSeleccionada=idSesion;
+            document.getElementById('span-pedidos-mesa').textContent=numeroMesa;
+            const sesion=sesionesActivasCache.find(s=>Number(s.id)===Number(idSesion));
+            document.getElementById('historial-fecha-apertura').textContent=sesion?moment(sesion.fecha_hora_apertura):'Sin fecha';
+            document.getElementById('historial-comensales').textContent=sesion?String(sesion.cantidad_comensales):'—';
+            const reloj=document.getElementById('historial-tiempo-abierto');
+            if(sesion?.fecha_hora_apertura)reloj.dataset.apertura=sesion.fecha_hora_apertura;
+            else delete reloj.dataset.apertura;
+            reloj.textContent=duracionDesdeApertura(sesion?.fecha_hora_apertura);
+            document.getElementById('modal-pedidos').style.display='flex';
+            document.getElementById('lista-pedidos-mozo').innerHTML='<p class="alert-empty">Consultando historial...</p>';
+            if(intervaloPedidosMozo)clearInterval(intervaloPedidosMozo);
+            await cargarPedidosModalEnVivo();
+            intervaloPedidosMozo=setInterval(cargarPedidosModalEnVivo,6000);
+        }
+        async function cargarPedidosModalEnVivo(){
+            if(!historialSesionSeleccionada || document.getElementById('modal-pedidos').style.display==='none')return;
+            const id=historialSesionSeleccionada;
+            const cont=document.getElementById('lista-pedidos-mozo');
+            try {
+                const result=await apiMozo(`/sesiones-mesa/${id}/comandas`);
+                if(historialSesionSeleccionada!==id)return;
+                if(!Array.isArray(result))throw new Error('Formato inesperado');
+                if(!result.length){cont.innerHTML='<p class="alert-empty">Todavía no se registraron pedidos para esta sesión.</p>';return;}
+                const historial=[...result].sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
+                cont.innerHTML=historial.map(c=>{
+                    const estado=String(c.estado||'').toLowerCase();
+                    const css=['pendiente','proceso','listo','entregado','rechazada'].includes(estado)?estado:'pendiente';
+                    const items=Array.isArray(c.items)?c.items:[];
+                    return `<article class="history-card"><div class="history-card-head"><span class="history-time">${escapeHTML(moment(c.timestamp))}</span><span class="history-status ${css}">${escapeHTML(estadoTexto(estado))}</span></div>
+                        ${items.map(i=>`<div><div class="history-item"><span>${num(i.cantidad)||1}× ${escapeHTML(i.nombre||'Producto')}</span>${i.sub_total!=null?`<span>$ ${formatearMonto(i.sub_total)}</span>`:''}</div>${Array.isArray(i.sin)&&i.sin.length?`<p class="history-removed">Sin: ${i.sin.map(escapeHTML).join(', ')}</p>`:''}</div>`).join('')}
+                        ${c.mensaje?`<p class="history-removed">${escapeHTML(c.mensaje)}</p>`:''}
+                        ${c.total!=null?`<div class="history-total">Total de la comanda: $ ${formatearMonto(c.total)}</div>`:''}
+                        </article>`;
+                }).join('');
+            }catch(e){console.error('No se pudo obtener el historial:',e);cont.innerHTML='<p class="alert-empty">No se pudo cargar el historial de esta mesa. Reintentando...</p>';}
+        }
+
+        let mesaConReserva = null;
+        function abrirModalMesa(mesa) {
+            document.getElementById('span-nro-mesa').textContent = mesa.numero;
+            document.getElementById('span-capacidad').textContent = mesa.capacidad_maxima;
+            document.getElementById('input-nro-mesa').value = mesa.numero;
+            document.getElementById('input-capacidad-max').value = mesa.capacidad_maxima;
+            document.getElementById('input-comensales').value = '';
+            document.getElementById('error-abrir').style.display = 'none';
+            const rb = document.getElementById('reserva-box');
+            mesaConReserva = mesa.reserva || null;
+            if (mesaConReserva) {
+                document.getElementById('reserva-texto').textContent = `Esta mesa está reservada por ${mesaConReserva.nombre} ${mesaConReserva.apellido} para las ${mesaConReserva.hora} (${mesaConReserva.turno}), ${mesaConReserva.cantidad_personas} ${mesaConReserva.cantidad_personas === 1 ? 'persona' : 'personas'}.${mesaConReserva.notas ? ' Nota: ' + mesaConReserva.notas : ''}`;
+                document.getElementById('input-usar-reserva').checked = true;
+                document.getElementById('input-comensales').value = Math.min(num(mesaConReserva.cantidad_personas), num(mesa.capacidad_maxima)) || '';
+                rb.style.display = 'flex';
+            } else { rb.style.display = 'none'; }
+            document.querySelector('input[name="modalidad"][value="Familiar"]').checked = true;
+            document.getElementById('modal-abrir').style.display = 'flex';
+            setTimeout(() => document.getElementById('input-comensales').focus(), 100);
+        }
+
+        document.getElementById('form-abrir-mesa').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nroMesa = parseInt(document.getElementById('input-nro-mesa').value);
+            const comensales = parseInt(document.getElementById('input-comensales').value);
+            const max = parseInt(document.getElementById('input-capacidad-max').value);
+            const errorBox = document.getElementById('error-abrir');
+            const btn = document.getElementById('btn-abrir');
+
+            if (comensales > max) {
+                errorBox.textContent = `Error: La mesa admite un máximo de ${max} comensales.`;
+                errorBox.style.display = 'flex';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+            errorBox.style.display = 'none';
+
+            try {
+                const cuerpo = { numero_mesa: nroMesa, cantidad_comensales: comensales, modalidad: document.querySelector('input[name="modalidad"]:checked').value };
+                if (mesaConReserva && document.getElementById('input-usar-reserva').checked) cuerpo.reserva_id = mesaConReserva.id;
+                const resp = await apiFetch(API_MOZO + '/sesiones-mesa/abrir', {
+                    method: 'POST',
+                    body: JSON.stringify(cuerpo)
+                });
+
+                if (resp.status === 201) {
+                    cerrarModalAbrir();
+                    cargarTablero(); 
+                    mostrarToast(`¡Mesa ${nroMesa} abierta con éxito!`);
+                } else {
+                    const err = await resp.json().catch(()=>({}));
+                    errorBox.textContent = err.error || "No se pudo abrir la mesa. Revisá los datos e intentá de nuevo.";
+                    errorBox.style.display = 'flex';
+                }
+            } catch (error) {
+                errorBox.textContent = "Error de red al intentar abrir la mesa.";
+                errorBox.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generar PIN y Abrir Mesa';
+            }
+        });
+
+        async function ejecutarCierreMesa() {
+            const idSesion = document.getElementById('input-sesion-a-cerrar').value;
+            cerrarModalCierre();
+            
+            try {
+                const resp = await apiFetch(`${API_MOZO}/sesiones-mesa/${idSesion}/cerrar`, {
+                    method: 'POST'
+                });
+                
+                if (resp.ok) {
+                    cargarTablero();
+                    mostrarToast("Mesa cerrada correctamente.");
+                } else {
+                    const err = await resp.json().catch(()=>({}));
+                    mostrarAviso("Error", err.error || "No se pudo cerrar la mesa.");
+                }
+            } catch (error) {
+                mostrarAviso("Error", "Fallo de conexión al servidor.");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesas del salón - Savage Grill</title>
+    <script>if (/[?&]embebido=1/.test(location.search) && window.parent !== window) document.documentElement.classList.add("sg-embebido");</script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <link rel="stylesheet" href="savage-ui.css">
+    <style>
+        .ms-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+        .ms-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 10px 14px; border: 1px solid var(--glass-border); border-radius: 16px; background: rgba(255,255,255,.03); text-align: center; min-width: 0; }
+        body.light-mode .ms-card { background: #fff; border-color: #d6dce5; }
+        .ms-card.libre { border-color: rgba(46,204,113,.35); }
+        .ms-card.ocupada { border-color: rgba(231,76,60,.35); }
+        .ms-card.reservada { border-color: rgba(255,122,0,.45); }
+        .ms-card.baja { opacity: .72; border-style: dashed; }
+        .ms-card.editando { box-shadow: 0 0 0 2px var(--primary-orange); }
+        .ms-datos { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; min-height: 17px; overflow-wrap: anywhere; }
+        .ms-acciones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; }
+        .ms-acciones .sg-btn { flex: 1 1 auto; justify-content: center; }
+        .ms-vista { display: grid; place-items: center; padding: 8px 0 4px; }
+        .ms-vista .mesa-figure { margin: 0 auto; }
+
+        /* Mesa con sillas: misma figura que usa el mozo en su mapa (2 sillas hasta 2 personas, 4 hasta 4, 6 hasta 6, 8 desde ahí). */
+        .mesa-figure { width: 100%; max-width: 196px; height: 178px; position: relative; display: flex; align-items: center; justify-content: center; margin: 2px auto 3px; }
+        .table-surface { position: relative; z-index: 2; box-sizing: border-box; width: 142px; height: 124px; flex: none; border: 3px solid #584638; box-shadow: 0 5px 9px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 14px rgba(0,0,0,.28); background: linear-gradient(142deg,#3a2d25,#201b1b 60%,#35251e); border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 9px 8px; }
+        .mesa-figure.mesa-2 .table-surface { width: 132px; height: 132px; border-radius: 50%; }
+        .mesa-figure.mesa-4 .table-surface { border-radius: 27px; }
+        .mesa-figure.mesa-6 .table-surface, .mesa-figure.mesa-8 .table-surface { border-radius: 35px; }
+        .ms-card.libre .table-surface { border-color: rgba(46,204,113,.65); }
+        .ms-card.ocupada .table-surface { border-color: rgba(231,76,60,.72); }
+        .ms-card.reservada .table-surface { border-color: rgba(255,122,0,.8); }
+        .table-seat { position: absolute; z-index: 1; display: block; box-sizing: border-box; width: 32px; height: 17px; background: linear-gradient(180deg,#624b3c,#352a23); border: 2px solid #99745b; border-radius: 9px 9px 5px 5px; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+        .table-seat.top { top: 2px; left: 50%; transform: translateX(-50%); }
+        .table-seat.bottom { bottom: 2px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+        .table-seat.left, .table-seat.lt, .table-seat.lb { width: 17px; height: 32px; left: 2px; border-radius: 9px 5px 5px 9px; }
+        .table-seat.right, .table-seat.rt, .table-seat.rb { width: 17px; height: 32px; right: 2px; border-radius: 5px 9px 9px 5px; }
+        .table-seat.left, .table-seat.right { top: 50%; transform: translateY(-50%); }
+        .table-seat.tl { top: 2px; left: 31%; transform: translateX(-50%); }
+        .table-seat.tr { top: 2px; left: 69%; transform: translateX(-50%); }
+        .table-seat.bl { bottom: 2px; left: 31%; transform: translateX(-50%) rotate(180deg); }
+        .table-seat.br { bottom: 2px; left: 69%; transform: translateX(-50%) rotate(180deg); }
+        .table-seat.lt, .table-seat.rt { top: 29%; transform: translateY(-50%); }
+        .table-seat.lb, .table-seat.rb { top: 71%; transform: translateY(-50%); }
+        .table-surface .mesa-numero { color: #fff; font-size: 34px; line-height: 1; font-weight: 900; }
+        .mesa-figure.mesa-2 .mesa-numero { font-size: 30px; }
+        .mesa-surface-label { font-size: 10px; color: #d3c0b2; letter-spacing: .04em; text-transform: uppercase; font-weight: 700; }
+        .mesa-surface-cap { font-size: 11px; color: #ede1d5; font-weight: 650; }
+
+        .ms-prev-nota { text-align: center; font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
+        @media (max-width: 720px) { .ms-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .ms-card { padding: 8px 6px 12px; } .mesa-figure { transform: scale(.88); margin: -6px auto; } .ms-acciones .sg-btn { padding-left: 8px; padding-right: 8px; } }
+        @media (max-width: 340px) { .ms-grilla { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body class="sg-body" style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+
+    <header class="sg-top">
+        <div class="sg-top-izq">
+            <a id="sg-volver" class="sg-btn chico" href="login.html"><span data-ico="volver"></span><span>Volver a mi panel</span></a>
+        </div>
+        <div class="sg-top-centro">
+            <h1 class="logo-restaurante sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+            <div class="sg-role-unified">MESAS DEL SALÓN</div>
+        </div>
+        <div class="sg-top-der">
+            <div data-savage-theme="inline"></div>
+            <button id="sg-salir" type="button" class="sg-logout-unificado"><span data-ico="salir"></span><span>Cerrar sesión</span></button>
+        </div>
+    </header>
+
+    <main class="sg-page">
+        <div class="sg-grid lado">
+            <!-- ============ FORMULARIO ============ -->
+            <div class="sg-col">
+                <div class="sg-box" id="ms-form-box">
+                    <div class="sg-box-cab"><h2 id="ms-form-titulo">Nueva mesa</h2></div>
+                    <p class="sg-nota" id="ms-form-nota">El número identifica a la mesa para el mozo y para el cliente, por eso no puede repetirse. La cantidad de sillas se dibuja según la capacidad.</p>
+                    <div class="ms-vista" id="ms-previa" aria-hidden="true"></div>
+                    <p class="ms-prev-nota" id="ms-previa-nota"></p>
+                    <form id="ms-form" novalidate autocomplete="off">
+                        <div class="sg-fila" style="margin-bottom:14px">
+                            <div class="sg-campo"><label for="ms-numero">Número de mesa</label><input id="ms-numero" class="sg-input" type="number" min="1" max="999" inputmode="numeric" required></div>
+                            <div class="sg-campo"><label for="ms-cap">Capacidad (personas)</label><input id="ms-cap" class="sg-input" type="number" min="1" max="20" inputmode="numeric" required></div>
+                        </div>
+                        <div id="ms-error" class="sg-notice mal" role="alert" hidden></div>
+                        <div class="sg-botones" style="margin-top:6px">
+                            <button type="submit" id="ms-guardar" class="sg-btn principal">Crear mesa</button>
+                            <button type="button" id="ms-descartar" class="sg-btn" hidden>Cancelar edición</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ============ LISTA ============ -->
+            <div class="sg-col">
+                <div class="sg-box">
+                    <div class="sg-box-cab"><h2>Mesas</h2><span id="ms-cont" class="sg-badge neutro">0</span></div>
+                    <div class="sg-segmentos" id="ms-filtro" style="margin-bottom:14px" role="group" aria-label="Mostrar">
+                        <button type="button" class="sg-chip activo" data-f="activas">Activas</button>
+                        <button type="button" class="sg-chip" data-f="bajas">Dadas de baja</button>
+                    </div>
+                    <div id="ms-lista" aria-live="polite"><div class="sg-vacio"><span class="sg-giro"></span> Cargando mesas…</div></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="savage-ui.js"></script>
+    <script>
+    (function () {
+        'use strict';
+        if (!SG.exigirRol(['Admin', 'Gerente'])) return;
+        SG.iniciarCabecera();
+        const { $, esc } = SG;
+        const CAP_MAX = 20;
+        let mesas = [];
+        let filtro = 'activas';
+        let editando = null;
+
+        /* Misma disposición de sillas que el mapa del mozo. */
+        function figura(numero, capacidad) {
+            const cap = Number(capacidad) || 0;
+            const sillas = cap <= 2 ? ['top', 'bottom'] : cap <= 4 ? ['top', 'bottom', 'left', 'right'] : cap <= 6 ? ['tl', 'tr', 'bl', 'br', 'left', 'right'] : ['tl', 'tr', 'bl', 'br', 'lt', 'lb', 'rt', 'rb'];
+            const clase = cap <= 2 ? 'mesa-2' : cap <= 4 ? 'mesa-4' : cap <= 6 ? 'mesa-6' : 'mesa-8';
+            return `<div class="mesa-figure ${clase}" aria-hidden="true">${sillas.map((p) => `<i class="table-seat ${p}"></i>`).join('')}<div class="table-surface"><span class="mesa-surface-label">Mesa</span><strong class="mesa-numero">${esc(numero || '–')}</strong><span class="mesa-surface-cap">Máx. ${esc(cap || '–')} personas</span></div></div>`;
+        }
+        function previa() {
+            const n = Number($('#ms-numero').value) || '';
+            const c = Number($('#ms-cap').value) || 0;
+            $('#ms-previa').innerHTML = figura(n, c > CAP_MAX ? CAP_MAX : c);
+            $('#ms-previa-nota').textContent = c > 8 ? 'La figura muestra hasta 8 sillas; la capacidad real es la que cargues.' : '';
+        }
+        const mostrarError = (t) => { const e = $('#ms-error'); e.hidden = !t; e.textContent = t || ''; };
+        const proximoNumero = () => mesas.reduce((m, x) => Math.max(m, Number(x.numero) || 0), 0) + 1;
+
+        function estadoDe(m) {
+            if (!m.activa) return { clase: 'baja', texto: 'Dada de baja', badge: 'neutro' };
+            if (m.estado) return { clase: 'ocupada', texto: 'Ocupada ahora', badge: 'mal' };
+            if (m.reserva) return { clase: 'reservada', texto: 'Reservada', badge: 'naranja' };
+            return { clase: 'libre', texto: 'Libre', badge: 'ok' };
+        }
+        function pintar() {
+            const activas = mesas.filter((m) => m.activa);
+            const bajas = mesas.filter((m) => !m.activa);
+            const lista = (filtro === 'activas' ? activas : bajas).slice().sort((a, b) => a.numero - b.numero);
+            $('#ms-cont').textContent = String(lista.length);
+            $('#ms-filtro [data-f="activas"]').textContent = `Activas (${activas.length})`;
+            $('#ms-filtro [data-f="bajas"]').textContent = `Dadas de baja (${bajas.length})`;
+            const cont = $('#ms-lista');
+            if (!lista.length) {
+                cont.innerHTML = `<div class="sg-vacio">${filtro === 'activas' ? 'Todavía no hay mesas activas. Creá la primera con el formulario.' : 'No hay mesas dadas de baja.'}</div>`;
+                return;
+            }
+            cont.innerHTML = `<div class="ms-grilla">${lista.map((m) => {
+                const e = estadoDe(m);
+                const dato = !m.activa ? 'Fuera de servicio'
+                    : m.estado ? `${m.mozo_nombre ? 'Mozo: ' + esc(m.mozo_nombre) : 'Con una sesión abierta'}`
+                    : m.reserva ? `${esc(m.reserva.apellido)} · ${esc(m.reserva.hora)} · ${esc(m.reserva.cantidad_personas)} pers.` : 'Lista para usar';
+                const baja = m.activa
+                    ? `<button type="button" class="sg-btn chico peligro" data-act="baja" data-id="${m.id}" ${m.estado ? 'disabled title="No se puede dar de baja una mesa ocupada"' : ''}>Dar de baja</button>`
+                    : `<button type="button" class="sg-btn chico principal" data-act="reactivar" data-id="${m.id}">Reactivar</button>`;
+                const editar = m.activa ? `<button type="button" class="sg-btn chico" data-act="editar" data-id="${m.id}">Editar</button>` : '';
+                return `<article class="ms-card ${e.clase} ${editando && editando.id === m.id ? 'editando' : ''}" aria-label="Mesa ${esc(m.numero)}, capacidad ${esc(m.capacidad_maxima)}, ${esc(e.texto)}">
+                    ${figura(m.numero, m.capacidad_maxima)}
+                    <span class="sg-badge ${e.badge}">${esc(e.texto)}</span>
+                    <span class="ms-datos">${dato}</span>
+                    <div class="ms-acciones">${editar}${baja}</div></article>`;
+            }).join('')}</div>`;
+        }
+
+        async function cargar() {
+            const r = await SG.api('/mesas?incluir_inactivas=true', { auth: true });
+            if (!r.ok || !Array.isArray(r.data)) {
+                if (!mesas.length) $('#ms-lista').innerHTML = `<div class="sg-notice mal">${esc(r.error || 'No se pudieron consultar las mesas.')}</div>`;
+                return;
+            }
+            mesas = r.data; pintar();
+            if (!editando && !$('#ms-numero').value) { $('#ms-numero').value = proximoNumero(); previa(); }
+        }
+
+        function limpiarForm() {
+            editando = null; mostrarError('');
+            $('#ms-form').reset();
+            $('#ms-numero').value = proximoNumero(); $('#ms-cap').value = 4;
+            $('#ms-numero').disabled = false;
+            $('#ms-form-titulo').textContent = 'Nueva mesa';
+            $('#ms-form-nota').textContent = 'El número identifica a la mesa para el mozo y para el cliente, por eso no puede repetirse. La cantidad de sillas se dibuja según la capacidad.';
+            $('#ms-guardar').textContent = 'Crear mesa'; $('#ms-descartar').hidden = true;
+            previa(); pintar();
+        }
+        function empezarEdicion(m) {
+            editando = m; mostrarError('');
+            $('#ms-numero').value = m.numero; $('#ms-cap').value = m.capacidad_maxima;
+            $('#ms-numero').disabled = !!m.estado;
+            $('#ms-form-titulo').textContent = `Editar mesa ${m.numero}`;
+            $('#ms-form-nota').textContent = m.estado
+                ? 'La mesa está ocupada: podés cambiar la capacidad, pero no el número hasta que se cierre su sesión.'
+                : 'Cambiá el número o la capacidad. Se guardan solo los datos que modifiques.';
+            $('#ms-guardar').textContent = 'Guardar cambios'; $('#ms-descartar').hidden = false;
+            previa(); pintar();
+            $('#ms-form-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        $('#ms-numero').addEventListener('input', previa);
+        $('#ms-cap').addEventListener('input', previa);
+        $('#ms-descartar').addEventListener('click', limpiarForm);
+        $('#ms-filtro').addEventListener('click', (ev) => {
+            const b = ev.target.closest('[data-f]'); if (!b) return;
+            filtro = b.dataset.f;
+            SG.$$('#ms-filtro [data-f]').forEach((x) => x.classList.toggle('activo', x === b));
+            pintar();
+        });
+
+        $('#ms-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault(); mostrarError('');
+            const numero = Number($('#ms-numero').value), cap = Number($('#ms-cap').value);
+            if (!Number.isInteger(numero) || numero < 1) { mostrarError('El número de mesa tiene que ser un entero mayor a 0.'); return; }
+            if (!Number.isInteger(cap) || cap < 1) { mostrarError('La capacidad tiene que ser de al menos 1 persona.'); return; }
+            if (cap > CAP_MAX) { mostrarError(`La capacidad no puede superar ${CAP_MAX} personas.`); return; }
+            const repetida = mesas.find((m) => m.numero === numero && (!editando || m.id !== editando.id));
+            if (repetida) { mostrarError(repetida.activa ? `Ya existe la mesa ${numero}.` : `La mesa ${numero} está dada de baja. Reactivala desde la pestaña «Dadas de baja» en vez de crearla de nuevo.`); return; }
+            await SG.conEspera($('#ms-guardar'), async () => {
+                let r;
+                if (editando) {
+                    const cambios = {};
+                    if (numero !== editando.numero) cambios.numero = numero;
+                    if (cap !== editando.capacidad_maxima) cambios.capacidad_maxima = cap;
+                    if (!Object.keys(cambios).length) { mostrarError('No hiciste ningún cambio.'); return; }
+                    r = await SG.api(`/mesas/${editando.id}`, { method: 'PATCH', body: cambios, auth: true });
+                } else {
+                    r = await SG.api('/mesas', { method: 'POST', body: { numero, capacidad_maxima: cap }, auth: true });
+                }
+                if (!r.ok) { mostrarError(r.error || 'No se pudo guardar la mesa.'); return; }
+                SG.ok(editando ? `Mesa ${numero} actualizada.` : `Mesa ${numero} creada.`);
+                const eraEdicion = !!editando;
+                editando = null; mesas = []; await cargar(); limpiarForm();
+                if (!eraEdicion) filtro = 'activas';
+            });
+        });
+
+        $('#ms-lista').addEventListener('click', async (ev) => {
+            const b = ev.target.closest('[data-act]'); if (!b || b.disabled) return;
+            const m = mesas.find((x) => String(x.id) === b.dataset.id); if (!m) return;
+            if (b.dataset.act === 'editar') { empezarEdicion(m); return; }
+            if (b.dataset.act === 'baja') {
+                const ok = await SG.dialogo({ titulo: `Dar de baja la mesa ${m.numero}`, icono: 'alerta', peligro: true, aceptar: 'Dar de baja', cancelar: 'No, volver',
+                    texto: 'La mesa deja de aparecer en el salón y no se puede abrir. Se conserva todo su historial y la podés reactivar cuando quieras.' });
+                if (!ok) return;
+                await SG.conEspera(b, async () => {
+                    const r = await SG.api(`/mesas/${m.id}`, { method: 'DELETE', auth: true });
+                    if (!r.ok) { SG.mal(r.error || 'No se pudo dar de baja la mesa.'); return; }
+                    SG.ok(`Mesa ${m.numero} dada de baja.`);
+                    if (editando && editando.id === m.id) limpiarForm();
+                    await cargar();
+                });
+                return;
+            }
+            if (b.dataset.act === 'reactivar') {
+                await SG.conEspera(b, async () => {
+                    const r = await SG.api(`/mesas/${m.id}`, { method: 'PATCH', body: { activa: true }, auth: true });
+                    if (!r.ok) { SG.mal(r.error || 'No se pudo reactivar la mesa.'); return; }
+                    SG.ok(`Mesa ${m.numero} reactivada.`);
+                    await cargar();
+                });
+            }
+        });
+
+        (async function iniciar() {
+            $('#ms-cap').value = 4; previa();
+            await cargar();
+            limpiarForm();
+            SG.sondeo(async () => { if (!document.activeElement || !['INPUT'].includes(document.activeElement.tagName)) await cargar(); }, 15000);
+        })();
+    })();
+    </script>
+</body>
+</html>

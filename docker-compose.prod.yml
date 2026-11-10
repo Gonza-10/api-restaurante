@@ -1,0 +1,148 @@
+# Stack completo de Savage Grill para la VM de Azure (el docker-compose.yml de siempre sigue siendo solo RabbitMQ y Redis para la PC).
+# Uso (en la VM, en la carpeta del proyecto, con el .env de produccion al lado):
+#     docker compose -f docker-compose.prod.yml up -d --build
+name: savagegrill
+
+x-api: &api
+  build: .
+  image: savagegrill-api:latest
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    # Los nombres de host son los de los servicios de este archivo (red interna de Docker).
+    DB_HOST: sqlserver
+    REDIS_HOST: redis
+    RABBIT_HOST: rabbitmq
+  volumes:
+    - media:/app/media
+    - tickets:/app/tickets
+    - facturas:/app/Facturas
+  depends_on: &api_depende
+    sql_init:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  # ---- Entrada: HTTPS y reparto de pedidos. Unico servicio abierto a internet (80 y 443) ----
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/frontend:ro
+      - media:/srv/media:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ---- Aplicacion ----
+  api:
+    <<: *api
+    healthcheck:
+      # Host 127.0.0.1 tiene que estar en ALLOWED_HOSTS (ver .env.produccion.example)
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/catalogo/version', timeout=4)"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *api
+    command: ["python", "restaurante/worker.py"]
+
+  worker_pdf:
+    <<: *api
+    command: ["python", "restaurante/worker_pdf.py"]
+
+  worker_cotizacion:
+    <<: *api
+    command: ["python", "restaurante/worker_cotizacion.py"]
+
+  worker_mercadopago:
+    <<: *api
+    command: ["python", "restaurante/worker_mercadopago.py"]
+
+  # ---- Infraestructura (ninguna sale a internet) ----
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:1433:1433"   # solo desde la propia VM: SSMS entra por tunel SSH
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "S=$$(ls /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd 2>/dev/null | head -1); $$S -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Tarea de una sola vez: crea la base y corre los scripts SQL. Termina y queda en "Exited (0)": es lo esperado.
+  sql_init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: "no"
+    user: root
+    environment:
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD}
+    entrypoint: ["/bin/bash", "/init/init_db.sh"]
+    volumes:
+      - ./sql:/sql:ro
+      - ./deploy/init_db.sh:/init/init_db.sh:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    ports:
+      - "127.0.0.1:15672:15672"   # panel de administracion, solo desde la VM (tunel SSH)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF: el estado de las comandas en cocina vive solo en Redis; si el contenedor se reinicia no se pierde
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  sqldata:
+  rabbitmq_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+  media:
+  tickets:
+  facturas:

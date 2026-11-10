@@ -1,0 +1,5 @@
+# Los archivos que se ejecutan en Linux (VM, contenedores) tienen que tener fin de linea LF aunque se editen en Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+docker-compose*.yml text eol=lf

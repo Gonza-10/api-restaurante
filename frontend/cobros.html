@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cobros del salón - Savage Grill</title>
+    <script>if (/[?&]embebido=1/.test(location.search) && window.parent !== window) document.documentElement.classList.add("sg-embebido");</script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <script defer src="savage-theme.js"></script>
+    <link rel="stylesheet" href="savage-brand-unificado.css">
+    <link rel="stylesheet" href="savage-logout.css">
+    <link rel="stylesheet" href="savage-modal-lock.css">
+    <link rel="stylesheet" href="savage-ui.css">
+</head>
+<body class="sg-body" style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
+
+    <header class="sg-top">
+        <div class="sg-top-izq">
+            <a id="sg-volver" class="sg-btn chico" href="login.html"><span data-ico="volver"></span><span>Volver a mi panel</span></a>
+        </div>
+        <div class="sg-top-centro">
+            <h1 class="logo-restaurante sg-brand-unified">SAVAGE<span>GRILL.</span></h1>
+            <div class="sg-role-unified">COBROS DEL SALÓN</div>
+        </div>
+        <div class="sg-top-der">
+            <div data-savage-theme="inline"></div>
+            <button id="sg-salir" type="button" class="sg-logout-unificado"><span data-ico="salir"></span><span>Cerrar sesión</span></button>
+        </div>
+    </header>
+
+    <main class="sg-page">
+        <div class="sg-tabs" id="tabs" role="tablist" aria-label="Secciones de cobros"></div>
+
+        <!-- ===================== MESAS Y COBROS ===================== -->
+        <section id="p-mesas" role="tabpanel" aria-label="Mesas y cobros">
+            <div class="sg-grid lado">
+                <div class="sg-col">
+                    <div class="sg-box">
+                        <div class="sg-box-cab"><h2>Mesas abiertas</h2><span id="m-cont" class="sg-badge neutro">0</span></div>
+                        <p class="sg-nota">Elegí una mesa para ver su cuenta y cobrarla. Las que pidieron la cuenta aparecen primero.</p>
+                        <div class="sg-campo">
+                            <label for="m-buscar" class="sg-sr">Buscar mesa</label>
+                            <input id="m-buscar" class="sg-input" type="search" placeholder="Buscar por mesa, sesión o mozo" autocomplete="off">
+                        </div>
+                        <div id="m-lista" class="sg-lista" style="margin-top:14px" aria-live="polite"></div>
+                    </div>
+                </div>
+                <div class="sg-col" id="m-detalle" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- ===================== PROPINAS ===================== -->
+        <section id="p-propinas" role="tabpanel" aria-label="Propinas" hidden>
+            <div class="sg-box">
+                <div class="sg-box-cab"><h2>Propinas</h2></div>
+                <p class="sg-nota" id="pr-nota"></p>
+                <div class="sg-segmentos" id="pr-rapido" style="margin-bottom:16px"></div>
+                <div class="sg-fila cuatro" style="align-items:end">
+                    <div class="sg-campo"><label for="pr-desde">Desde</label><input id="pr-desde" class="sg-input" type="date"></div>
+                    <div class="sg-campo"><label for="pr-hasta">Hasta</label><input id="pr-hasta" class="sg-input" type="date"></div>
+                    <div class="sg-campo"><button id="pr-buscar" type="button" class="sg-btn principal">Ver propinas</button></div>
+                </div>
+                <div id="pr-total" style="margin:22px 0 14px"></div>
+                <div id="pr-lista" class="sg-lista"></div>
+            </div>
+        </section>
+
+        <!-- ===================== CAJA Y REGISTROS ===================== -->
+        <section id="p-caja" role="tabpanel" aria-label="Caja y registros" hidden>
+            <div class="sg-grid dos">
+                <div class="sg-col">
+                    <div class="sg-box" id="c-actual"></div>
+                    <div class="sg-box" id="c-mov"></div>
+                </div>
+                <div class="sg-col">
+                    <div class="sg-box" id="c-cot"></div>
+                    <div class="sg-box" id="c-ant"></div>
+                </div>
+            </div>
+            <div class="sg-col" style="margin-top:20px">
+                <div class="sg-box" id="c-fact"></div>
+                <div class="sg-box" id="c-aud"></div>
+            </div>
+        </section>
+
+        <!-- ===================== ANULACIONES ===================== -->
+        <section id="p-anular" role="tabpanel" aria-label="Anulaciones" hidden>
+            <div class="sg-grid dos">
+                <div class="sg-box" id="a-cobros"></div>
+                <div class="sg-box" id="a-mesa"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="savage-ui.js"></script>
+    <script src="cobros.js"></script>
+    <script src="cobros-caja.js"></script>
+</body>
+</html>

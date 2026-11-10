@@ -1,54 +1,1137 @@
-from rest_framework import viewsets
+import os
+import re
+import json
+import uuid
+import secrets
+import pika
+from collections import Counter
+from decouple import config
 
-from .models import Categoria, Producto, Mesa, Empleado, PedidoCabecera, PedidoDetalle
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction, IntegrityError
+from django.db.models import Q, Prefetch
+from django.utils import timezone
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.http import FileResponse, Http404
+
+from .models import Categoria, Producto, Mesa, Empleado, Rol, PedidoCabecera, PedidoDetalle, ComandaRecibida
 from .serializers import (
     CategoriaSerializer,
     ProductoSerializer,
     MesaSerializer,
     EmpleadoSerializer,
+    RolSerializer,
     PedidoCabeceraSerializer,
     PedidoDetalleSerializer,
+    ComandaEntradaSerializer,
+    ComandaCocinaSerializer,
+    SesionAbrirSerializer,
+    AccesoClienteSerializer,
+    HistorialMesaSerializer,
+    ComandaHistorialSerializer,
+    fecha_iso,
 )
+from .redis_client import redis_client
+from .cuenta import ReglaCuenta, cerrar_sesion, factura_vigente
+from .comensales import comensal_de_sesion, generar_pin_libre, reiniciar_ok
+from .comensales_calculos import (
+    FAMILIAR, PRIMERA_RONDA_CON_OK, RETIRADO, mensaje_comensal_requerido, mensaje_comensal_retirado, mensaje_pin_cambiado, pin_fue_anterior,
+    GRUPAL,
+)
+from .destinos_calculos import COCINA as DEST_COCINA
+from .estado_comandas import estado_de, estado_global, marcar_despachado, transicionar
+from .auth import (
+    emitir_token, ttl_token_segundos,
+    ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
+)
+from .limites import superado, registrar_fallo, limpiar
+from .jornadas import jornada_abierta
+from .reservas import ReservaNoVigente, cumplir_reserva, reserva_bloqueante, reservas_bloqueantes_por_mesa, vencer_reservas
+from .reservas_calculos import mensaje_mesa_reservada
+from .cobros_calculos import metodo_pago_solicitado
+from .gestor_pago import guardar_plan, respuesta_gestor_ocupado, verificar_gestor
+from .plan_pago_calculos import PlanInvalido, partes_al_aire, resumen_texto, validar_plan
+from .serializers_reservas import reserva_resumen
+from .especiales import precios_especiales_vigentes
+from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
+from .extras import clave_precio_extra, extras_de_detalle, extras_de_productos, texto_extras, validar_extras
+from .recetas import evaluar_conteo, faltantes_para_respuesta, mensaje_para_cliente
+from .catalogo import (
+    invalidar_cache_catalogo, version_catalogo, clave_cache_catalogo, guardar_precios_vistos, precios_vistos,
+)
+
+CACHE_TTL_SEGUNDOS = 60
+
+# ==================== IMAGENES DE PRODUCTO ====================
+IMAGEN_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+IMAGEN_SUBCARPETA = 'productos'
+IMAGEN_RUTA_LOCAL = re.compile(r'^/media/productos/[0-9a-f]{32}\.(jpg|png|webp)$')
+
+
+def _detectar_extension_imagen(cabecera: bytes):
+    """Detecta el formato real por los primeros bytes (no confiamos en el nombre ni en el Content-Type)."""
+    if cabecera[:3] == b'\xff\xd8\xff':
+        return 'jpg'
+    if cabecera[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'png'
+    if cabecera[:4] == b'RIFF' and cabecera[8:12] == b'WEBP':
+        return 'webp'
+    return None
+
+
+def _borrar_imagen_local(imagen_url):
+    """Borra del disco una imagen subida al servidor. Ignora links externos y rutas que no coincidan."""
+    if not imagen_url or not IMAGEN_RUTA_LOCAL.match(imagen_url):
+        return
+    ruta = os.path.join(settings.MEDIA_ROOT, IMAGEN_SUBCARPETA, os.path.basename(imagen_url))
+    try:
+        os.remove(ruta)
+    except FileNotFoundError:
+        pass
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
+    roles_lectura = None  # el menu es publico
+    roles_escritura = ADMIN_GERENTE
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
+
+    # el nombre de la categoria se muestra en el menu: cualquier cambio se avisa en tiempo real
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        invalidar_cache_catalogo()
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        invalidar_cache_catalogo()
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        invalidar_cache_catalogo()
+
+
+# ==================== FILTROS DEL CATALOGO ====================
+ORDENES_PRODUCTO = {
+    'precio': 'precio_actual',
+    '-precio': '-precio_actual',
+    'nombre': 'nombre',
+    '-nombre': '-nombre',
+}
+PARAMS_SIN_CACHE_PERMITIDOS = {'incluir_inactivos'}
+
+
+def _es_verdadero(valor):
+    return (valor or '').strip().lower() in ('true', '1')
+
+
+def _parsear_ids(valor, nombre_param):
+    try:
+        ids = [int(x) for x in valor.split(',') if x.strip() != '']
+    except ValueError:
+        ids = []
+    if not ids:
+        raise ValidationError({nombre_param: 'Debe ser un id o varios separados por coma (ej: 1 o 1,3).'})
+    return ids
+
+
+def _parsear_precio(valor, nombre_param):
+    try:
+        numero = Decimal(valor)
+    except InvalidOperation:
+        raise ValidationError({nombre_param: 'Debe ser un numero (ej: 8500 o 8500.50).'})
+    if not numero.is_finite() or numero < 0:
+        raise ValidationError({nombre_param: 'Debe ser un numero mayor o igual a 0.'})
+    return numero
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
+    roles_lectura = None  # el menu es publico
+    roles_escritura = ADMIN_GERENTE
 
     def get_queryset(self):
-        queryset = Producto.objects.select_related('categoria').all()
+        queryset = Producto.objects.select_related('categoria', 'empleado_agotado').all()
+        if self.action != 'list':
+            return queryset
+
+        p = self.request.query_params
+
+        # el menu del cliente solo muestra lo que se puede pedir: en carta, con insumos y no agotado por Cocina
+        # (incluir_inactivos=true es la vista de gestion: trae todo, con sus indicadores)
+        if not _es_verdadero(p.get('incluir_inactivos')):
+            queryset = queryset.filter(activo=True, disponible=True, agotado_manual=False)
+
+        # Todos los filtros se combinan entre si (AND)
+        if p.get('categoria'):
+            queryset = queryset.filter(categoria_id__in=_parsear_ids(p['categoria'], 'categoria'))
+        if _es_verdadero(p.get('vegetariano')):
+            queryset = queryset.filter(es_vegetariano=True)
+        if _es_verdadero(p.get('sin_tacc')) or _es_verdadero(p.get('celiaco')):
+            queryset = queryset.filter(apto_celiaco=True)
+
+        texto = (p.get('buscar') or '').strip()
+        if texto:
+            queryset = queryset.filter(Q(nombre__icontains=texto) | Q(descripcion__icontains=texto))
+
+        if p.get('precio_min'):
+            queryset = queryset.filter(precio_actual__gte=_parsear_precio(p['precio_min'], 'precio_min'))
+        if p.get('precio_max'):
+            queryset = queryset.filter(precio_actual__lte=_parsear_precio(p['precio_max'], 'precio_max'))
+
+        orden = p.get('orden')
+        if orden:
+            if orden not in ORDENES_PRODUCTO:
+                raise ValidationError({'orden': f"Valor invalido. Opciones: {', '.join(ORDENES_PRODUCTO)}."})
+            return queryset.order_by(ORDENES_PRODUCTO[orden], 'id')
+        return queryset.order_by('id')
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        contexto['precios_especiales'] = precios_especiales_vigentes()  # una sola consulta por pedido
         if self.action == 'list':
-            categoria_id = self.request.query_params.get('categoria')
-            vegetariano = self.request.query_params.get('vegetariano')
-            celiaco = self.request.query_params.get('celiaco')
-            if categoria_id:
-                queryset = queryset.filter(categoria_id=categoria_id)
-            if vegetariano == 'true':
-                queryset = queryset.filter(es_vegetariano=True)
-            if celiaco == 'true':
-                queryset = queryset.filter(apto_celiaco=True)
-        return queryset
+            contexto['quitables_por_producto'] = quitables_de_productos()  # tambien una sola consulta
+            contexto['extras_por_producto'] = extras_de_productos()        # y los extras que se ofrecen (cobros, hito 5)
+        return contexto
+
+    def list(self, request, *args, **kwargs):
+        incluir_inactivos = _es_verdadero(request.query_params.get('incluir_inactivos'))
+        # el cache solo vale para el listado completo: cualquier filtro u orden lo saltea
+        usar_cache = set(request.query_params.keys()) <= PARAMS_SIN_CACHE_PERMITIDOS
+
+        # version del menu ANTES de leer: la copia, la clave del cache y los precios que se informan son de esa version.
+        # La clave incluye la version: tras cualquier cambio la copia vieja deja de leerse (sin carreras).
+        version = version_catalogo()
+        cache_key = clave_cache_catalogo('admin' if incluir_inactivos else 'publico', version)
+
+        respuesta = None
+        if usar_cache:
+            datos_cacheados = redis_client.get(cache_key)
+            if datos_cacheados:
+                print(f'[CACHE HIT] {cache_key}')
+                respuesta = Response(json.loads(datos_cacheados))
+            else:
+                print(f'[CACHE MISS] {cache_key}')
+
+        if respuesta is None:
+            respuesta = super().list(request, *args, **kwargs)
+            if usar_cache:
+                redis_client.setex(cache_key, CACHE_TTL_SEGUNDOS, json.dumps(respuesta.data))
+            if not incluir_inactivos:
+                # "el cliente paga el precio que vio": se recuerda que precio mostraba esta version del menu
+                precios = {p['id']: p['precio_especial'] if p.get('es_especial_hoy') else p['precio'] for p in respuesta.data}
+                for p in respuesta.data:  # y el recargo de cada extra que se ofrecia
+                    precios.update({clave_precio_extra(e['id']): e['precio'] for e in p.get('extras') or []})
+                guardar_precios_vistos(version, precios)
+
+        respuesta['X-Catalogo-Version'] = str(version)  # el front la guarda y la envia como version_menu al pedir
+        return respuesta
+
+    def _invalidar_cache_catalogo(self):
+        invalidar_cache_catalogo()  # borra el cache y avisa a los clientes conectados (sube la version)
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        self._invalidar_cache_catalogo()
+        print('[CACHE INVALIDADO] por creacion de producto')
+
+    def perform_update(self, serializer):
+        imagen_anterior = serializer.instance.imagen_url
+        super().perform_update(serializer)
+        if serializer.instance.imagen_url != imagen_anterior:
+            _borrar_imagen_local(imagen_anterior)
+        self._invalidar_cache_catalogo()
+        print('[CACHE INVALIDADO] por actualizacion de producto')
+
+    @action(detail=True, methods=['post', 'delete'], url_path='imagen',
+            parser_classes=[MultiPartParser, FormParser])
+    def imagen(self, request, pk=None):
+        """POST (multipart, campo 'imagen'): sube una foto propia. DELETE: quita la imagen del producto."""
+        producto = self.get_object()
+        anterior = producto.imagen_url
+
+        if request.method == 'DELETE':
+            producto.imagen_url = None
+            producto.save(update_fields=['imagen_url'])
+            _borrar_imagen_local(anterior)
+            self._invalidar_cache_catalogo()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        archivo = request.FILES.get('imagen')
+        if archivo is None:
+            return Response({'error': "Falta el archivo. Enviar multipart/form-data con el campo 'imagen'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if archivo.size > IMAGEN_MAX_BYTES:
+            return Response({'error': 'La imagen supera el maximo de 2 MB.'},
+                            status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
+        extension = _detectar_extension_imagen(archivo.read(12))
+        archivo.seek(0)
+        if extension is None:
+            return Response({'error': 'Formato no permitido. Solo JPG, PNG o WEBP.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # el nombre lo genera el servidor: el del cliente se descarta (evita pisar archivos y rutas raras)
+        nombre = f'{uuid.uuid4().hex}.{extension}'
+        carpeta = os.path.join(settings.MEDIA_ROOT, IMAGEN_SUBCARPETA)
+        os.makedirs(carpeta, exist_ok=True)
+        with open(os.path.join(carpeta, nombre), 'wb') as destino:
+            for trozo in archivo.chunks():
+                destino.write(trozo)
+
+        producto.imagen_url = f'/media/{IMAGEN_SUBCARPETA}/{nombre}'
+        producto.save(update_fields=['imagen_url'])
+        _borrar_imagen_local(anterior)
+        self._invalidar_cache_catalogo()
+        return Response(ProductoSerializer(producto).data, status=status.HTTP_200_OK)
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        self._invalidar_cache_catalogo()
+        print('[CACHE INVALIDADO] por baja de producto')
 
 
 class MesaViewSet(viewsets.ModelViewSet):
-    queryset = Mesa.objects.all()
     serializer_class = MesaSerializer
+    roles_lectura = SALON
+    roles_escritura = ADMIN_GERENTE
+
+    def get_queryset(self):
+        queryset = Mesa.objects.prefetch_related(Prefetch(
+            'pedidos',
+            queryset=PedidoCabecera.objects.filter(estado='Abierto').select_related('empleado').prefetch_related('facturas'),
+            to_attr='sesiones_abiertas',
+        ))
+        if self.action == 'list':
+            incluir_inactivas = self.request.query_params.get('incluir_inactivas') == 'true'
+            if not incluir_inactivas:
+                queryset = queryset.filter(activa=True)
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        # baja lógica: se conserva el historial de sesiones de la mesa
+        mesa = self.get_object()
+        if mesa.estado:
+            return Response(
+                {'error': 'No se puede dar de baja una mesa ocupada. Cierre primero su sesion.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        from .reservas import reservas_proximas_de_mesa
+        if reservas_proximas_de_mesa(mesa.id):
+            return Response(
+                {'error': 'La mesa tiene reservas confirmadas. Cancelalas o pasalas a otra mesa antes de darla de baja.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        mesa.activa = False
+        mesa.save(update_fields=['activa'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        if self.action in ('list', 'retrieve'):
+            # cada mesa muestra la reserva que la bloquea en la jornada abierta (el mozo la necesita para abrirla)
+            try:
+                vencer_reservas()
+                contexto['reservas_por_mesa'] = {
+                    id_mesa: reserva_resumen(r)
+                    for id_mesa, r in reservas_bloqueantes_por_mesa(jornada_abierta()).items()
+                }
+            except Exception:  # el mapa de mesas nunca debe caerse por las reservas
+                contexto['reservas_por_mesa'] = {}
+        return contexto
+
+
+class RolViewSet(viewsets.ReadOnlyModelViewSet):
+    """Lista de roles, para armar el formulario de empleados (el que los gestiona es el Gerente)."""
+    queryset = Rol.objects.order_by('id')
+    serializer_class = RolSerializer
+    roles_lectura = SOLO_GERENTE
 
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
-    queryset = Empleado.objects.select_related('rol').all()
     serializer_class = EmpleadoSerializer
+    roles_lectura = SOLO_GERENTE
+    roles_escritura = SOLO_GERENTE
+
+    def get_queryset(self):
+        queryset = Empleado.objects.select_related('rol').order_by('id')
+        if self.action == 'list' and not _es_verdadero(self.request.query_params.get('incluir_inactivos')):
+            queryset = queryset.filter(activo=True)
+        return queryset
+
+    def _quedan_otros_gerentes(self, empleado):
+        return Empleado.objects.filter(rol__nombre=ROL_GERENTE, activo=True).exclude(id=empleado.id).exists()
+
+    def perform_update(self, serializer):
+        actual = serializer.instance
+        nuevo_activo = serializer.validated_data.get('activo', actual.activo)
+        nuevo_rol = serializer.validated_data.get('rol', actual.rol)
+
+        if actual.id == self.request.user.id and (not nuevo_activo or nuevo_rol.id != actual.rol_id):
+            raise ValidationError({'error': 'No puede darse de baja ni cambiarse el rol a si mismo.'})
+
+        era_gerente_activo = actual.activo and actual.rol.nombre == ROL_GERENTE
+        sigue_siendolo = nuevo_activo and nuevo_rol.nombre == ROL_GERENTE
+        if era_gerente_activo and not sigue_siendolo and not self._quedan_otros_gerentes(actual):
+            raise ValidationError({'error': 'Debe quedar al menos un Gerente activo.'})
+
+        super().perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        # baja logica: el empleado figura en sesiones de mesa historicas y no se puede borrar de la base
+        empleado = self.get_object()
+        if empleado.id == request.user.id:
+            return Response({'error': 'No puede darse de baja a si mismo.'}, status=status.HTTP_409_CONFLICT)
+        if empleado.rol.nombre == ROL_GERENTE and empleado.activo and not self._quedan_otros_gerentes(empleado):
+            return Response({'error': 'Debe quedar al menos un Gerente activo.'}, status=status.HTTP_409_CONFLICT)
+        empleado.activo = False
+        empleado.save(update_fields=['activo'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+PIN_MAX_FALLOS = 10
+PIN_VENTANA_SEGUNDOS = 300
+
+
+def _ip(request):
+    return request.META.get('REMOTE_ADDR', 'desconocida')
+
+
+_generar_pin_libre = generar_pin_libre   # PIN de 4 digitos que no este en uso por ninguna otra sesion abierta (ver comensales.py)
+
+
+def _pin_incorrecto(sesion, pin, clave_pin):
+    """Respuesta 403 para un PIN que no es el de la sesion. Si fue el PIN de la mesa antes de un cambio, el dispositivo se entera de
+    que cambio (`pin_cambiado`) y NO se cuenta como intento fallido: un celular que sigue consultando con el PIN viejo no debe
+    bloquear por IP a quienes ya entraron con el nuevo."""
+    if pin_fue_anterior(pin, sesion.pins_anteriores):
+        return Response({'error': mensaje_pin_cambiado(), 'codigo': 'pin_cambiado'}, status=status.HTTP_403_FORBIDDEN)
+    registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+    return Response({'error': 'PIN incorrecto.'}, status=status.HTTP_403_FORBIDDEN)
 
 
 class PedidoCabeceraViewSet(viewsets.ModelViewSet):
-    queryset = PedidoCabecera.objects.select_related('mesa', 'empleado').prefetch_related('detalles__producto').all()
+    """Sesiones de mesa. Se abren y se cierran SOLO con /abrir y /cerrar; el resto es lectura.
+    Un Mozo ve unicamente sus propias sesiones; Admin y Gerente ven todas."""
     serializer_class = PedidoCabeceraSerializer
+    roles_lectura = SALON
+    roles_escritura = SALON
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_queryset(self):
+        queryset = PedidoCabecera.objects.select_related('mesa', 'empleado').prefetch_related(
+            'detalles__producto', 'facturas').order_by('-id')
+        if getattr(self.request.user, 'rol', None) == ROL_MOZO:
+            queryset = queryset.filter(empleado_id=self.request.user.id)
+        if self.action == 'list':
+            p = self.request.query_params
+            estado = (p.get('estado') or '').strip().lower()
+            if estado:
+                if estado not in ('abierto', 'cerrado'):
+                    raise ValidationError({'estado': "Valores validos: 'Abierto' o 'Cerrado'."})
+                queryset = queryset.filter(estado__iexact=estado)
+            if p.get('mesa'):
+                queryset = queryset.filter(mesa__numero__in=_parsear_ids(p['mesa'], 'mesa'))
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {'error': 'Para abrir una mesa use POST /sesiones-mesa/abrir.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    @action(detail=False, methods=['post'], url_path='abrir')
+    def abrir(self, request):
+        """El mozo sienta clientes: indica mesa y cantidad de comensales. El servidor genera el PIN,
+        toma al mozo del token y ocupa la mesa, todo en una sola operacion."""
+        entrada = SesionAbrirSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        numero = entrada.validated_data['numero_mesa']
+        comensales = entrada.validated_data['cantidad_comensales']
+        reserva_id = entrada.validated_data.get('reserva_id')
+        modalidad = entrada.validated_data['modalidad']
+
+        jornada = jornada_abierta()
+        if jornada is None:
+            return Response(
+                {'error': 'No hay una jornada abierta. Un Admin o Gerente debe comenzarla antes de abrir mesas.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        mesa = Mesa.objects.filter(numero=numero, activa=True).first()
+        if mesa is None:
+            return Response({'error': f'No existe la mesa numero {numero}.'}, status=status.HTTP_404_NOT_FOUND)
+        if comensales > mesa.capacidad_maxima:
+            return Response(
+                {'error': f'La mesa {numero} admite hasta {mesa.capacidad_maxima} comensales.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Una mesa reservada en esta jornada solo se abre por esa reserva; nadie la ocupa para otra persona.
+        vencer_reservas()
+        reserva = reserva_bloqueante(mesa.id, jornada)
+        if reserva is not None and reserva_id != reserva.id:
+            return Response(
+                {'error': mensaje_mesa_reservada(numero, reserva.nombre, reserva.apellido, reserva.turno.nombre, reserva.hora),
+                 'codigo': 'mesa_reservada', 'reserva': reserva_resumen(reserva)},
+                status=status.HTTP_409_CONFLICT
+            )
+        if reserva is None and reserva_id is not None:
+            return Response(
+                {'error': f'La reserva indicada no está vigente para la mesa {numero} en esta jornada '
+                          '(se canceló, ya se cumplió o venció la tolerancia de llegada).'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        for _ in range(5):
+            if mesa.estado or PedidoCabecera.objects.filter(mesa=mesa, estado='Abierto').exists():
+                return Response({'error': f'La mesa {numero} ya esta ocupada.'}, status=status.HTTP_409_CONFLICT)
+            pin = _generar_pin_libre()
+            if pin is None:
+                return Response({'error': 'No hay PINs disponibles.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            try:
+                with transaction.atomic():
+                    sesion = PedidoCabecera.objects.create(
+                        mesa=mesa,
+                        empleado=request.user.empleado,
+                        codigo_pin=pin,
+                        fecha_hora_apertura=timezone.now(),
+                        cantidad_comensales=comensales,
+                        estado='Abierto',
+                        jornada=jornada,
+                        modalidad=modalidad,
+                        ronda_liberada=(modalidad == FAMILIAR) or not PRIMERA_RONDA_CON_OK,   # una mesa grupal solo espera el OK de todos si PRIMERA_RONDA_CON_OK
+                    )
+                    mesa.estado = True
+                    mesa.save(update_fields=['estado'])
+                    if reserva is not None:
+                        cumplir_reserva(reserva.id, sesion)   # abrir por la reserva la marca Cumplida
+            except ReservaNoVigente:
+                return Response(
+                    {'error': 'La reserva dejó de estar vigente justo ahora (se canceló o venció la tolerancia). La mesa no se abrió.'},
+                    status=status.HTTP_409_CONFLICT
+                )
+            except IntegrityError:
+                # otra apertura simultanea tomo la misma mesa o el mismo PIN: se vuelve a evaluar
+                mesa.refresh_from_db()
+                continue
+            return Response(PedidoCabeceraSerializer(sesion).data, status=status.HTTP_201_CREATED)
+
+        return Response({'error': 'No se pudo abrir la mesa. Intente de nuevo.'}, status=status.HTTP_409_CONFLICT)
+
+    @action(detail=True, methods=['get'], url_path='comandas')
+    def comandas(self, request, pk=None):
+        """Comandas de la sesion con sus items y estado (un Mozo solo ve las de sus propias sesiones)."""
+        sesion = self.get_object()
+        return Response(ComandaHistorialSerializer(_comandas_de_sesion(sesion), many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='cerrar')
+    def cerrar(self, request, pk=None):
+        """Cierra la sesion: la fecha la pone el servidor y la mesa queda libre, en una sola operacion.
+        Se cierra sin consumo o con la factura pagada. Con consumo sin pagar responde 409; un Admin o Gerente puede forzar el
+        cierre con {"forzar": true, "motivo": "..."}. Con un pago pendiente no se cierra nunca."""
+        sesion = self.get_object()   # un Mozo solo cierra sus propias mesas
+        datos = request.data if isinstance(request.data, dict) else {}
+        forzar = datos.get('forzar') in (True, 'true', 'True', '1', 1)
+        try:
+            sesion = cerrar_sesion(
+                sesion.id, request.user.empleado, request.user.rol in ADMIN_GERENTE,
+                forzar=forzar, motivo=datos.get('motivo'),
+            )
+        except ReglaCuenta as error:
+            return Response({'error': error.mensaje, **error.extra}, status=error.estado)
+        return Response(PedidoCabeceraSerializer(sesion).data)
 
 
-class PedidoDetalleViewSet(viewsets.ModelViewSet):
+class PedidoDetalleViewSet(viewsets.ReadOnlyModelViewSet):
+    """Solo lectura: los renglones nacen del worker al aceptar una comanda y no se editan a mano (el total de la cuenta
+    sale de aca: tocarlos romperia la factura y la caja)."""
+    roles_lectura = SALON
     queryset = PedidoDetalle.objects.select_related('producto', 'pedido_cabecera').all()
     serializer_class = PedidoDetalleSerializer
+
+
+# ==================== RABBITMQ (publicadores) ====================
+
+def _publicar_en_rabbitmq(payload: dict):
+    parametros = pika.ConnectionParameters(
+        host=config('RABBIT_HOST', default='localhost'),
+        credentials=pika.PlainCredentials(
+            config('RABBIT_USER'), config('RABBIT_PASS')
+        )
+    )
+    conexion = pika.BlockingConnection(parametros)
+    canal = conexion.channel()
+    canal.queue_declare(queue='comandas_pendientes', durable=True)
+    canal.basic_publish(
+        exchange='',
+        routing_key='comandas_pendientes',
+        body=json.dumps(payload, default=str),
+        properties=pika.BasicProperties(delivery_mode=2)
+    )
+    conexion.close()
+
+
+def _publicar_evento_comanda_lista(id_comanda_uuid: str):
+    parametros = pika.ConnectionParameters(
+        host=config('RABBIT_HOST', default='localhost'),
+        credentials=pika.PlainCredentials(
+            config('RABBIT_USER'), config('RABBIT_PASS')
+        )
+    )
+    conexion = pika.BlockingConnection(parametros)
+    canal = conexion.channel()
+    canal.queue_declare(queue='comandas_listas', durable=True)
+    canal.basic_publish(
+        exchange='',
+        routing_key='comandas_listas',
+        body=json.dumps({'id_comanda_uuid': id_comanda_uuid}),
+        properties=pika.BasicProperties(delivery_mode=2)
+    )
+    conexion.close()
+
+
+# ==================== TABLERO DE COCINA (armado compartido) ====================
+
+def _armar_tablero_cocina(destino=DEST_COCINA):
+    """Tablero de un destino (cocina por defecto, o la barra): las comandas con algo pendiente ahi, solo con los items de ese
+    destino y con el estado de ese destino. Una comanda sin items del destino no aparece."""
+    comandas = ComandaRecibida.objects.select_related(
+        'pedido_cabecera__mesa'
+    ).prefetch_related(
+        'detalles__producto', 'detalles__modificadores__insumo', 'detalles__extras__insumo'
+    ).order_by('fecha_hora_recepcion')
+
+    resultado = []
+    for comanda in comandas:
+        uuid_str = str(comanda.id_comanda_uuid)
+        estado = estado_de(uuid_str, destino)
+
+        if estado is None or estado == 'retenida':   # la primera ronda de una mesa grupal no se ve en cocina hasta que sale
+            continue
+
+        # solo los items de ESTA comanda (no los de toda la sesion de la mesa)
+        items = [
+            {'nombre': d.producto.nombre, 'precio': d.precio_unitario, 'cantidad': d.cantidad, 'sin': nombres_quitados(d),
+             'extras': texto_extras(d)}
+            for d in comanda.detalles.all() if d.destino == destino
+        ]
+        if not items:
+            continue
+
+        resultado.append({
+            'id_comanda_uuid': uuid_str,
+            'mesa_id': str(comanda.pedido_cabecera.mesa.numero).zfill(2),
+            'items': items,
+            'estado': estado,
+            'timestamp': comanda.fecha_hora_recepcion,
+        })
+
+    return resultado
+
+
+# ==================== COMANDAS ====================
+
+class ComandaCreateView(APIView):
+    roles_lectura = COCINA | SALON   # GET: tablero de cocina (lo leen cocina y el salon, que muestra los avisos)
+    roles_escritura = None   # POST: el cliente envia su comanda (mas adelante, protegido por PIN)
+
+    def get(self, request):
+        resultado = _armar_tablero_cocina()
+        serializer = ComandaCocinaSerializer(resultado, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ComandaEntradaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        datos = serializer.validated_data
+
+        mesa = Mesa.objects.filter(numero=datos['mesa_id'], activa=True).first()
+        if mesa is None:
+            return Response(
+                {'error': f"No existe la mesa numero {datos['mesa_id']}."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        pedido_cabecera = PedidoCabecera.objects.filter(
+            mesa=mesa, estado='Abierto'
+        ).first()
+
+        if pedido_cabecera is None:
+            return Response(
+                {'error': 'Esta mesa no tiene una sesion abierta. Avisa al mozo.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        clave_pin = f'pin:fallos:{_ip(request)}'
+        if superado(clave_pin, PIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        if not secrets.compare_digest(pedido_cabecera.codigo_pin.strip().encode(), datos['pin'].encode()):
+            return _pin_incorrecto(pedido_cabecera, datos['pin'], clave_pin)
+
+        # quien pide: en una mesa Grupal cada pedido es de un comensal registrado (y activo); en una Familiar es opcional
+        comensal_obj = None
+        if datos.get('id_comensal'):
+            comensal_obj = comensal_de_sesion(pedido_cabecera.id, datos['id_comensal'])
+            if comensal_obj is None:
+                return Response({'error': 'Ese comensal no está en la mesa. Ingresá tu nombre de nuevo.', 'codigo': 'comensal_desconocido'},
+                                status=status.HTTP_409_CONFLICT)
+            if comensal_obj.estado == RETIRADO:
+                return Response({'error': mensaje_comensal_retirado(), 'codigo': 'comensal_retirado'}, status=status.HTTP_403_FORBIDDEN)
+        elif pedido_cabecera.modalidad == GRUPAL:
+            return Response({'error': mensaje_comensal_requerido(), 'codigo': 'comensal_requerido'}, status=status.HTTP_409_CONFLICT)
+
+        # una mesa de una jornada ya cerrada se puede cobrar, pero no pide mas. Las sesiones anteriores a las
+        # jornadas (sin jornada) piden mientras haya alguna jornada abierta.
+        if pedido_cabecera.jornada_id is not None:
+            toma_pedidos = pedido_cabecera.jornada.estado == 'Abierta'
+        else:
+            toma_pedidos = jornada_abierta() is not None
+        if not toma_pedidos:
+            return Response(
+                {'error': 'El local no esta tomando pedidos: la jornada esta cerrada. Pedi la cuenta al mozo.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # con la cuenta en curso (factura emitida) la mesa ya no pide: el total esta congelado. El worker lo vuelve a
+        # controlar bajo bloqueo; este aviso es para responder rapido.
+        if factura_vigente(pedido_cabecera) is not None:
+            return Response(
+                {'error': 'La cuenta de esta mesa ya esta en curso: no se pueden enviar mas pedidos. Avisa al mozo.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # el menu del cliente puede estar desactualizado: el servidor decide si el plato se puede pedir
+        ids_pedidos = {item['id'] for item in datos['items']}
+        existentes = {p.id: p for p in Producto.objects.filter(id__in=ids_pedidos)}
+        no_disponibles = []
+        for id_producto in sorted(ids_pedidos):
+            producto = existentes.get(id_producto)
+            if producto is None:
+                motivo = 'no_existe'
+            elif not producto.activo:
+                motivo = 'fuera_de_carta'
+            elif producto.agotado_manual or not producto.disponible:
+                motivo = 'sin_insumos'
+            else:
+                continue
+            no_disponibles.append({
+                'id': id_producto, 'nombre': producto.nombre if producto else None, 'motivo': motivo,
+            })
+        if no_disponibles:
+            return Response(
+                {'error': 'Hay productos que ya no estan disponibles. Quitalos del carrito y volve a enviar el pedido.',
+                 'productos_no_disponibles': no_disponibles},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # modificadores ("sin cebolla"): solo se puede quitar lo que la receta marca como quitable
+        invalidos = validar_modificadores(datos['items'])
+        if invalidos:
+            for problema in invalidos:
+                problema['nombre'] = existentes[problema['id']].nombre
+            return Response(
+                {'error': 'Hay ingredientes que no se pueden quitar de ese plato. Actualiza el menu y volve a armar el pedido.',
+                 'modificadores_invalidos': invalidos},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # extras con recargo ("mas cheddar"): solo los que la receta del plato ofrece, activos, con stock y dentro del maximo
+        invalidos = validar_extras(datos['items'])
+        if invalidos:
+            for problema in invalidos:
+                problema['producto'] = existentes[problema['id']].nombre
+            return Response(
+                {'error': 'Hay extras que no se pueden pedir con ese plato. Actualiza el menu y volve a armar el pedido.',
+                 'extras_invalidos': invalidos},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # hay insumos para todo lo que pide? Es un aviso previo: la palabra final la tiene el worker, que descuenta el
+        # stock. Si no alcanza se rechaza el pedido entero y se informa cuanto se puede preparar de cada plato.
+        faltantes, _, _ = evaluar_conteo(lineas_de_items(datos['items']))
+        if faltantes:
+            detalle, _nombres = faltantes_para_respuesta(faltantes)
+            return Response(
+                {'error': mensaje_para_cliente(faltantes), 'productos_sin_stock': detalle},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # el cliente paga el precio que vio: si informa la version del menu que tenia, el servidor busca los precios
+        # que mostraba esa version (nunca confia en un precio mandado por el cliente)
+        vistos = precios_vistos(datos['version_menu']) if datos.get('version_menu') is not None else {}
+
+        payload = {
+            'id_comanda_uuid': str(datos['id_comanda_uuid']),
+            'id_pedido_cabecera': pedido_cabecera.id,
+            'items': [
+                {
+                    'id': item['id'],
+                    'precio': str(vistos[item['id']]) if item['id'] in vistos else None,
+                    'sin': item['sin'],
+                    'extras': [
+                        {'id': e['id'], 'cantidad': e['cantidad'],
+                         'precio': str(vistos[clave_precio_extra(e['id'])]) if clave_precio_extra(e['id']) in vistos else None}
+                        for e in item.get('extras') or []
+                    ],
+                    'compartido': item.get('compartido') or [],
+                }
+                for item in datos['items']
+            ],
+            'comensal': comensal_obj.nombre if comensal_obj is not None else datos.get('comensal'),
+            'id_comensal': comensal_obj.id if comensal_obj is not None else None,
+        }
+
+        try:
+            _publicar_en_rabbitmq(payload)
+        except pika.exceptions.AMQPConnectionError:
+            return Response(
+                {'error': 'No se pudo conectar con el servidor de mensajeria. Intenta de nuevo.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        if comensal_obj is not None and not pedido_cabecera.ronda_liberada:
+            reiniciar_ok(pedido_cabecera.id, comensal_obj.id)   # sigue armando su pedido: tiene que volver a dar el OK
+
+        return Response(
+            {'mensaje': 'Comanda encolada correctamente.'},
+            status=status.HTTP_202_ACCEPTED
+        )
+
+
+class TableroCocinaView(APIView):
+    """GET /cocina/tablero. Cocina, Mozo, Admin y Gerente (el mozo arma con esto los avisos del salon). Solo lo que se prepara
+    en cocina: los tragos van al tablero de la barra y las bebidas al aviso del mozo."""
+    roles_lectura = COCINA | SALON
+
+    def get(self, request):
+        resultado = _armar_tablero_cocina()
+        serializer = ComandaCocinaSerializer(resultado, many=True)
+        return Response(serializer.data)
+
+
+class ComandaEstadoUpdateView(APIView):
+    """PATCH /pedidos/{uuid}/estado. Cocina (y Admin/Gerente) avanza lo que se prepara en cocina:
+    pendiente -> proceso -> listo -> entregado. La barra tiene su propia ruta (PATCH /barra/pedidos/{uuid}/estado)."""
+    roles_escritura = COCINA
+    destino = DEST_COCINA
+    ESTADOS_VALIDOS = {'pendiente', 'proceso', 'listo', 'entregado'}
+
+    def patch(self, request, uuid_comanda):
+        nuevo_estado = request.data.get('estado')
+
+        if nuevo_estado not in self.ESTADOS_VALIDOS:
+            return Response(
+                {'error': f'Estado invalido. Debe ser uno de: {", ".join(self.ESTADOS_VALIDOS)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # atomico: una comanda retenida (esperando el OK de todos) no la mueve la cocina, y si en el mismo instante se cancela
+        # gana uno solo de los dos
+        cambio, anterior = transicionar(
+            uuid_comanda, ('pendiente', 'proceso', 'listo'), None if nuevo_estado == 'entregado' else nuevo_estado,
+            destino=self.destino)
+        if not cambio:
+            if anterior == 'retenida':
+                return Response(
+                    {'error': 'La comanda espera el OK de todos los comensales de la mesa (o que el mozo libere la primera ronda).',
+                     'codigo': 'comanda_retenida'},
+                    status=status.HTTP_409_CONFLICT
+                )
+            return Response(
+                {'error': 'La comanda no existe o ya fue cerrada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if nuevo_estado == 'entregado':
+            # cocina/barra despachó: la clave de estado ya se borró, pero el mozo sigue viendo el aviso hasta que lo lleve a la mesa
+            marcar_despachado(uuid_comanda, self.destino)
+
+        if nuevo_estado == 'listo':
+            try:
+                _publicar_evento_comanda_lista(str(uuid_comanda))
+            except pika.exceptions.AMQPConnectionError:
+                pass
+
+        return Response({'mensaje': f'Comanda actualizada a estado: {nuevo_estado}'})
+
+
+class TicketPDFView(APIView):
+    roles_lectura = None  # el cliente descarga su comprobante; el nombre del archivo es un UUID
+
+    def get(self, request, uuid_comanda):
+        ruta = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'tickets', f'{uuid_comanda}.pdf'
+        )
+        if not os.path.exists(ruta):
+            raise Http404('El ticket todavia no fue generado o la comanda no existe.')
+        return FileResponse(open(ruta, 'rb'), content_type='application/pdf')
+
+
+
+# ==================== LOGIN ====================
+
+LOGIN_MAX_FALLOS = 5
+LOGIN_VENTANA_SEGUNDOS = 300
+_HASH_SENUELO = []
+
+
+def _hash_senuelo():
+    # se verifica contra este hash cuando el usuario no existe, para que tarde lo mismo
+    # y no se pueda descubrir que usuarios existen midiendo el tiempo de respuesta
+    if not _HASH_SENUELO:
+        _HASH_SENUELO.append(make_password('senuelo-sin-uso'))
+    return _HASH_SENUELO[0]
+
+
+class LoginView(APIView):
+    authentication_classes = []  # un token vencido en el encabezado no debe impedir volver a loguearse
+    permission_classes = []
+
+    def post(self, request):
+        usuario = str(request.data.get('usuario') or '').strip()
+        contrasena = str(request.data.get('contrasena') or '')
+        if not usuario or not contrasena:
+            return Response({'error': 'Usuario y contrasena son obligatorios.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        clave_fallos = f'login:fallos:{usuario.lower()}'
+        if superado(clave_fallos, LOGIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos fallidos. Espere unos minutos e intente de nuevo.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        empleado = Empleado.objects.select_related('rol').filter(usuario=usuario, activo=True).first()
+        hash_guardado = empleado.contrasena_hash if empleado else _hash_senuelo()
+        correcta = check_password(contrasena, hash_guardado)
+
+        if empleado is None or not correcta:
+            registrar_fallo(clave_fallos, LOGIN_VENTANA_SEGUNDOS)
+            return Response({'error': 'Usuario o contrasena incorrectos.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        limpiar(clave_fallos)
+
+        return Response({
+            'token': emitir_token(empleado),
+            'tipo': 'Bearer',
+            'expira_en_segundos': ttl_token_segundos(),
+            'empleado': _datos_empleado(empleado),
+        })
+
+
+def _datos_empleado(empleado):
+    return {
+        'id': empleado.id,
+        'nombre': empleado.nombre,
+        'apellido': empleado.apellido,
+        'usuario': empleado.usuario,
+        'rol': empleado.rol.nombre,
+    }
+
+
+class PerfilView(APIView):
+    """GET /me: quien soy segun el token (cualquier rol)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(_datos_empleado(request.user.empleado))
+
+
+class AccesoMesaView(APIView):
+    """El cliente ingresa el PIN que le dio el mozo: devuelve a que mesa pertenece (solo si la sesion esta abierta)."""
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        pin = str(request.data.get('pin') or '').strip()
+        clave_pin = f'pin:fallos:{_ip(request)}'
+        if superado(clave_pin, PIN_MAX_FALLOS):
+            return Response(
+                {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        sesion = None
+        if re.fullmatch(r'\d{4}', pin):
+            sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').filter(
+                estado='Abierto', codigo_pin=pin, mesa__activa=True
+            ).first()
+            if sesion is None:
+                # el PIN pudo ser el de una mesa antes de que lo cambiaran: se le avisa y no cuenta como intento fallido
+                vieja = PedidoCabecera.objects.filter(estado='Abierto', mesa__activa=True, pins_anteriores__contains=pin).first()
+                if vieja is not None and pin_fue_anterior(pin, vieja.pins_anteriores):
+                    return Response({'error': mensaje_pin_cambiado(), 'codigo': 'pin_cambiado'}, status=status.HTTP_403_FORBIDDEN)
+        if sesion is None:
+            registrar_fallo(clave_pin, PIN_VENTANA_SEGUNDOS)
+            return Response(
+                {'error': 'PIN incorrecto o la mesa no tiene una sesion abierta.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # el contador no se reinicia al acertar: asi nadie resetea el limite usando su propio PIN valido
+        return Response({
+            'numero_mesa': sesion.mesa.numero,
+            'cantidad_comensales': sesion.cantidad_comensales,
+            'mozo_nombre': f'{sesion.empleado.nombre} {sesion.empleado.apellido}',
+            'fecha_hora_inicio': fecha_iso(sesion.fecha_hora_apertura),
+            'solicita_cuenta': sesion.fecha_hora_solicita_cuenta is not None,
+            'modalidad': sesion.modalidad,
+            'ronda_liberada': sesion.ronda_liberada,
+        })
+
+
+# ==================== CLIENTE DE MESA (sin login: mesa + PIN) ====================
+
+def _sesion_cliente(request, numero_mesa, pin):
+    """Valida que la mesa tenga una sesion abierta y que el PIN sea el suyo (con limite de intentos por IP).
+    Devuelve (sesion, None) o (None, Response de error)."""
+    clave_pin = f'pin:fallos:{_ip(request)}'
+    if superado(clave_pin, PIN_MAX_FALLOS):
+        return None, Response(
+            {'error': 'Demasiados intentos con PIN incorrecto. Espere unos minutos.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    mesa = Mesa.objects.filter(numero=numero_mesa, activa=True).first()
+    if mesa is None:
+        return None, Response({'error': f'No existe la mesa numero {numero_mesa}.'}, status=status.HTTP_404_NOT_FOUND)
+
+    sesion = PedidoCabecera.objects.select_related('mesa', 'empleado').filter(mesa=mesa, estado='Abierto').first()
+    if sesion is None:
+        return None, Response(
+            {'error': 'Esta mesa no tiene una sesion abierta. Avisa al mozo.'},
+            status=status.HTTP_409_CONFLICT
+        )
+
+    if not secrets.compare_digest(sesion.codigo_pin.strip().encode(), pin.encode()):
+        return None, _pin_incorrecto(sesion, pin, clave_pin)
+
+    return sesion, None
+
+
+def _comandas_de_sesion(sesion):
+    """Comandas de una sesion con sus items y su estado. El estado vive en Redis mientras la comanda
+    esta activa; cuando ya no esta ahi, la comanda fue entregada."""
+    comandas = sesion.comandas.select_related('comensal').prefetch_related(
+        'detalles__producto', 'detalles__modificadores__insumo', 'detalles__extras__insumo'
+    ).order_by('fecha_hora_recepcion')
+    resultado = []
+    for comanda in comandas:
+        items = [
+            {
+                'nombre': d.producto.nombre,
+                'precio': d.precio_unitario,
+                'cantidad': d.cantidad,
+                'sub_total': d.sub_total,
+                'sin': nombres_quitados(d),
+                'extras': extras_de_detalle(d),
+            }
+            for d in comanda.detalles.all()
+        ]
+        rechazada = comanda.estado == 'Rechazada'
+        cancelada = comanda.estado == 'Cancelada'
+        resultado.append({
+            'id_comanda_uuid': str(comanda.id_comanda_uuid),
+            'estado': 'rechazada' if rechazada else 'cancelada' if cancelada
+            else (estado_global(comanda.id_comanda_uuid) or 'entregado'),
+            'mensaje': comanda.mensaje_cliente if rechazada else ('Este pedido se canceló antes de prepararse.' if cancelada else None),
+            'comensal': comanda.comensal.nombre if comanda.comensal_id else None,
+            'timestamp': comanda.fecha_hora_recepcion,
+            'items': items,
+            'total': sum((i['sub_total'] for i in items), Decimal('0.00')),
+        })
+    return resultado
+
+
+class SolicitarCuentaView(APIView):
+    """El cliente avisa al mozo que quiere la cuenta. Es idempotente: pedirla dos veces conserva la primera hora.
+    Cuerpo: numero_mesa, pin y, opcional, `metodo_pago` ('efectivo', 'tarjeta' o 'mercadopago'): con que medio quiere pagar. Es
+    un aviso para el mozo (se ve en la mesa como `metodo_pago_solicitado`) y se puede cambiar volviendo a pedir la cuenta. Un valor
+    que no sea uno de esos tres (por ejemplo 'transferencia') se ignora y no hace fallar la solicitud.
+    Opcional, el plan de pago de la pantalla "Pagar": `plan` = {"modo": "todo"|"consumo"|"partes_iguales", "partes": [{"metodo":
+    "efectivo"|"tarjeta"|"mercadopago", "monto": pesos, "propina": pesos}]} (cada medio una sola vez, hasta 6 partes). Es un aviso
+    para el mozo y la caja (las partes de efectivo y tarjeta las cobra y controla el mozo; Mercado Pago se cobra solo): se guarda
+    y se ve en la mesa como `plan_pago`. Plan invalido: 400 y no se guarda nada. Si otro dispositivo gestiona el pago de la mesa
+    (`dispositivo` no coincide): 409 `gestor_ocupado`; sin nadie gestionando no hace falta mandarlo."""
+    authentication_classes = []  # un token vencido no debe impedir pedir la cuenta
+    roles_lectura = None
+    roles_escritura = None  # publico, protegido por el PIN de la mesa
+
+    def post(self, request):
+        entrada = AccesoClienteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
+        if error is not None:
+            return error
+        datos = request.data if hasattr(request.data, 'get') else {}
+        ocupado = verificar_gestor(sesion.id, datos.get('dispositivo'))
+        if ocupado is not None:
+            return respuesta_gestor_ocupado(ocupado)
+        plan = None
+        if datos.get('plan') not in (None, ''):
+            entrada_plan = datos.get('plan')
+            if not isinstance(entrada_plan, dict):
+                return Response({'error': 'El plan de pago debe indicar modo y partes.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                plan = validar_plan(entrada_plan.get('modo'), entrada_plan.get('partes'))
+            except PlanInvalido as problema:
+                return Response({'error': str(problema)}, status=status.HTTP_400_BAD_REQUEST)
+
+        cambios = []
+        if sesion.fecha_hora_solicita_cuenta is None:
+            sesion.fecha_hora_solicita_cuenta = timezone.now()
+            cambios.append('fecha_hora_solicita_cuenta')
+        metodo = metodo_pago_solicitado(datos.get('metodo_pago'))
+        if plan is not None:
+            # con varias partes se avisa el medio que el mozo tiene que ir a cobrar a la mesa; si todo es Mercado Pago, ese
+            aire = partes_al_aire(plan)
+            metodo = (aire or plan['partes'])[0]['metodo']
+        if metodo is not None and metodo != sesion.metodo_pago_solicitado:
+            sesion.metodo_pago_solicitado = metodo
+            cambios.append('metodo_pago_solicitado')
+        if cambios:
+            sesion.save(update_fields=cambios)
+        if plan is not None:
+            plan = guardar_plan(sesion.id, plan, por=datos.get('nombre'))
+
+        return Response({
+            'mensaje': 'Cuenta solicitada. El mozo ya fue avisado.',
+            'plan_pago': plan,
+            'plan_resumen': resumen_texto(plan) if plan else None,
+            'solicita_cuenta': True,
+            'fecha_hora_solicita_cuenta': fecha_iso(sesion.fecha_hora_solicita_cuenta),
+            'metodo_pago_solicitado': sesion.metodo_pago_solicitado,
+        })
+
+
+class HistorialMesaView(APIView):
+    """El cliente consulta las comandas de su mesa y en que estado estan. Todos los dispositivos de la mesa
+    (mismo PIN) ven lo mismo. Es POST para que el PIN viaje en el cuerpo y no en la URL."""
+    authentication_classes = []
+    roles_lectura = None
+    roles_escritura = None  # publico, protegido por el PIN de la mesa
+
+    def post(self, request):
+        entrada = AccesoClienteSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
+        if error is not None:
+            return error
+
+        comandas = _comandas_de_sesion(sesion)
+        return Response(HistorialMesaSerializer({
+            'numero_mesa': sesion.mesa.numero,
+            'total': sum((c['total'] for c in comandas), Decimal('0.00')),
+            'comandas': comandas,
+        }).data)

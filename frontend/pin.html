@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso a Mesa - Savage Grill</title>
+    <!-- Reutilizamos el archivo de estilos centralizado -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="login-page">
+        <div class="login-shell" style="grid-template-columns: 1fr; max-width: 500px; min-height: auto;">
+            
+            <div class="form-panel" style="padding: 60px 40px; border-radius: var(--radius-xl);">
+                <div class="login-card" style="width: 100%; border: none; box-shadow: none; background: transparent;">
+                    
+                    <div class="login-header">
+                        <div class="brand" style="margin: 0 auto 20px;">
+                            <h1 class="logo-restaurante">Savage<span style="color: var(--primary-orange);">Grill.</span></h1>
+                        </div>
+                        <h2>Acceso a tu Mesa</h2>
+                        <p>Ingresá el PIN de 4 dígitos que te proporcionó el mozo al abrir tu mesa.</p>
+                    </div>
+
+                    <form id="formulario-login" style="margin-top: 40px;">
+                        
+                        <fieldset class="pin-fieldset">
+                            <legend style="text-align: center;">PIN DE MESA</legend>
+                            <div class="pin-group" id="pin-container">
+                                <!-- Inputs limitados a 1 solo número -->
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required autofocus>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                                <input type="text" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+                            </div>
+                        </fieldset>
+                        
+                        <div id="login-error" class="message error" style="display: none; justify-content: center; margin-top: 10px;">PIN incorrecto o mesa no habilitada.</div>
+
+                        <button type="submit" class="btn-primary" style="margin-top: 30px;">
+                            Ingresar al Menú <span class="btn-arrow">→</span>
+                        </button>
+                    </form>
+
+                    <!-- Paso 2 (solo mesas "Grupo de amigos"): cada dispositivo se presenta con su nombre antes de ver el menú -->
+                    <form id="formulario-nombre" style="display: none; margin-top: 40px;" novalidate>
+                        <label for="input-nombre" style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--text-main);">Tu nombre</label>
+                        <input id="input-nombre" type="text" maxlength="50" autocomplete="off" placeholder="Ej.: Alex" style="width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: var(--text-main); font-size: 16px;">
+                        <div id="nombre-repetido" style="display: none; margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--primary-orange); background: rgba(255,122,0,0.08); font-size: 13px; line-height: 1.5;">
+                            <span id="nombre-repetido-texto"></span>
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button type="button" id="btn-soy-yo" class="btn-primary" style="height: 44px;">Soy yo</button>
+                                <button type="button" id="btn-otro-nombre" class="btn-primary" style="height: 44px; background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);">Usar otro nombre</button>
+                            </div>
+                        </div>
+                        <div id="nombre-error" class="message error" style="display: none; justify-content: center; margin-top: 10px;"></div>
+                        <button type="submit" id="btn-nombre" class="btn-primary" style="margin-top: 24px;">Entrar al Menú <span class="btn-arrow">→</span></button>
+                    </form>
+
+                    <div style="margin-top: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <div style="width: 8px; height: 8px; background-color: var(--success); border-radius: 50%;"></div>
+                        <span>Sistema conectado al servidor local</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="savage-mesa.js"></script>
+    <script>
+        // Cuando Mercado Pago devuelve al cliente (?mp=...), se sigue en la pantalla de pago; si ya no hay sesión en este navegador, pide el PIN y después vuelve ahí.
+        const volvioDeMercadoPago = new URLSearchParams(location.search).has('mp');
+        // Al volver desde la app de Mercado Pago el navegador puede abrir una pestaña nueva sin la sesión de la mesa:
+        // se recupera del respaldo que dejó la pantalla de pago (vale 6 horas) para que el cliente pueda pedir su factura.
+        function restaurarMesaDeMercadoPago() {
+            try {
+                if (sessionStorage.getItem('savage-mesa-pin') && sessionStorage.getItem('savage-mesa-numero')) return true;
+                const r = JSON.parse(localStorage.getItem('savage-mp-sesion'));
+                if (!r || !r.numero || !r.pin || Date.now() - Number(r.t) > 6 * 3600 * 1000) return false;
+                sessionStorage.setItem('savage-mesa-numero', String(r.numero));
+                sessionStorage.setItem('savage-mesa-pin', String(r.pin));
+                if (r.modalidad) sessionStorage.setItem('savage-mesa-modalidad', String(r.modalidad));
+                if (r.comensal) sessionStorage.setItem('savage-comensal', String(r.comensal));
+                if (r.dispositivo) sessionStorage.setItem('savage-dispositivo', String(r.dispositivo));
+                return true;
+            } catch (e) { return false; }
+        }
+        try {
+            if (volvioDeMercadoPago && restaurarMesaDeMercadoPago()) {
+                location.replace('pagar.html' + location.search);
+            }
+        } catch (e) { /* sin sessionStorage: se pide el PIN */ }
+        // 1. Lógica para saltar automáticamente de casillero y soporte para pegar
+        const pinInputs = document.querySelectorAll('.pin-input');
+        
+        pinInputs.forEach((input, index) => {
+            // Al escribir, salta al siguiente
+            input.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, ''); // Solo números
+                if (this.value.length === 1 && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+            });
+
+            // Al borrar (Backspace), vuelve al anterior
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+
+            // Soporte por si el cliente pega (Ctrl+V) el PIN completo
+            input.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 4);
+                pastedData.split('').forEach((char, i) => {
+                    if (pinInputs[i]) {
+                        pinInputs[i].value = char;
+                        if (i < 3) pinInputs[i + 1].focus();
+                    }
+                });
+            });
+        });
+
+        // 2. Envío del PIN al backend para validación real
+        document.getElementById('formulario-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorBox = document.getElementById('login-error');
+            const btnSubmit = document.querySelector('.btn-primary');
+            errorBox.style.display = 'none';
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = 'Verificando...';
+
+            // Recolectamos los 4 dígitos
+            let pinIngresado = '';
+            pinInputs.forEach(input => pinIngresado += input.value);
+
+            try {
+                // Hacemos el POST al endpoint de acceso
+                const respuesta = await fetch(window.SAVAGE_CONFIG.API_BASE_URL + '/acceso-mesa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pinIngresado })
+                });
+
+                if (respuesta.status === 200) {
+                    const data = await respuesta.json();
+                    
+                    // Guardamos los datos de la sesión real en el navegador
+                    sessionStorage.setItem('savage-mesa-numero', data.numero_mesa);
+                    sessionStorage.setItem('savage-mesa-pin', pinIngresado);
+                    sessionStorage.setItem('savage-comensales', data.cantidad_comensales);
+                    sessionStorage.setItem('savage-mesa-modalidad', data.modalidad || 'Familiar');
+                    sessionStorage.removeItem('savage-comensal');
+
+                    // Familiar: no se piden nombres. Grupo de amigos: cada uno se presenta antes de ver el menú.
+                    if (data.modalidad === 'Grupal') {
+                        mostrarPasoNombre();
+                    } else {
+                        irAlMenu();
+                    }
+                } else if (respuesta.status === 429) {
+                    const err = await respuesta.json();
+                    errorBox.textContent = err.error || "Demasiados intentos. Esperá unos minutos.";
+                    errorBox.style.display = 'flex';
+                } else {
+                    errorBox.textContent = "PIN incorrecto o mesa sin sesión abierta.";
+                    errorBox.style.display = 'flex';
+                }
+            } catch (error) {
+                errorBox.textContent = "Error de conexión con el servidor.";
+                errorBox.style.display = 'flex';
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Ingresar al Menú <span class="btn-arrow">→</span>';
+            }
+        });
+    </script>
+    <script>
+        // 3. Paso del nombre (solo "Grupo de amigos")
+        const formNombre = document.getElementById('formulario-nombre');
+        const inputNombre = document.getElementById('input-nombre');
+        const errorNombre = document.getElementById('nombre-error');
+        const avisoRepetido = document.getElementById('nombre-repetido');
+
+        function mostrarPasoNombre() {
+            document.getElementById('formulario-login').style.display = 'none';
+            formNombre.style.display = 'block';
+            const cab = document.querySelector('.login-header');
+            cab.querySelector('h2').textContent = 'Tu nombre';
+            cab.querySelector('p').textContent = 'Esta mesa es de un grupo de amigos y cada uno pide por su cuenta. Escribí tu nombre antes de ver el menú: es el que aparece en la cuenta y al dividir un plato.';
+            inputNombre.value = window.SGM.nombreRecordado();
+            setTimeout(() => inputNombre.focus(), 40);
+        }
+        function irAlMenu() { window.location.href = volvioDeMercadoPago ? 'pagar.html' + location.search : 'catalogo.html'; }
+        function mostrarErrorNombre(texto) { errorNombre.textContent = texto; errorNombre.style.display = 'flex'; }
+
+        formNombre.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorNombre.style.display = 'none';
+            avisoRepetido.style.display = 'none';
+            const nombre = inputNombre.value.replace(/\s+/g, ' ').trim();
+            if (!nombre) { mostrarErrorNombre('Escribí tu nombre para continuar.'); return; }
+            const boton = document.getElementById('btn-nombre');
+            boton.disabled = true;
+            const previo = window.SGM.comensal();
+            const r = await window.SGM.registrar(nombre);
+            boton.disabled = false;
+            if (!r.ok) {
+                if (r.data && r.data.codigo === 'pin_cambiado') { window.SGM.pedirPinNuevo(r.data.error); return; }
+                mostrarErrorNombre((r.data && r.data.error) || 'No pudimos registrarte en la mesa. Probá de nuevo.');
+                return;
+            }
+            // Mismo nombre que ya tenía otra persona de la mesa: se pregunta antes de mezclar los pedidos.
+            if (r.situacion === 'existente' && !(previo && previo.id === r.data.comensal.id)) {
+                document.getElementById('nombre-repetido-texto').textContent = 'Ya hay alguien llamado "' + r.data.comensal.nombre + '" en esta mesa. Si sos esa persona (por ejemplo, cambiaste de celular), seguís con tus pedidos; si es otra, usá otro nombre.';
+                avisoRepetido.style.display = 'block';
+                return;
+            }
+            irAlMenu();
+        });
+        document.getElementById('btn-soy-yo').addEventListener('click', irAlMenu);
+        document.getElementById('btn-otro-nombre').addEventListener('click', () => {
+            sessionStorage.removeItem('savage-comensal');
+            avisoRepetido.style.display = 'none';
+            inputNombre.select();
+        });
+        // Vuelve acá cuando una pantalla detecta que este dispositivo todavía no tiene nombre en la mesa.
+        if (new URLSearchParams(location.search).get('paso') === 'nombre' && window.SGM.numero() && window.SGM.pin() && window.SGM.esGrupal()) {
+            mostrarPasoNombre();
+        }
+    </script>
+    <script>
+        // Inyector local de Modo Claro/Oscuro
+        document.addEventListener('DOMContentLoaded', () => {
+            const temaGuardado = localStorage.getItem('savage-tema');
+            if (temaGuardado === 'light') document.body.classList.add('light-mode');
+
+            const btnTema = document.createElement('button');
+            btnTema.className = 'btn-tema';
+            
+            const actualizarTexto = () => {
+                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
+            };
+            
+            actualizarTexto();
+            
+            btnTema.onclick = () => {
+                document.body.classList.toggle('light-mode');
+                actualizarTexto();
+                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            };
+            
+            document.body.appendChild(btnTema);
+        });
+    </script>
+</body>
+</html>

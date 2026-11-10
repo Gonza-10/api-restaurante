@@ -1,0 +1,30 @@
+# Caddy: da la cara a internet (HTTPS automatico), sirve el front y le pasa la API a Django.
+# SITE_ADDRESS viene del .env: el nombre DNS de la VM (HTTPS con certificado propio) o ":80" para probar sin HTTPS.
+{$SITE_ADDRESS} {
+	# Fotos de productos: las escribe Django en un volumen y las sirve Caddy directo (Django no las sirve con DEBUG=False).
+	handle /media/* {
+		root * /srv
+		file_server
+	}
+
+	# API. flush_interval -1: no guardar respuestas en memoria; el aviso en tiempo real del menu (SSE) tiene que salir al instante.
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	# Todo lo demas es el front de Gonzalo (HTML/JS/CSS). La entrada del cliente es pin.html (se conserva la consulta: Mercado Pago devuelve al cliente a /?mp=...).
+	handle {
+		root * /srv/frontend
+		redir / /pin.html?{query} 302
+		encode zstd gzip
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		-Server
+	}
+}
