@@ -93,7 +93,10 @@
   }
   function cambiarVista(vista) {
     document.querySelectorAll('[data-vista]').forEach(b=> { const activa=b.dataset.vista===vista; b.classList.toggle('active',activa); if(activa)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-    $('vista-personal').hidden=vista!=='personal'; $('vista-reportes').hidden=vista!=='reportes';
+    ['personal','reportes','cobros','mesas','reservas'].forEach(id=> { const el=$('vista-'+id); if(el) el.hidden=id!==vista; });
+    // Cobros y Reservas se muestran embebidos: el iframe se carga la primera vez que se abre.
+    const marco=$('marco-'+vista); if(marco && !marco.getAttribute('src')) marco.setAttribute('src',marco.dataset.src);
+    const principal=document.querySelector('.g-main'); if(principal) principal.classList.toggle('g-con-marco',Boolean(marco));
     sessionStorage.setItem('savage-gerencia-vista',vista);
     if(vista==='reportes' && !S.reportesListos) cargarDashboard();
   }
@@ -260,7 +263,7 @@
     try { const verificado=await api('me'); if(verificado?.rol!=='Gerente') throw new Error('El servidor no confirmó el rol Gerente.');S.usuario=verificado;$('info-usuario').textContent=`${verificado.nombre||''} ${verificado.apellido||''} (Gerente)`; }
     catch(e) {mostrar('g-personal-alerta',`No se pudo confirmar el permiso de Gerencia: ${e.message}`,'error');document.querySelectorAll('button,input,select').forEach(n=>n.disabled=true);return;}
     sgSelect.iniciar();
-    const guardada=sessionStorage.getItem('savage-gerencia-vista');cambiarVista(guardada==='reportes'?'reportes':'personal');
+    const guardada=sessionStorage.getItem('savage-gerencia-vista');cambiarVista(['reportes','cobros','mesas','reservas'].includes(guardada)?guardada:'personal');
     await cargarPersonal();
   }
     const sgSelect = (() => {

@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .auth import ADMIN_GERENTE, COCINA
+from .auth import ADMIN_GERENTE, BARRA, COCINA
 from .models import Compra, Insumo, LoteInsumo, MovimientoStock, Proveedor, StockInsumo
 from .vencimientos import dias_aviso
 from .serializers_stock import (
@@ -256,13 +256,13 @@ class MovimientoStockViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StockView(APIView):
     """GET /stock. Estado del stock insumo por insumo, con el mas grave primero (agotado, critico, bajo, ...).
-    Cocina, Admin y Gerente. NO hay un porcentaje general: un promedio taparia un insumo esencial en rojo.
+    Cocina, Bartender, Admin y Gerente. NO hay un porcentaje general: un promedio taparia un insumo esencial en rojo.
     - ?vista=resumida (por defecto): cada insumo con su porcentaje y semaforo.
     - ?vista=detallada: ademas cuanto hay de cada uno, el objetivo, los umbrales, lotes y proximo vencimiento.
-      Admin y Gerente ven ademas costos, valor del stock y proveedor principal; Cocina no.
+      Admin y Gerente ven ademas costos, valor del stock y proveedor principal; Cocina y Bartender no.
     Filtros: ?estado=agotado,critico,bajo,sinobjetivo,ok (varios, separados por coma) y ?buscar=texto.
     `resumen` cuenta los insumos por estado sobre todos los que coinciden con ?buscar (no cambia con ?estado)."""
-    roles_lectura = COCINA
+    roles_lectura = COCINA | BARRA
 
     def get(self, request):
         p = request.query_params

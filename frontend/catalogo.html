@@ -22,6 +22,18 @@
             margin-bottom: 8px;
         }
         .sin-ingrediente-checkbox:hover { border-color: var(--primary-orange); }
+        .extra-edit { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); margin-bottom: 8px; }
+        .extra-edit.activo { border-color: var(--primary-orange); background: rgba(255,122,0,.1); }
+        .extra-edit .extra-info { min-width: 0; display: grid; gap: 2px; }
+        .extra-edit .extra-nombre { font-size: 14px; font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; }
+        .extra-edit .extra-precio { font-size: 12px; font-weight: 800; color: var(--primary-orange); }
+        .extra-edit .extra-paso { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .extra-edit .extra-paso button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-main); font-weight: 900; font-size: 17px; cursor: pointer; }
+        .extra-edit .extra-paso button:hover:not(:disabled) { border-color: var(--primary-orange); color: var(--primary-orange); }
+        .extra-edit .extra-paso button:disabled { opacity: .35; cursor: not-allowed; }
+        .extra-edit .extra-cant { min-width: 22px; text-align: center; font-weight: 900; font-size: 15px; }
+        body.light-mode .extra-edit { background: #fff; border-color: #d6dce5; }
+        body.light-mode .extra-edit.activo { background: #fff4e8; border-color: var(--primary-orange); }
         .sin-ingrediente-checkbox input[type="checkbox"] { accent-color: var(--primary-orange); width: 18px; height: 18px; cursor: pointer; }
 
         /* ===== Catálogo: controles, movimiento suave y barra Savage Grill ===== */
@@ -135,6 +147,12 @@
         }
         .sg-header-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-shrink:0; }
         .sg-mesa-badge, .sg-salir-cliente { white-space:nowrap; flex-shrink:0; }
+        /* Botón "Pagar": siempre visible arriba a la derecha (lleva a la pantalla Pagar). */
+        .sg-pagar-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--primary-orange); background:var(--primary-orange); color:#fff !important; font:inherit; font-size:15px; font-weight:900; text-decoration:none; white-space:nowrap; flex-shrink:0; box-shadow:0 4px 15px rgba(255,122,0,.3); transition:background .2s, transform .2s; }
+        .sg-pagar-btn:hover { background:var(--primary-hover, #e56d00); border-color:var(--primary-hover, #e56d00); transform:translateY(-1px); }
+        .sg-pagar-btn:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        .sg-pagar-btn svg { width:20px; height:20px; flex:0 0 auto; }
+        @media (max-width:420px) { .sg-pagar-btn { min-height:40px; padding:0 12px; font-size:14px; gap:6px; } .sg-pagar-btn svg { width:18px; height:18px; } }
         .sg-main { min-width:0; width:100%; }
         .sg-toggle-avanzados { display:none; }
         .sg-filtros { min-width:0; }
@@ -355,6 +373,7 @@
             <button class="sg-salir-cliente" type="button" onclick="cerrarSesionCliente()" style="background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); padding: 6px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px; transition: all 0.2s ease;" onmouseover="this.style.background='#e74c3c'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'; this.style.color='#e74c3c'; this.style.transform='translateY(0)';">
                 Salir
             </button>
+            <a class="sg-pagar-btn" href="pagar.html" aria-label="Pagar la cuenta"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/></svg><span>Pagar</span></a>
         </div>
     </header>
 
@@ -432,7 +451,7 @@
         <div class="product-card" style="width: min(380px, 90%); padding: 30px; position: relative;">
             <button onclick="cerrarModalMesa()" style="position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
             <h2 id="titulo-modal-mesa" style="margin-top: 0; color: var(--primary-orange); font-family: 'Elemental End', sans-serif; font-size: 22px; margin-bottom: 25px; text-align: center;">MESA #--</h2>
-            <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div id="mesa-detalle" style="display: flex; flex-direction: column; gap: 16px;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Mozo Asignado</span><span id="span-mozo" style="font-weight: 600;">Consultando…</span></div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;">Comensales</span><span id="span-comensales" style="font-weight: 600;">-- Personas</span></div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;"><span style="color: var(--text-muted); font-size: 14px;" title="Se cuenta desde que el mozo abre la mesa">Tiempo en mesa</span><span id="span-cronometro" style="font-weight: 600; color: #58d68d; font-family: monospace;" title="Desde la apertura de la mesa registrada por el mozo">Consultando…</span></div>
@@ -457,9 +476,16 @@
                 <h2 id="detalle-nombre" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 24px; font-weight: 900;"></h2>
                 <p id="detalle-desc" style="color: var(--text-muted); font-size: 14px; line-height: 1.5; margin: 0 0 20px 0;"></p>
                 
+                <!-- Extras con recargo: primero lo que se puede sumar -->
+                <div id="contenedor-extras" style="display: none; margin-bottom: 20px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
+                    <span style="display: block; font-size: 13px; font-weight: bold; color: var(--text-main); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Sumale algo más (con recargo)</span>
+                    <span style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Cada extra suma su precio a una unidad del plato.</span>
+                    <div id="lista-extras"></div>
+                </div>
+
                 <!-- Contenedor Condicional de Ingredientes Quitables -->
                 <div id="contenedor-quitables" style="display: none; margin-bottom: 20px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
-                    <span style="display: block; font-size: 13px; font-weight: bold; color: var(--text-main); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Personalizá tu plato (Opcional)</span>
+                    <span style="display: block; font-size: 13px; font-weight: bold; color: var(--text-main); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Quitale algo (opcional)</span>
                     <div id="lista-quitables" style="display: flex; flex-direction: column;"></div>
                 </div>
 
@@ -789,6 +815,7 @@
     </script>
 
     <script src="config.js"></script>
+    <script src="savage-mesa.js"></script>
     <script src="app.js"></script>
 
     <script>
@@ -800,6 +827,8 @@
         let timestampInicio = null; // Hora real registrada por Django al abrir la mesa
         let callbackAviso = null;
         const pinMesa = sessionStorage.getItem('savage-mesa-pin'); 
+        // Grupo de amigos: sin nombre registrado no se ve el menú (se vuelve a la pantalla del nombre).
+        if (window.SGM) SGM.exigirComensal();
         let filtroActual = { categoria: '', vegetariano: '', sin_tacc: '' };
 
         // Los ingredientes quitables se reciben de la receta asignada en Django.
@@ -910,7 +939,7 @@
             catch (_) { c = []; }
             window.carrito = c; 
             let total = 0;
-            c.forEach(item => total += (Number(item.precio) * (Number(item.cantidad) || 1)));
+            c.forEach(item => total += ((Number(item.precio) + (Array.isArray(item.extras) ? item.extras.reduce((s, e) => s + (Number(e.precio) || 0) * (Number(e.cantidad) || 0), 0) : 0)) * (Number(item.cantidad) || 1)));
             window.totalPedido = total;
             document.getElementById('total-pedido').textContent = `$${total.toFixed(2)}`;
             document.getElementById('texto-pedido').textContent = `Mi pedido (${c.reduce((sum, i) => sum + (Number(i.cantidad) || 0), 0)})`;
@@ -1173,6 +1202,7 @@
                 });
                 if (resp.ok) {
                     const datos = await resp.json();
+                    if (window.SGM) { SGM.sincronizar(datos); SGM.exigirComensal(); }
                     // Identidad y cantidad se obtienen de la sesión abierta en SQL Server.
                     if (typeof datos.mozo_nombre === 'string' && datos.mozo_nombre.trim()) {
                         document.getElementById('span-mozo').textContent = datos.mozo_nombre.trim();
@@ -1207,6 +1237,9 @@
                 // Solo un PIN no válido o una sesión cerrada finaliza el acceso. Otros errores
                 // (429, 500, etc.) NO significan que el mozo haya cerrado la mesa.
                 if ([401, 403, 404].includes(resp.status)) {
+                    // El mozo cambió el PIN: no es una sesión cerrada. savage-mesa.js pide el PIN nuevo sin perder el carrito.
+                    const detalleError = await resp.json().catch(() => ({}));
+                    if (detalleError && (detalleError.codigo === 'pin_cambiado' || detalleError.codigo === 'comensal_retirado')) return;
                     clearInterval(intervaloValidacion);
                     if (intervaloCronometro !== null) clearInterval(intervaloCronometro);
                     mostrarAviso('Sesión finalizada', 'Esta mesa ya no tiene una sesión abierta. Solicitá un nuevo PIN al mozo.', '', cerrarSesionCliente);
@@ -1298,13 +1331,15 @@
             });
         }
 
-        function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement) {
+        function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement, extrasElegidos = []) {
             const productoOriginal = productoPorId(idProducto);
             const imagenUrl = urlImagenCatalogo(productoOriginal?.imagen_url || productoOriginal?.imagen || productoOriginal?.foto);
             // Canonicalizar IDs facilita agrupar dos personalizaciones equivalentes.
             arrQuitables = [...new Set(arrQuitables.map(Number).filter(Number.isSafeInteger))].sort((a, b) => a - b);
             const indexExistente = window.carrito.findIndex(item =>
                 Number(item.id) === Number(idProducto) &&
+                !(Array.isArray(item.compartido) && item.compartido.length) &&
+                JSON.stringify((Array.isArray(item.extras) ? item.extras : []).map(e => [Number(e.id), Number(e.cantidad)]).sort((a, b) => a[0] - b[0])) === JSON.stringify(extrasElegidos.map(e => [e.id, e.cantidad]).sort((a, b) => a[0] - b[0])) &&
                 JSON.stringify((item.sin || []).map(Number).sort((a, b) => a - b)) === JSON.stringify(arrQuitables)
             );
 
@@ -1318,7 +1353,9 @@
                 window.carrito[indexExistente].cantidad += cantidadSeleccionadaModal;
                 window.carrito[indexExistente].sin_detalle = sinDetalle;
             } else {
-                window.carrito.push({ id: idProducto, nombre: nombre, precio: precioModalActual, imagen: imagenUrl, sin: arrQuitables, sin_detalle: sinDetalle, cantidad: cantidadSeleccionadaModal });
+                const nuevo = { id: idProducto, nombre: nombre, precio: precioModalActual, imagen: imagenUrl, sin: arrQuitables, sin_detalle: sinDetalle, cantidad: cantidadSeleccionadaModal };
+                if (extrasElegidos.length) nuevo.extras = extrasElegidos;
+                window.carrito.push(nuevo);
             }
 
             sessionStorage.setItem('savage-carrito', JSON.stringify(window.carrito));
@@ -1346,6 +1383,7 @@
             document.getElementById('span-comensales').textContent = `${comensales} Persona(s)`;
             document.getElementById('span-pin').textContent = pin;
             document.getElementById('modal-mesa').style.display = 'flex'; 
+            if (window.SGM) SGM.decorarModalMesa(document.getElementById('mesa-detalle'));
         }
         function cerrarModalMesa() { document.getElementById('modal-mesa').style.display = 'none'; }
         
@@ -1364,7 +1402,9 @@
         function cerrarModalDetalle() { document.getElementById('modal-detalle').style.display = 'none'; }
 
         function actualizarPrecioModal() {
-            const precioTotalModal = precioModalActual * cantidadSeleccionadaModal;
+            const recargo = [...document.querySelectorAll('#lista-extras .extra-edit')]
+                .reduce((s, f) => s + (Number(f.dataset.precio) || 0) * (Number(f.querySelector('.extra-cant').textContent) || 0), 0);
+            const precioTotalModal = (precioModalActual + recargo) * cantidadSeleccionadaModal;
             document.getElementById('detalle-precio').textContent = `$${precioTotalModal.toFixed(2)}`;
         }
 
@@ -1406,6 +1446,34 @@
     
             // Solo pueden quitarse ingredientes autorizados para ESTA receta.
             // Se usan IDs numéricos: el backend rechaza nombres como "Tomate".
+            const listaExtras = document.getElementById('lista-extras');
+            listaExtras.replaceChildren();
+            const extrasDelPlato = Array.isArray(item.extras)
+                ? item.extras.filter(e => Number.isSafeInteger(Number(e.id)) && Number(e.id) > 0 && typeof e.nombre === 'string') : [];
+            extrasDelPlato.forEach(e => {
+                const max = Math.min(10, Math.max(1, Number(e.max_por_unidad) || 1));
+                const fila = document.createElement('div');
+                fila.className = 'extra-edit';
+                fila.dataset.id = String(Number(e.id)); fila.dataset.max = String(max); fila.dataset.precio = String(Number(e.precio) || 0);
+                fila.dataset.nombre = e.nombre;
+                fila.innerHTML = `<div class="extra-info"><span class="extra-nombre">${escaparHtml(e.nombre)}</span>
+                    <span class="extra-precio">+$${(Number(e.precio) || 0).toFixed(2)}${max > 1 ? ` · hasta ${max}` : ''}</span></div>
+                    <div class="extra-paso"><button type="button" data-delta="-1" aria-label="Quitar ${escaparHtml(e.nombre)}" disabled>−</button>
+                    <span class="extra-cant" aria-live="polite">0</span>
+                    <button type="button" data-delta="1" aria-label="Sumar ${escaparHtml(e.nombre)}">+</button></div>`;
+                fila.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                    const span = fila.querySelector('.extra-cant');
+                    const n = Math.min(max, Math.max(0, (Number(span.textContent) || 0) + Number(b.dataset.delta)));
+                    span.textContent = String(n);
+                    const [menos, mas] = fila.querySelectorAll('button');
+                    menos.disabled = n <= 0; mas.disabled = n >= max; fila.classList.toggle('activo', n > 0);
+                    actualizarPrecioModal();
+                }));
+                listaExtras.appendChild(fila);
+            });
+            document.getElementById('contenedor-extras').style.display = extrasDelPlato.length ? 'block' : 'none';
+            actualizarPrecioModal();
+
             const contQuitables = document.getElementById('contenedor-quitables');
             const listaQuitables = document.getElementById('lista-quitables');
             listaQuitables.replaceChildren();
@@ -1433,7 +1501,10 @@
             btnDetalleAgregar.onclick = function() {
                 const arrSin = [...listaQuitables.querySelectorAll('.chk-quitable:checked')]
                     .map(chk => Number(chk.value));
-                agregarAlCarritoDesdeDetalle(item.id, item.nombre, arrSin, this);
+                const extrasElegidos = [...listaExtras.querySelectorAll('.extra-edit')]
+                    .map(f => ({ id: Number(f.dataset.id), cantidad: Number(f.querySelector('.extra-cant').textContent) || 0, nombre: f.dataset.nombre, precio: Number(f.dataset.precio) || 0 }))
+                    .filter(e => e.cantidad > 0).sort((a, b) => a.id - b.id);
+                agregarAlCarritoDesdeDetalle(item.id, item.nombre, arrSin, this, extrasElegidos);
             };
             document.getElementById('modal-detalle').dataset.productoId = String(item.id);
 

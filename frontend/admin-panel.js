@@ -292,7 +292,7 @@
 
     // Mantiene la última sección abierta durante esta sesión de navegación.
     const CLAVE_VISTA_ADMIN = 'savage-admin-ultima-vista';
-    const VISTAS_HABILITADAS = ['menu', 'proveedores', 'insumos', 'compras', 'movimientos', 'ajustes', 'recetas', 'reposicion', 'jornada'];
+    const VISTAS_HABILITADAS = ['menu', 'proveedores', 'insumos', 'compras', 'movimientos', 'ajustes', 'recetas', 'reposicion', 'jornada', 'cobros', 'reservas', 'mesas'];
 
     const modalConfirmacion = {
         activa: false,
@@ -478,6 +478,11 @@
         if (vista === 'recetas') moduloRecetas.iniciar();
         if (vista === 'reposicion') moduloReposicion.iniciar();
         if (vista === 'jornada') moduloJornadaEspeciales.iniciar();
+        // Cobros y Reservas viven en su propia pantalla, embebida: se carga la primera vez que se abre.
+        const marco = $(`marco-${vista}`);
+        if (marco && !marco.getAttribute('src')) marco.setAttribute('src', marco.dataset.src);
+        const contenido = $('admin-contenido');
+        if (contenido) contenido.classList.toggle('sg-con-marco', Boolean(marco));
     }
 
     function campo(nombre) {

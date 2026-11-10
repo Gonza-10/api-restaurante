@@ -4,7 +4,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .auth import ADMIN_GERENTE, COCINA
+from .auth import ADMIN_GERENTE, BARRA, COCINA
 from .models import Perdida
 from .perdidas import (
     ProductoSinReceta, armar_perdida, consumos_por_perdida, registrar_perdida_insumo, registrar_perdida_plato,
@@ -24,7 +24,7 @@ def _consulta_base():
 
 class MotivosPerdidaView(APIView):
     """GET /perdidas/motivos. La lista cerrada de motivos, para armar el desplegable del formulario. Cocina, Admin y Gerente."""
-    roles_lectura = COCINA
+    roles_lectura = COCINA | BARRA
 
     def get(self, request):
         return Response([
@@ -34,15 +34,15 @@ class MotivosPerdidaView(APIView):
 
 
 class PerdidaViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    """Perdidas con motivo. Cocina, Admin y Gerente cargan y consultan; el VALOR (y los costos) solo lo ven Admin y
+    """Perdidas con motivo. Cocina, Bartender, Admin y Gerente cargan y consultan; el VALOR (y los costos) solo lo ven Admin y
     Gerente. No se editan ni se borran: un error se corrige con un ajuste de stock.
     - POST /perdidas: ver PerdidaEntradaSerializer. Descuenta del stock por FEFO, todo o nada (409 si no alcanza).
     - GET /perdidas (mas nuevas primero). Filtros: ?tipo=insumo|plato, ?motivo=codigo, ?insumo=id, ?producto=id,
       ?desde=AAAA-MM-DD, ?hasta=AAAA-MM-DD, ?limite=N (por defecto 200, maximo 1000).
     - GET /perdidas/<id>: ademas, de que insumos y lotes salio."""
     serializer_class = PerdidaEntradaSerializer
-    roles_lectura = COCINA
-    roles_escritura = COCINA
+    roles_lectura = COCINA | BARRA
+    roles_escritura = COCINA | BARRA   # el bartender tambien avisa sus perdidas (se le descuenta del stock igual que a Cocina)
 
     def get_queryset(self):
         return _consulta_base()

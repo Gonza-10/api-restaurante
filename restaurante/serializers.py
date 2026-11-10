@@ -10,6 +10,7 @@ from rest_framework.validators import UniqueValidator
 from .destinos_calculos import destino_de_producto, destino_valido
 from .models import Producto, Mesa, Categoria, Empleado, Rol, PedidoCabecera, PedidoDetalle
 from .comensales_calculos import modalidad_valida
+from .gestor_pago import gestor_publico, leer_plan
 from .especiales import precios_especiales_vigentes
 from .modificadores import quitables_de_productos
 from .extras import extras_de_productos
@@ -146,6 +147,17 @@ class ProductoSerializer(serializers.ModelSerializer):
 
 # ==================== MESAS ====================
 
+def _sesion_en_sobremesa(sesion):
+    """La mesa ya pago la cuenta pero sigue ocupada (el cliente se queda un rato). Usa las facturas precargadas (sin N+1)."""
+    if sesion is None or sesion.estado != 'Abierto':
+        return False
+    vigentes = [f for f in sesion.facturas.all() if f.estado != 'Anulada']
+    return bool(vigentes) and max(vigentes, key=lambda f: f.id).estado == 'Pagada'
+
+
+CAPACIDAD_MAXIMA_MESA = 20
+
+
 class MesaSerializer(serializers.ModelSerializer):
     # el número es el identificador visible para mozo y cliente: no puede repetirse
     numero = serializers.IntegerField(
@@ -169,10 +181,13 @@ class MesaSerializer(serializers.ModelSerializer):
     ronda_liberada = serializers.SerializerMethodField()
     # aviso urgente para el mozo: alguien pidio un PIN nuevo y el mozo todavia no lo vio. None si no hay aviso pendiente.
     aviso_pin = serializers.SerializerMethodField()
+    # la mesa ya pago pero sigue ocupada (sobremesa): el mozo deja de verla como "pide cuenta"
+    en_sobremesa = serializers.SerializerMethodField()
 
     class Meta:
         model = Mesa
         fields = '__all__'
+        read_only_fields = ('estado',)   # ocupada/libre lo cambian solo abrir y cerrar sesion, nunca el ABM
 
     def _sesion_abierta(self, obj):
         abiertas = getattr(obj, 'sesiones_abiertas', None)
@@ -209,6 +224,9 @@ class MesaSerializer(serializers.ModelSerializer):
         sesion = self._sesion_abierta(obj)
         return sesion.ronda_liberada if sesion else None
 
+    def get_en_sobremesa(self, obj):
+        return _sesion_en_sobremesa(self._sesion_abierta(obj))
+
     def get_aviso_pin(self, obj):
         sesion = self._sesion_abierta(obj)
         if not sesion or not sesion.aviso_pin_pendiente:
@@ -223,14 +241,29 @@ class MesaSerializer(serializers.ModelSerializer):
     def validate_capacidad_maxima(self, value):
         if value <= 0:
             raise serializers.ValidationError('La capacidad debe ser mayor a 0.')
+        if value > CAPACIDAD_MAXIMA_MESA:
+            raise serializers.ValidationError(f'La capacidad no puede superar {CAPACIDAD_MAXIMA_MESA} personas.')
         return value
 
     def validate(self, data):
-        # una mesa ocupada no se puede dar de baja (tampoco vía PATCH)
-        if self.instance is not None and data.get('activa') is False and self.instance.estado:
-            raise serializers.ValidationError(
-                {'activa': 'No se puede dar de baja una mesa ocupada. Cerrá primero su sesión.'}
-            )
+        mesa = self.instance
+        if mesa is not None:
+            # una mesa ocupada no se puede dar de baja (tampoco vía PATCH)
+            if data.get('activa') is False and mesa.estado:
+                raise serializers.ValidationError(
+                    {'activa': 'No se puede dar de baja una mesa ocupada. Cerrá primero su sesión.'}
+                )
+            # el cliente entra con el número de su mesa: mientras esté ocupada no puede cambiar
+            if mesa.estado and 'numero' in data and data['numero'] != mesa.numero:
+                raise serializers.ValidationError(
+                    {'numero': 'No se puede cambiar el número de una mesa ocupada. Cerrá primero su sesión.'}
+                )
+            if data.get('activa') is False and mesa.activa:
+                from .reservas import reservas_proximas_de_mesa
+                if reservas_proximas_de_mesa(mesa.id):
+                    raise serializers.ValidationError(
+                        {'activa': 'La mesa tiene reservas confirmadas. Cancelalas o pasalas a otra mesa antes de darla de baja.'}
+                    )
         return data
 
 
@@ -327,8 +360,12 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
     fecha_hora_inicio = serializers.DateTimeField(source='fecha_hora_apertura', read_only=True)
     fecha_hora_solicita_cuenta = serializers.DateTimeField(read_only=True)
     solicita_cuenta = serializers.SerializerMethodField()
+    en_sobremesa = serializers.SerializerMethodField()
     detalles = PedidoDetalleSerializer(many=True, read_only=True)
     total = serializers.SerializerMethodField()
+    # como piensa pagar la mesa (lo arma el cliente en "Pagar") y quien gestiona el pago desde el celular; None si no hay
+    plan_pago = serializers.SerializerMethodField()
+    gestor_pago = serializers.SerializerMethodField()
 
     class Meta:
         model = PedidoCabecera
@@ -342,6 +379,15 @@ class PedidoCabeceraSerializer(serializers.ModelSerializer):
 
     def get_solicita_cuenta(self, obj):
         return obj.estado == 'Abierto' and obj.fecha_hora_solicita_cuenta is not None
+
+    def get_en_sobremesa(self, obj):
+        return _sesion_en_sobremesa(obj)
+
+    def get_plan_pago(self, obj):
+        return leer_plan(obj.id) if obj.estado == 'Abierto' else None
+
+    def get_gestor_pago(self, obj):
+        return gestor_publico(obj.id) if obj.estado == 'Abierto' else None
 
     def validate_cantidad_comensales(self, value):
         if value <= 0:

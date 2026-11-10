@@ -22,7 +22,9 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from .caja import ReglaCaja, caja_abierta, caja_abierta_bloqueada, cotizacion_para, registrar_movimiento
-from .cobros_calculos import CERO, MONEDA_BASE, CobroInvalido, calcular_cobro_efectivo, calcular_cobro_tarjeta, convertir_a_ars
+from .cobros_calculos import (
+    CERO, MONEDA_BASE, CobroInvalido, calcular_cobro_efectivo, calcular_cobro_tarjeta, calcular_propina_tarjeta, convertir_a_ars,
+)
 from .cobros_calculos import equivalentes
 from .cotizacion import cotizaciones_vigentes
 from .comensales_calculos import ESTADOS_ACTIVOS
@@ -210,10 +212,11 @@ def pagar_efectivo(factura_id, empleado, moneda, recibido, propina_ars=CERO, mon
     return pago, True
 
 
-def pagar_tarjeta(factura_id, empleado, monto_cuenta=None, clave=None):
+def pagar_tarjeta(factura_id, empleado, monto_cuenta=None, clave=None, propina=None):
     """Registra un cobro con tarjeta (credito o debito) CONFIRMADO por el mozo: el pago es manual, con el postnet; aca solo se
-    asienta que la plata impacto. Es en pesos, sin vuelto ni propina y no mueve el efectivo de la caja (pero, como todo cobro,
-    pide una caja abierta). `monto_cuenta` (pesos): cuanto de la cuenta cubre; sin indicar, todo el saldo.
+    asienta que la plata impacto. Es en pesos, sin vuelto y no mueve el efectivo de la caja (pero, como todo cobro, pide una caja
+    abierta). `monto_cuenta` (pesos): cuanto de la cuenta cubre; sin indicar, todo el saldo. `propina` (pesos, opcional): lo que el
+    cliente dejo ademas de la cuenta; el posnet la cobra junto con la cuenta y va solo al mozo de la mesa.
     Devuelve (pago, creado). `creado=False` si la `clave` ya existia (reintento). Levanta ReglaCuenta (409) o CobroInvalido (400)."""
     with transaction.atomic():
         factura = Factura.objects.select_for_update().get(pk=factura_id)   # sin select_related (ver _bloquear_sesion)
@@ -238,13 +241,16 @@ def pagar_tarjeta(factura_id, empleado, monto_cuenta=None, clave=None):
             )
         # un pago pendiente (Mercado Pago) ya reserva su monto en el saldo: se puede combinar con la tarjeta
         monto = calcular_cobro_tarjeta(saldo_de_la_cuenta(factura.total, _pagos_como_dicts(factura)), monto_cuenta)
+        propina_ars = calcular_propina_tarjeta(propina)
         pago = Pago.objects.create(
             factura=factura, metodo_pago=_metodo('Tarjeta'), monto=monto, fecha_hora=timezone.now(), estado='Aprobado',
-            moneda=MONEDA_BASE, monto_recibido=monto, cotizacion=1, monto_propina=CERO, vuelto=CERO, empleado=empleado,
+            moneda=MONEDA_BASE, monto_recibido=monto + propina_ars, cotizacion=1, monto_propina=propina_ars, vuelto=CERO,
+            empleado=empleado, empleado_propina=sesion.empleado if propina_ars > 0 else None,
             clave_idempotencia=clave or None,
         )
+        detalle_propina = f', propina {propina_ars}' if propina_ars > 0 else ''
         _evento(pago, 'Cobrado con tarjeta', None, 'Aprobado', empleado,
-                f'El mozo confirmo el cobro con tarjeta de la mesa {sesion.mesa.numero}: {monto} (ARS).')
+                f'El mozo confirmo el cobro con tarjeta de la mesa {sesion.mesa.numero}: cuenta {monto}{detalle_propina} (ARS).')
         _actualizar_factura(factura)
     return pago, True
 

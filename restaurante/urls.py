@@ -52,7 +52,8 @@ from .views_recetas import RecetaViewSet, ProductoRecetaView, ProductosSinReceta
 from .views_extras import RecetaExtrasView, RecetaExtrasCopiarView, ExtraDetalleView
 from .views_comprobante import CuentaFacturaClienteView, CuentaComprobanteClienteView, FacturaComprobanteView
 from .views_auditoria import AuditoriaView
-from .views_barra import BebidasEntregarView, BebidasMozoView, ComandaEstadoBarraView, TableroBarraView
+from .views_pago_gestion import CuentaGestorEstadoView, CuentaGestorSoltarView, CuentaGestorView, SesionPagoLiberarView
+from .views_barra import BebidasEntregarView, BebidasMozoView, ComandaEstadoBarraView, ListoEntregadoMozoView, ListosMozoView, TableroBarraView
 from .views_comensales import (
     ComandaCancelarView, MesaComensalesEstadoView, MesaComensalesView, MesaOkView, MesaRegenerarPinView, SesionComensalesView,
     SesionLiberarRondaView, SesionPinVistoView, SesionRegenerarPinView,
@@ -153,6 +154,10 @@ urlpatterns = [
     path('cuenta/pagar/estado', PagarEstadoClienteView.as_view(), name='cuenta-pagar-estado'),
     path('cuenta/pagar/cancelar', PagarCancelarClienteView.as_view(), name='cuenta-pagar-cancelar'),
     path('solicitar-cuenta', SolicitarCuentaView.as_view(), name='solicitar-cuenta'),
+    path('cuenta/gestor', CuentaGestorView.as_view(), name='cuenta-gestor'),
+    path('cuenta/gestor/estado', CuentaGestorEstadoView.as_view(), name='cuenta-gestor-estado'),
+    path('cuenta/gestor/soltar', CuentaGestorSoltarView.as_view(), name='cuenta-gestor-soltar'),
+    path('sesiones-mesa/<int:pk>/pago/liberar', SesionPagoLiberarView.as_view(), name='sesion-pago-liberar'),
     path('mesa/comensales', MesaComensalesView.as_view(), name='mesa-comensales'),
     path('mesa/comensales/estado', MesaComensalesEstadoView.as_view(), name='mesa-comensales-estado'),
     path('mesa/comensales/ok', MesaOkView.as_view(), name='mesa-comensales-ok'),
@@ -166,6 +171,8 @@ urlpatterns = [
     path('barra/tablero', TableroBarraView.as_view(), name='tablero-barra'),
     path('barra/pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoBarraView.as_view(), name='barra-estado-comanda'),
     path('mozo/bebidas', BebidasMozoView.as_view(), name='mozo-bebidas'),
+    path('mozo/listos', ListosMozoView.as_view(), name='mozo-listos'),
+    path('mozo/listos/<uuid:uuid_comanda>/entregado', ListoEntregadoMozoView.as_view(), name='mozo-listo-entregado'),
     path('mesa/historial', HistorialMesaView.as_view(), name='historial-mesa'),
     path('pedidos', ComandaCreateView.as_view(), name='crear-comanda'),
     path('pedidos/<uuid:uuid_comanda>/estado', ComandaEstadoUpdateView.as_view(), name='actualizar-estado-comanda'),

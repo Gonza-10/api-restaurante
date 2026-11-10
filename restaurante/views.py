@@ -48,7 +48,7 @@ from .comensales_calculos import (
     GRUPAL,
 )
 from .destinos_calculos import COCINA as DEST_COCINA
-from .estado_comandas import estado_de, estado_global, transicionar
+from .estado_comandas import estado_de, estado_global, marcar_despachado, transicionar
 from .auth import (
     emitir_token, ttl_token_segundos,
     ADMIN_GERENTE, SOLO_GERENTE, SALON, COCINA, ROL_GERENTE, ROL_MOZO,
@@ -58,6 +58,8 @@ from .jornadas import jornada_abierta
 from .reservas import ReservaNoVigente, cumplir_reserva, reserva_bloqueante, reservas_bloqueantes_por_mesa, vencer_reservas
 from .reservas_calculos import mensaje_mesa_reservada
 from .cobros_calculos import metodo_pago_solicitado
+from .gestor_pago import guardar_plan, respuesta_gestor_ocupado, verificar_gestor
+from .plan_pago_calculos import PlanInvalido, partes_al_aire, resumen_texto, validar_plan
 from .serializers_reservas import reserva_resumen
 from .especiales import precios_especiales_vigentes
 from .modificadores import lineas_de_items, nombres_quitados, quitables_de_productos, validar_modificadores
@@ -305,7 +307,7 @@ class MesaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Mesa.objects.prefetch_related(Prefetch(
             'pedidos',
-            queryset=PedidoCabecera.objects.filter(estado='Abierto').select_related('empleado'),
+            queryset=PedidoCabecera.objects.filter(estado='Abierto').select_related('empleado').prefetch_related('facturas'),
             to_attr='sesiones_abiertas',
         ))
         if self.action == 'list':
@@ -320,6 +322,12 @@ class MesaViewSet(viewsets.ModelViewSet):
         if mesa.estado:
             return Response(
                 {'error': 'No se puede dar de baja una mesa ocupada. Cierre primero su sesion.'},
+                status=status.HTTP_409_CONFLICT
+            )
+        from .reservas import reservas_proximas_de_mesa
+        if reservas_proximas_de_mesa(mesa.id):
+            return Response(
+                {'error': 'La mesa tiene reservas confirmadas. Cancelalas o pasalas a otra mesa antes de darla de baja.'},
                 status=status.HTTP_409_CONFLICT
             )
         mesa.activa = False
@@ -420,7 +428,7 @@ class PedidoCabeceraViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = PedidoCabecera.objects.select_related('mesa', 'empleado').prefetch_related(
-            'detalles__producto').order_by('-id')
+            'detalles__producto', 'facturas').order_by('-id')
         if getattr(self.request.user, 'rol', None) == ROL_MOZO:
             queryset = queryset.filter(empleado_id=self.request.user.id)
         if self.action == 'list':
@@ -846,6 +854,10 @@ class ComandaEstadoUpdateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        if nuevo_estado == 'entregado':
+            # cocina/barra despachó: la clave de estado ya se borró, pero el mozo sigue viendo el aviso hasta que lo lleve a la mesa
+            marcar_despachado(uuid_comanda, self.destino)
+
         if nuevo_estado == 'listo':
             try:
                 _publicar_evento_comanda_lista(str(uuid_comanda))
@@ -1046,7 +1058,12 @@ class SolicitarCuentaView(APIView):
     """El cliente avisa al mozo que quiere la cuenta. Es idempotente: pedirla dos veces conserva la primera hora.
     Cuerpo: numero_mesa, pin y, opcional, `metodo_pago` ('efectivo', 'tarjeta' o 'mercadopago'): con que medio quiere pagar. Es
     un aviso para el mozo (se ve en la mesa como `metodo_pago_solicitado`) y se puede cambiar volviendo a pedir la cuenta. Un valor
-    que no sea uno de esos tres (por ejemplo 'transferencia') se ignora y no hace fallar la solicitud."""
+    que no sea uno de esos tres (por ejemplo 'transferencia') se ignora y no hace fallar la solicitud.
+    Opcional, el plan de pago de la pantalla "Pagar": `plan` = {"modo": "todo"|"consumo"|"partes_iguales", "partes": [{"metodo":
+    "efectivo"|"tarjeta"|"mercadopago", "monto": pesos, "propina": pesos}]} (cada medio una sola vez, hasta 6 partes). Es un aviso
+    para el mozo y la caja (las partes de efectivo y tarjeta las cobra y controla el mozo; Mercado Pago se cobra solo): se guarda
+    y se ve en la mesa como `plan_pago`. Plan invalido: 400 y no se guarda nada. Si otro dispositivo gestiona el pago de la mesa
+    (`dispositivo` no coincide): 409 `gestor_ocupado`; sin nadie gestionando no hace falta mandarlo."""
     authentication_classes = []  # un token vencido no debe impedir pedir la cuenta
     roles_lectura = None
     roles_escritura = None  # publico, protegido por el PIN de la mesa
@@ -1057,20 +1074,41 @@ class SolicitarCuentaView(APIView):
         sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
         if error is not None:
             return error
+        datos = request.data if hasattr(request.data, 'get') else {}
+        ocupado = verificar_gestor(sesion.id, datos.get('dispositivo'))
+        if ocupado is not None:
+            return respuesta_gestor_ocupado(ocupado)
+        plan = None
+        if datos.get('plan') not in (None, ''):
+            entrada_plan = datos.get('plan')
+            if not isinstance(entrada_plan, dict):
+                return Response({'error': 'El plan de pago debe indicar modo y partes.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                plan = validar_plan(entrada_plan.get('modo'), entrada_plan.get('partes'))
+            except PlanInvalido as problema:
+                return Response({'error': str(problema)}, status=status.HTTP_400_BAD_REQUEST)
 
         cambios = []
         if sesion.fecha_hora_solicita_cuenta is None:
             sesion.fecha_hora_solicita_cuenta = timezone.now()
             cambios.append('fecha_hora_solicita_cuenta')
-        metodo = metodo_pago_solicitado(request.data.get('metodo_pago') if hasattr(request.data, 'get') else None)
+        metodo = metodo_pago_solicitado(datos.get('metodo_pago'))
+        if plan is not None:
+            # con varias partes se avisa el medio que el mozo tiene que ir a cobrar a la mesa; si todo es Mercado Pago, ese
+            aire = partes_al_aire(plan)
+            metodo = (aire or plan['partes'])[0]['metodo']
         if metodo is not None and metodo != sesion.metodo_pago_solicitado:
             sesion.metodo_pago_solicitado = metodo
             cambios.append('metodo_pago_solicitado')
         if cambios:
             sesion.save(update_fields=cambios)
+        if plan is not None:
+            plan = guardar_plan(sesion.id, plan, por=datos.get('nombre'))
 
         return Response({
             'mensaje': 'Cuenta solicitada. El mozo ya fue avisado.',
+            'plan_pago': plan,
+            'plan_resumen': resumen_texto(plan) if plan else None,
             'solicita_cuenta': True,
             'fecha_hora_solicita_cuenta': fecha_iso(sesion.fecha_hora_solicita_cuenta),
             'metodo_pago_solicitado': sesion.metodo_pago_solicitado,

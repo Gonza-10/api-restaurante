@@ -25,6 +25,7 @@ from .pagos_mp import METODO, cancelar_pago, iniciar_pago, sincronizar_pago
 from .redis_client import redis_client
 from .serializers import AccesoClienteSerializer
 from .serializers_cobros import en_texto
+from .gestor_pago import respuesta_gestor_ocupado, verificar_gestor
 from .views import _sesion_cliente
 from .views_cuenta import _campo, _cuerpo, _error, _es_mozo, _no_existe, _pago_json, aplicar_pedido, cuenta_json, pedido_de_factura
 
@@ -87,6 +88,9 @@ class PagarMercadoPagoClienteView(APIView):
         sesion, error, datos = _sesion_y_datos(request)
         if error is not None:
             return error
+        ocupado = verificar_gestor(sesion.id, datos.get('dispositivo'))   # solo gestiona el pago un dispositivo a la vez
+        if ocupado is not None:
+            return respuesta_gestor_ocupado(ocupado)
         monto_cuenta = None
         if datos.get('monto_cuenta') not in (None, ''):
             try:
@@ -148,6 +152,9 @@ class PagarCancelarClienteView(APIView):
         sesion, error, datos = _sesion_y_datos(request)
         if error is not None:
             return error
+        ocupado = verificar_gestor(sesion.id, datos.get('dispositivo'))
+        if ocupado is not None:
+            return respuesta_gestor_ocupado(ocupado)
         pago = _pago_de_la_sesion(sesion, datos)
         if pago is None:
             return _no_existe()

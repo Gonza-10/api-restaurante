@@ -9,7 +9,9 @@ from decimal import Decimal as D
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, RAIZ)
 
-from restaurante.cobros_calculos import CobroInvalido, calcular_cobro_tarjeta, metodo_pago_solicitado  # noqa: E402
+from restaurante.cobros_calculos import (  # noqa: E402
+    CobroInvalido, calcular_cobro_tarjeta, calcular_propina_tarjeta, metodo_pago_solicitado,
+)
 from restaurante.comprobante_calculos import MEDIOS  # noqa: E402
 
 total = 0
@@ -59,6 +61,16 @@ falla('monto negativo', calcular_cobro_tarjeta, D('15000'), D('-5'))
 falla('cuenta sin saldo', calcular_cobro_tarjeta, D('0'))
 falla('cuenta sin saldo, aunque se indique monto', calcular_cobro_tarjeta, D('0'), D('100'))
 falla('saldo negativo', calcular_cobro_tarjeta, D('-1'))
+
+# ---------- propina con tarjeta ----------
+comprobar('sin propina (None) es cero', calcular_propina_tarjeta(None) == D('0'))
+comprobar('sin propina (vacio) es cero', calcular_propina_tarjeta('  ') == D('0'))
+comprobar('propina cero', calcular_propina_tarjeta(0) == D('0.00'))
+comprobar('propina valida', calcular_propina_tarjeta(D('3190')) == D('3190.00'))
+comprobar('propina como texto', calcular_propina_tarjeta('1500.50') == D('1500.50'))
+comprobar('propina redondea a centavos', calcular_propina_tarjeta('10.005') == D('10.01'))
+falla('propina negativa', calcular_propina_tarjeta, D('-1'))
+falla('propina que no es numero', calcular_propina_tarjeta, 'mucha')
 
 # ---------- comprobante ----------
 comprobar('el comprobante nombra el medio Tarjeta', MEDIOS.get('Tarjeta') == 'Tarjeta')

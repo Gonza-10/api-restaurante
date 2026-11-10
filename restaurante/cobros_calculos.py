@@ -122,9 +122,23 @@ def metodo_pago_solicitado(texto):
     return METODOS_SOLICITABLES.get(clave)
 
 
+def calcular_propina_tarjeta(propina=None):
+    """Propina (en pesos) que el cliente deja al pagar con tarjeta: opcional y nunca negativa. El posnet la cobra junto con la
+    cuenta y va solo al mozo de la mesa. Sin dato (None o vacio) es cero. Lanza CobroInvalido si no es un numero o es negativa."""
+    if propina is None or (isinstance(propina, str) and not propina.strip()):
+        return CERO
+    try:
+        valor = redondear_dinero(propina)
+    except ValueError:
+        raise CobroInvalido('La propina no es un numero valido.')
+    if not valor.is_finite() or valor < 0:
+        raise CobroInvalido('La propina no puede ser negativa.')
+    return valor
+
+
 def calcular_cobro_tarjeta(saldo, monto_cuenta=None):
     """Cuanto de la cuenta cubre un cobro con tarjeta confirmado por el mozo. Sin `monto_cuenta` se cobra todo el saldo.
-    No hay vuelto ni propina. Lanza CobroInvalido si el saldo es cero o el monto no sirve."""
+    No hay vuelto (la propina se valida aparte, con calcular_propina_tarjeta). Lanza CobroInvalido si el saldo es cero o el monto no sirve."""
     saldo = redondear_dinero(saldo)
     if saldo <= 0:
         raise CobroInvalido('La cuenta ya no tiene saldo para cobrar.')

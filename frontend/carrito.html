@@ -62,6 +62,18 @@
         .badge-personalizacion { display: block; width: fit-content; max-width: 100%; box-sizing: border-box; background: rgba(255,122,0,.14); color: var(--primary-orange); padding: 4px 7px; border: 1px solid rgba(255,122,0,.2); border-radius: 6px; font-size: 11px; font-weight: 700; margin: 4px 0 5px; white-space: normal; overflow-wrap: anywhere; }
         .quitable-editar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); cursor: pointer; }
         .quitable-editar:hover { border-color: var(--primary-orange); }
+        .extra-edit { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); }
+        .extra-edit.activo { border-color: var(--primary-orange); background: rgba(255,122,0,.1); }
+        .extra-edit .extra-info { min-width: 0; display: grid; gap: 2px; }
+        .extra-edit .extra-nombre { font-size: 14px; font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; }
+        .extra-edit .extra-precio { font-size: 12px; font-weight: 800; color: var(--primary-orange); }
+        .extra-edit .extra-paso { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .extra-edit .extra-paso button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-main); font-weight: 900; font-size: 17px; cursor: pointer; }
+        .extra-edit .extra-paso button:hover:not(:disabled) { border-color: var(--primary-orange); color: var(--primary-orange); }
+        .extra-edit .extra-paso button:disabled { opacity: .35; cursor: not-allowed; }
+        .extra-edit .extra-cant { min-width: 22px; text-align: center; font-weight: 900; font-size: 15px; }
+        body.light-mode .extra-edit { background: #fff; border-color: #d6dce5; }
+        body.light-mode .extra-edit.activo { background: #fff4e8; border-color: var(--primary-orange); }
         .quitable-editar input { accent-color: var(--primary-orange); width: 18px; height: 18px; cursor: pointer; }
         .texto-auxiliar-carrito { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
         .btn-edit-carrito:focus-visible, .quitable-editar:focus-within { outline: 2px solid var(--primary-orange); outline-offset: 2px; }
@@ -115,6 +127,12 @@
         .carrito-header-acciones { justify-content: flex-end; flex: 0 0 auto; min-width:0; }
         .carrito-badge-mesa { white-space: nowrap; font-size:13px; }
         .carrito-volver { white-space: nowrap; min-height:38px; }
+        /* Botón "Pagar": siempre visible arriba a la derecha (lleva a la pantalla Pagar). */
+        .sg-pagar-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--primary-orange); background:var(--primary-orange); color:#fff !important; font:inherit; font-size:15px; font-weight:900; text-decoration:none; white-space:nowrap; flex-shrink:0; box-shadow:0 4px 15px rgba(255,122,0,.3); transition:background .2s, transform .2s; }
+        .sg-pagar-btn:hover { background:var(--primary-hover, #e56d00); border-color:var(--primary-hover, #e56d00); transform:translateY(-1px); }
+        .sg-pagar-btn:focus-visible { outline:2px solid var(--primary-orange); outline-offset:3px; }
+        .sg-pagar-btn svg { width:20px; height:20px; flex:0 0 auto; }
+        @media (max-width:420px) { .sg-pagar-btn { min-height:40px; padding:0 12px; font-size:14px; gap:6px; } .sg-pagar-btn svg { width:18px; height:18px; } }
         .carrito-container { width:100%; box-sizing:border-box; min-width:0; }
         .carrito-container > div { min-width: 0; }
         #contenedor-items-carrito, #contenedor-historial-pedidos { min-width:0; }
@@ -295,21 +313,22 @@
             <button class="carrito-volver" onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
                 ← Volver al Menú
             </button>
+            <a class="sg-pagar-btn" href="pagar.html" aria-label="Pagar la cuenta"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/></svg><span>Pagar</span></a>
         </div>
     </header>
 
     <div class="carrito-container">
-        <!-- ZONA 1: Selección y Enviar a Cocina -->
+        <!-- ZONA 1: Selección y Realizar pedido -->
         <div class="carrito-columna-seleccion" style="display: flex; flex-direction: column; gap: 25px;">
             <div>
                 <h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos listos para enviar a cocina en este nuevo pedido.</p>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos que vas a pedir ahora. Se envían a Cocina, a la Barra o al mozo según corresponda.</p>
                 <div id="contenedor-items-carrito" style="display: flex; flex-direction: column; gap: 12px;"></div>
             </div>
 
             <!-- Botón original intacto -->
             <button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
-                Enviar Selección a Cocina
+                Realizar pedido
             </button>
 
             <!-- Historial -->
@@ -320,40 +339,21 @@
             </div>
         </div>
 
-        <!-- ZONA 2 y 3: Resumen y Pago -->
+        <!-- ZONA 2: Resumen del pedido (el pago está en «Pagar», arriba a la derecha) -->
         <div class="carrito-columna-cuenta" style="display: flex; flex-direction: column; gap: 20px;">
             <div class="product-card carrito-resumen" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
-                    <span>Consumos enviados (según servidor)</span>
+                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen del pedido</h3>
+                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Este pedido</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
+                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
+                    <span>Ya pedido en la mesa</span>
                     <span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
                 </div>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
-                    <span>Costo de Servicio (Cubierto)</span>
-                    <span id="lbl-cubierto" style="color: var(--text-main); font-weight: 600;">$0.00</span>
-                </div>
                 <div class="carrito-resumen-total" style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa (sin selección nueva)</span>
+                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa</span>
                     <span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
                 </div>
-                <p id="estado-consulta-historial" style="margin:0;font-size:12px;line-height:1.5;color:var(--text-muted)" aria-live="polite">Consultando los consumos de la mesa...</p>
-                <p id="estimado-seleccion" style="margin:0;font-size:12px;color:var(--text-muted);display:none"></p>
+                <p id="estado-consulta-historial" style="margin:0;font-size:12px;line-height:1.5;color:var(--text-muted);display:none" aria-live="polite"></p>
             </div>
-
-            <div id="zona-metodo-pago" class="product-card carrito-zona-pago" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-main); font-weight: 800;">Método de Pago</h3>
-                <p style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px;">Seleccioná cómo vas a abonar al finalizar tu estadía.</p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="efectivo" checked style="accent-color: var(--primary-orange);"> Efectivo (al mozo)</label>
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="tarjeta" style="accent-color: var(--primary-orange);"> Tarjeta de Crédito / Débito</label>
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="transferencia" style="accent-color: var(--primary-orange);"> Transferencia Bancaria / QR</label>
-                </div>
-            </div>
-
-            <button id="btn-cerrar-mesa" onclick="confirmarCierreMesa()" style="width: 100%; padding: 16px; border-radius: 12px; background: transparent; color: var(--primary-orange); border: 2px solid var(--primary-orange); font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 122, 0, 0.1)';" onmouseout="this.style.background='transparent';">
-                Solicitar Cierre de Mesa y Pago
-            </button>
         </div>
     </div>
 
@@ -364,7 +364,7 @@
             <strong id="carrito-total-movil-importe" aria-live="polite">$ 0,00</strong>
         </div>
         <div class="carrito-total-movil-fila carrito-total-movil-fila-principal">
-            <span class="carrito-total-movil-etiqueta">Total de la mesa <small>Consumos ya registrados + cubierto</small></span>
+            <span class="carrito-total-movil-etiqueta">Total de la mesa <small>Ya pedido + este pedido</small></span>
             <strong id="carrito-total-movil-mesa" aria-live="polite">—</strong>
         </div>
     </aside>
@@ -384,11 +384,44 @@
             <div style="padding: 30px;">
                 <h2 id="edit-nombre" style="margin: 0 0 5px 0; font-size: 20px;"></h2>
                 <p style="margin: 0 0 20px 0; color: var(--primary-orange); font-weight: bold;">Personalizá tu plato</p>
-                <div id="edit-quitables-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                <div id="edit-extras-wrap" style="display: none;">
+                    <p style="margin: 0 0 4px 0; font-weight: 800; font-size: 15px;">Sumale algo más</p>
+                    <p class="texto-auxiliar-carrito" style="margin: 0 0 10px 0;">Cada extra tiene un recargo que se suma al precio del plato.</p>
+                    <div id="edit-extras-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <p id="edit-extras-nota" class="texto-auxiliar-carrito" style="margin: 10px 0 0 0; display: none;"></p>
+                </div>
+                <div id="edit-quitables-wrap" style="display: none;">
+                    <p id="edit-quitables-titulo" style="margin: 20px 0 10px 0; font-weight: 800; font-size: 15px;">Quitale algo (opcional)</p>
+                    <div id="edit-quitables-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+                <p id="edit-precio-unidad" style="margin: 18px 0 0 0; font-weight: 900; font-size: 15px; color: var(--text-main); display: none;"></p>
                 <input type="hidden" id="edit-index-carrito">
                 <button onclick="guardarEdicionCarrito()" style="width: 100%; margin-top: 25px; background: var(--primary-orange); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
                     Guardar Cambios
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Dividir Plato -->
+    <div id="modal-dividir-plato" role="dialog" aria-modal="true" aria-labelledby="div-nombre" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
+        <div class="product-card carrito-modal-edicion" style="width: min(440px, 92%); max-height: 88vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--glass-border); border-radius: 20px; position: relative;">
+            <button type="button" onclick="cerrarModalDividir()" aria-label="Cerrar" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 18px; cursor: pointer; z-index: 10;">✕</button>
+            <div style="padding: 30px;">
+                <h2 id="div-nombre" style="margin: 0 40px 5px 0; font-size: 20px;"></h2>
+                <p style="margin: 0 0 12px 0; color: var(--primary-orange); font-weight: bold;">Dividir este plato</p>
+                <p id="div-ayuda" class="texto-auxiliar-carrito" style="margin: 0 0 18px 0; font-size: 13px; line-height: 1.5;">Tocá el nombre de cada amigo que comparte el plato. Si alguien no pide por su cuenta (por ejemplo, un amigo que no se registró), escribí su nombre. El precio de cada unidad se reparte en partes iguales y cada uno paga solo su parte.</p>
+                <label for="div-input" style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text-main)">Nombre de la persona</label>
+                <div style="display:flex;gap:8px">
+                    <input id="div-input" type="text" maxlength="50" autocomplete="off" placeholder="Ej.: Lucía" style="flex:1;min-width:0;padding:12px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-main);font:inherit;font-size:15px">
+                    <button type="button" id="div-agregar" style="padding:0 16px;border-radius:10px;border:1px solid var(--primary-orange);background:transparent;color:var(--primary-orange);font-weight:800;cursor:pointer">Agregar</button>
+                </div>
+                <div id="div-previos" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+                <div id="div-elegidos" aria-live="polite" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;min-height:34px"></div>
+                <p id="div-resumen" class="texto-auxiliar-carrito" style="margin:14px 0 0;font-size:13px;line-height:1.5"></p>
+                <p id="div-error" role="alert" style="margin:8px 0 0;font-size:13px;font-weight:700;color:#e74c3c;min-height:0"></p>
+                <button type="button" id="div-guardar" style="width: 100%; margin-top: 18px; background: var(--primary-orange); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">Guardar división</button>
+                <button type="button" id="div-quitar" style="width: 100%; margin-top: 10px; background: transparent; color: var(--text-muted); border: 1px solid var(--glass-border); padding: 13px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer;">No dividir este plato</button>
             </div>
         </div>
     </div>
@@ -403,9 +436,13 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="savage-mesa.js"></script>
     <script>
         let callbackAviso = null;
-        const VALOR_CUBIERTO_POR_PERSONA = 1500;
+        // Grupo de amigos: sin nombre registrado no se pide nada (se vuelve a la pantalla del nombre).
+        if (window.SGM) SGM.exigirComensal();
+        // Dividir un plato solo existe en "Grupo de amigos": en una mesa Familiar pagan los padres y no hay desglose por persona.
+        const puedeDividirPlatos = () => !window.SGM || SGM.esGrupal();
         window.itemsBloqueadosPorStock = []; 
         // Se usa la misma API del catálogo; file:// mantiene el servidor local de desarrollo.
         const BASE_API_CARRITO = (() => {
@@ -416,6 +453,7 @@
             return base;
         })();
         const urlApiCarrito = (ruta) => `${BASE_API_CARRITO}/${ruta.replace(/^\/+/, '')}`;
+        const ICONO_DIVIDIR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.2a5.2 5.2 0 0 1 5 5.8"/></svg>';
         const ICONO_LAPIZ = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg>';
         let productosCarrito = [];
         let catalogoCarritoDisponible = false;
@@ -442,6 +480,20 @@
                 .map(Number).filter(id => Number.isSafeInteger(id) && id > 0))].sort((a,b) => a-b);
         }
         function productoActual(id) { return productosCarrito.find(p => Number(p.id) === Number(id)); }
+        // Extras con recargo (cobros, hito 5): cada renglón del carrito guarda [{id, cantidad, nombre, precio}] como foto de lo que vio el cliente.
+        function extrasDe(item) {
+            return (Array.isArray(item?.extras) ? item.extras : [])
+                .map(e => ({ id: Number(e.id), cantidad: Number(e.cantidad) || 0, nombre: String(e.nombre || ''), precio: Number(e.precio) || 0 }))
+                .filter(e => Number.isSafeInteger(e.id) && e.id > 0 && e.cantidad > 0).sort((a, b) => a.id - b.id);
+        }
+        function opcionesExtras(producto) {
+            return (Array.isArray(producto?.extras) ? producto.extras : [])
+                .filter(e => Number.isSafeInteger(Number(e.id)) && Number(e.id) > 0 && typeof e.nombre === 'string');
+        }
+        function recargoExtras(item) { return extrasDe(item).reduce((s, e) => s + e.precio * e.cantidad, 0); }
+        function precioUnitario(item) { return (Number(item?.precio) || 0) + recargoExtras(item); }
+        function mismosExtras(a, b) { return JSON.stringify(extrasDe(a).map(e => [e.id, e.cantidad])) === JSON.stringify(extrasDe(b).map(e => [e.id, e.cantidad])); }
+        function textoExtras(item) { return extrasDe(item).map(e => `${e.nombre}${e.cantidad > 1 ? ' x' + e.cantidad : ''}`).join(', '); }
         function opcionesQuitables(producto) {
             return (Array.isArray(producto?.quitables) ? producto.quitables : [])
                 .filter(q => Number.isSafeInteger(Number(q.id)) && Number(q.id) > 0 && typeof q.nombre === 'string');
@@ -528,42 +580,24 @@
             const carrito = obtenerCarrito();
             const historial = Array.isArray(historialServidor) ? historialServidor : [];
             const contenedor = document.getElementById('contenedor-items-carrito');
-            const comensales = parseInt(sessionStorage.getItem('savage-comensales'), 10) || 2;
             const btnEnviar = document.getElementById('btn-enviar-cocina');
             const totalHistorial = historial.filter(comandaValida).reduce((suma,c)=>suma+totalComandaServidor(c),0);
-            const totalPendiente = carrito.reduce((suma,i)=>suma+(Number(i.precio)||0)*(Number(i.cantidad)||1),0);
-            const noHayConsumos = historialConsultaOK && historial.filter(comandaValida).length === 0 && carrito.length === 0;
-            const cubierto = historialConsultaOK && (historial.some(comandaValida) || carrito.length) ? comensales * VALOR_CUBIERTO_POR_PERSONA : 0;
-            const zonaPago = document.getElementById('zona-metodo-pago');
-            const btnCerrar = document.getElementById('btn-cerrar-mesa');
-            // Si no pudimos verificar los pedidos, no mostrar una deuda artificialmente menor.
-            zonaPago.style.display = historialConsultaOK && noHayConsumos ? 'none' : 'flex';
-            btnCerrar.textContent = !historialConsultaOK ? 'Verificando cuenta de la mesa...' :
-                noHayConsumos ? 'Cancelar Mesa y Retirarse (Sin consumos)' : 'Solicitar Cierre de Mesa y Pago';
-            btnCerrar.disabled = !historialConsultaOK || cuentaSolicitadaServidor;
-            btnCerrar.style.opacity = btnCerrar.disabled ? '0.6' : '1';
-            btnCerrar.style.cursor = btnCerrar.disabled ? 'not-allowed' : 'pointer';
-            btnCerrar.style.borderColor = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
-            btnCerrar.style.color = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
-            if(cuentaSolicitadaServidor)btnCerrar.textContent='Cuenta solicitada al mozo';
+            const totalPendiente = carrito.reduce((suma,i)=>suma+precioUnitario(i)*(Number(i.cantidad)||1),0);
+            // Si no pudimos verificar los pedidos de la mesa, no mostramos un total menor al real.
             document.getElementById('lbl-subtotal').textContent = historialConsultaOK ? monedaAR(totalHistorial) : '—';
             document.getElementById('lbl-seleccion').textContent = monedaAR(totalPendiente);
             const totalMovil = document.getElementById('carrito-total-movil-importe');
             if (totalMovil) totalMovil.textContent = monedaAR(totalPendiente);
             const totalMesaMovil = document.getElementById('carrito-total-movil-mesa');
-            if (totalMesaMovil) totalMesaMovil.textContent = historialConsultaOK
-                ? monedaAR(totalHistorial + cubierto) : '—';
-            document.getElementById('lbl-cubierto').textContent = historialConsultaOK ? `${monedaAR(cubierto)} (${comensales} personas)` : '—';
-            document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial+cubierto) : '—';
+            if (totalMesaMovil) totalMesaMovil.textContent = historialConsultaOK ? monedaAR(totalHistorial + totalPendiente) : '—';
+            document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial + totalPendiente) : '—';
             const estado=document.getElementById('estado-consulta-historial');
-            estado.textContent = !historialConsultaOK ?
-                (ultimoErrorHistorial || 'Consultando historial real de la mesa. Los importes se verificarán con el servidor.') :
-                (ultimoErrorHistorial ? 'Conexión interrumpida. Se muestra la última cuenta verificada; puede estar desactualizada.' :
-                'La cuenta incluye las comandas registradas, aunque Cocina ya las haya entregado.');
+            const textoEstado = !historialConsultaOK
+                ? (ultimoErrorHistorial || 'Consultando los pedidos de la mesa…')
+                : (ultimoErrorHistorial ? 'Conexión interrumpida: se muestra lo último que se pudo verificar.' : '');
+            estado.textContent = textoEstado;
+            estado.style.display = textoEstado ? 'block' : 'none';
             estado.style.color = ultimoErrorHistorial ? '#edab65' : 'var(--text-muted)';
-            const estimado=document.getElementById('estimado-seleccion');
-            estimado.style.display = totalPendiente > 0 && historialConsultaOK ? 'block' : 'none';
-            if(historialConsultaOK)estimado.textContent=`Con los productos aún sin enviar: ${monedaAR(totalHistorial+cubierto+totalPendiente)} (estimado, no es deuda registrada).`;
 
             contenedor.replaceChildren();
             const bloqueados = window.itemsBloqueadosPorStock;
@@ -572,15 +606,21 @@
             } else {
                 carrito.forEach((item, index) => {
                     const cantidad = Number(item.cantidad) || 1;
-                    const precio = Number(item.precio) || 0;
+                    const precio = precioUnitario(item);
                     const img = String(item.imagen || item.foto || item.url_imagen || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80');
                     const imagenUrl = img.startsWith('/') ? new URL(img, new URL(BASE_API_CARRITO, location.href).origin).href : img;
                     const tieneError = bloqueados.includes(Number(item.id));
                     const detalles = detalleQuitables(item);
                     const textoPersonalizacion = detalles.length
                         ? `<span class="badge-personalizacion">${detalles.map(d => `Sin ${escaparHtmlCarrito(d.nombre)}`).join(' · ')}</span>` : '';
+                    const extrasTxt = extrasDe(item).length
+                        ? `<span class="badge-personalizacion" style="display:block;margin-top:4px">Con ${escaparHtmlCarrito(textoExtras(item))} (+${escaparHtmlCarrito(monedaAR(recargoExtras(item)))} c/u)</span>` : '';
+                    const compartidoCon = nombresDe(item);
+                    const textoDivision_ = compartidoCon.length && puedeDividirPlatos()
+                        ? `<span class="badge-personalizacion" style="display:block;margin-top:4px">Dividido entre ${escaparHtmlCarrito(textoDivision(compartidoCon))}</span>` : '';
+                    const botonDividir = `<button type="button" onclick="abrirDivision(${index})" class="btn-edit-carrito" title="${compartidoCon.length ? 'Cambiar la división del plato' : 'Dividir este plato entre varias personas'}" aria-label="Dividir ${escaparHtmlCarrito(item.nombre)} entre varias personas">${ICONO_DIVIDIR}</button>`;
                     const datosProducto = productoActual(item.id);
-                    const editable = !catalogoCarritoDisponible || opcionesQuitables(datosProducto).length > 0 || detalles.length > 0;
+                    const editable = !catalogoCarritoDisponible || opcionesQuitables(datosProducto).length > 0 || opcionesExtras(datosProducto).length > 0 || detalles.length > 0 || extrasDe(item).length > 0;
                     const botonEditar = editable
                         ? `<button type="button" onclick="abrirEdicionCarrito(${index})" class="btn-edit-carrito" title="Editar personalización" aria-label="Editar personalización de ${escaparHtmlCarrito(item.nombre)}">${ICONO_LAPIZ}</button>` : '';
                     const advertencia = tieneError
@@ -591,7 +631,7 @@
                         <img class="carrito-item-foto" src="${escaparHtmlCarrito(imagenUrl)}" alt="${escaparHtmlCarrito(item.nombre)}" style="width:55px;height:55px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80'">
                         <div class="carrito-item-descripcion" style="flex-grow:1;min-width:0">
                             <h4 style="margin:0 0 3px;color:var(--text-main);font-size:14px;overflow-wrap:anywhere">${escaparHtmlCarrito(item.nombre)}</h4>
-                            ${textoPersonalizacion}
+                            ${textoPersonalizacion}${extrasTxt}${textoDivision_}
                             <span style="display:block;color:var(--primary-orange);font-weight:bold;font-size:13px">$${precio.toFixed(2)} c/u</span>${advertencia}
                         </div>
                         <div class="carrito-item-cantidad" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:8px;border:1px solid var(--glass-border)">
@@ -600,7 +640,7 @@
                             <button type="button" onclick="cambiarCantidad(${index},1)" aria-label="Aumentar cantidad" style="background:transparent;border:none;color:var(--text-main);font-weight:bold;cursor:pointer">+</button>
                         </div>
                         <div class="carrito-item-importe" style="text-align:right;min-width:70px;font-weight:900;font-size:15px;color:var(--text-main)">$${(precio*cantidad).toFixed(2)}</div>
-                        <div class="carrito-item-acciones" style="display:flex;gap:8px;flex-shrink:0;margin-left:5px">${botonEditar}
+                        <div class="carrito-item-acciones" style="display:flex;gap:8px;flex-shrink:0;margin-left:5px">${puedeDividirPlatos() ? botonDividir : ''}${botonEditar}
                             <button type="button" onclick="eliminarItem(${index})" aria-label="Quitar ${escaparHtmlCarrito(item.nombre)}" style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px" title="Quitar plato">×</button>
                         </div>`;
                     contenedor.appendChild(div);
@@ -611,8 +651,8 @@
             btnEnviar.style.opacity = btnEnviar.disabled ? '.5' : '1';
             btnEnviar.style.pointerEvents = btnEnviar.disabled ? 'none' : 'auto';
             btnEnviar.style.backgroundColor = bloqueo ? '#e74c3c' : 'var(--primary-orange)';
-            btnEnviar.textContent = enviandoPedido ? 'Enviando a cocina…' : bloqueo
-                ? 'Revisá los platos marcados' : 'Enviar Selección a Cocina';
+            btnEnviar.textContent = enviandoPedido ? 'Enviando pedido…' : bloqueo
+                ? 'Revisá los platos marcados' : 'Realizar pedido';
         }
 
         // La edición consulta la receta actual, no una lista fija de seis ingredientes.
@@ -624,8 +664,9 @@
             const item = obtenerCarrito()[indexCarrito];
             if (!item) return;
             const opciones = opcionesQuitables(productoActual(item.id));
-            if (!opciones.length) {
-                mostrarAviso('Sin personalizaciones', 'Este producto no tiene ingredientes quitables en su receta actual.');
+            const opcionesDeExtras = opcionesExtras(productoActual(item.id));
+            if (!opciones.length && !opcionesDeExtras.length) {
+                mostrarAviso('Sin personalizaciones', 'Este producto no tiene ingredientes quitables ni extras en su receta actual.');
                 return;
             }
             document.getElementById('edit-index-carrito').value = indexCarrito;
@@ -648,6 +689,9 @@
                 label.append(checkbox, nombre);
                 cont.appendChild(label);
             });
+            pintarExtrasEdicion(item, opcionesDeExtras);
+            document.getElementById('edit-quitables-wrap').style.display = opciones.length ? 'block' : 'none';
+            document.getElementById('edit-quitables-titulo').style.marginTop = opcionesDeExtras.length ? '20px' : '0';
             document.getElementById('modal-editar-plato').style.display = 'flex';
             const valoresInvalidos = (Array.isArray(item.sin) ? item.sin : []).some(v =>
                 !Number.isSafeInteger(Number(v)) || !permitidos.has(Number(v)));
@@ -666,12 +710,24 @@
                 mostrarAviso('Revisá la receta', 'Las opciones de este producto cambiaron. Abrí nuevamente la edición para actualizarlas.');
                 return;
             }
+            const opcionesDeExtras = opcionesExtras(producto);
+            const elegidos = extrasSeleccionadosEdicion();
+            const extrasNuevos = [];
+            for (const e of elegidos) {
+                const op = opcionesDeExtras.find(o => Number(o.id) === e.id);
+                if (!catalogoCarritoDisponible || !op || e.cantidad > (Number(op.max_por_unidad) || 1)) {
+                    mostrarAviso('Revisá los extras', 'Los extras de este producto cambiaron. Abrí nuevamente la edición para actualizarlos.');
+                    return;
+                }
+                extrasNuevos.push({ id: e.id, cantidad: e.cantidad, nombre: op.nombre, precio: Number(op.precio) || 0 });
+            }
             carrito[index].sin = ids;
             carrito[index].sin_detalle = normalizarDetalleSeleccion(carrito[index], ids);
+            if (extrasNuevos.length) carrito[index].extras = extrasNuevos; else delete carrito[index].extras;
             // Unificar dos renglones del mismo producto con igual personalización.
             const actual = carrito[index];
             const otro = carrito.findIndex((p, i) => i !== index && Number(p.id) === Number(actual.id) &&
-                JSON.stringify(idsQuitables(p.sin)) === JSON.stringify(ids));
+                JSON.stringify(idsQuitables(p.sin)) === JSON.stringify(ids) && mismosExtras(p, actual) && mismaDivision(p, actual));
             if (otro >= 0) {
                 carrito[otro].cantidad = (Number(carrito[otro].cantidad) || 1) + (Number(actual.cantidad) || 1);
                 carrito.splice(index, 1);
@@ -680,7 +736,175 @@
             guardarCarrito(carrito);
             cerrarModalEditar();
         }
+        /* ==================== DIVIDIR UN PLATO ==================== */
+        const CLAVE_NOMBRES_DIVISION = 'savage-nombres-division';
+        let divisionIndex = -1;
+        let divisionNombres = [];
+        function normalizarNombre(n) { return String(n || '').trim().replace(/\s+/g, ' '); }
+        function claveNombre(n) { return normalizarNombre(n).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+        function nombresDe(item) {
+            return (Array.isArray(item?.compartido) ? item.compartido : []).map(normalizarNombre).filter(Boolean)
+                .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        }
+        function mismaDivision(a, b) { return JSON.stringify(nombresDe(a).map(claveNombre)) === JSON.stringify(nombresDe(b).map(claveNombre)); }
+        function nombresPrevios() {
+            let escritos = [];
+            try { const l = JSON.parse(sessionStorage.getItem(CLAVE_NOMBRES_DIVISION)); escritos = Array.isArray(l) ? l.filter(n => typeof n === 'string') : []; } catch (_) { /* sin lista */ }
+            if (!(window.SGM && SGM.esGrupal())) return escritos;
+            // Primero los amigos ya registrados en la mesa (yo, de primero), después los que se escribieron a mano.
+            const yo = SGM.comensal();
+            const registrados = SGM.comensales().map(c => c.nombre).sort((a, b) => (yo && a === yo.nombre ? -1 : yo && b === yo.nombre ? 1 : 0));
+            const vistos = new Set(); const lista = [];
+            [...registrados, ...escritos].forEach(n => { const k = claveNombre(n); if (k && !vistos.has(k)) { vistos.add(k); lista.push(n); } });
+            return lista;
+        }
+        function recordarNombres(nombres) {
+            const todos = [...nombres, ...nombresPrevios()];
+            const vistos = new Set(); const lista = [];
+            todos.forEach(n => { const k = claveNombre(n); if (k && !vistos.has(k)) { vistos.add(k); lista.push(n); } });
+            try { sessionStorage.setItem(CLAVE_NOMBRES_DIVISION, JSON.stringify(lista.slice(0, 12))); } catch (_) { /* sin almacenamiento */ }
+        }
+        function textoDivision(nombres) {
+            if (nombres.length <= 1) return nombres.join('');
+            return nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1];
+        }
+        function pintarDivision() {
+            const item = obtenerCarrito()[divisionIndex];
+            const precio = precioUnitario(item);
+            const cont = document.getElementById('div-elegidos');
+            cont.replaceChildren();
+            divisionNombres.forEach((n, i) => {
+                const chip = document.createElement('span');
+                chip.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:7px 8px 7px 14px;border-radius:999px;border:1px solid var(--primary-orange);background:rgba(255,122,0,.12);color:var(--primary-orange);font-weight:800;font-size:13px';
+                const t = document.createElement('span'); t.textContent = n;
+                const x = document.createElement('button'); x.type = 'button'; x.textContent = '×';
+                x.setAttribute('aria-label', 'Quitar a ' + n);
+                x.style.cssText = 'width:22px;height:22px;border-radius:50%;border:none;background:rgba(255,122,0,.25);color:inherit;font-weight:900;cursor:pointer;line-height:1';
+                x.addEventListener('click', () => { divisionNombres.splice(i, 1); pintarDivision(); });
+                chip.append(t, x); cont.appendChild(chip);
+            });
+            const previos = document.getElementById('div-previos'); previos.replaceChildren();
+            const enUso = new Set(divisionNombres.map(claveNombre));
+            nombresPrevios().filter(n => !enUso.has(claveNombre(n))).forEach(n => {
+                const b = document.createElement('button'); b.type = 'button'; b.textContent = '+ ' + n;
+                b.style.cssText = 'padding:6px 12px;border-radius:999px;border:1px solid var(--glass-border);background:transparent;color:var(--text-muted);font-weight:700;font-size:12px;cursor:pointer';
+                b.addEventListener('click', () => agregarNombreDivision(n));
+                previos.appendChild(b);
+            });
+            const resumen = document.getElementById('div-resumen');
+            if (divisionNombres.length >= 2) {
+                resumen.textContent = 'Cada persona paga ' + monedaAR(precio / divisionNombres.length) + ' por cada unidad de este plato (' + textoDivision(divisionNombres) + ').';
+            } else {
+                resumen.textContent = divisionNombres.length === 1 ? 'Falta al menos una persona más para poder dividirlo.' : 'Todavía no agregaste a nadie. Hacen falta al menos dos personas.';
+            }
+        }
+        function agregarNombreDivision(valor) {
+            const error = document.getElementById('div-error'); error.textContent = '';
+            const nombre = normalizarNombre(valor);
+            if (!nombre) return;
+            if (divisionNombres.some(n => claveNombre(n) === claveNombre(nombre))) { error.textContent = nombre + ' ya está en la lista.'; return; }
+            if (divisionNombres.length >= 20) { error.textContent = 'Podés dividir un plato entre hasta 20 personas.'; return; }
+            divisionNombres.push(nombre);
+            const input = document.getElementById('div-input'); input.value = ''; input.focus();
+            pintarDivision();
+        }
+        function abrirDivision(indexCarrito) {
+            const item = obtenerCarrito()[indexCarrito];
+            if (!item) return;
+            divisionIndex = indexCarrito;
+            divisionNombres = nombresDe(item);
+            if (window.SGM) SGM.refrescar().then(() => { if (divisionIndex === indexCarrito) pintarDivision(); });
+            document.getElementById('div-nombre').textContent = item.nombre;
+            document.getElementById('div-error').textContent = '';
+            document.getElementById('div-input').value = '';
+            document.getElementById('div-quitar').style.display = divisionNombres.length ? 'block' : 'none';
+            pintarDivision();
+            document.getElementById('modal-dividir-plato').style.display = 'flex';
+            setTimeout(() => document.getElementById('div-input').focus(), 30);
+        }
+        function cerrarModalDividir() { document.getElementById('modal-dividir-plato').style.display = 'none'; divisionIndex = -1; }
+        function aplicarDivision(nombres) {
+            const carrito = obtenerCarrito();
+            const actual = carrito[divisionIndex];
+            if (!actual) { cerrarModalDividir(); return; }
+            if (nombres.length) actual.compartido = nombres; else delete actual.compartido;
+            // Unificar con otro renglón del mismo plato, la misma personalización y la misma división.
+            const otro = carrito.findIndex((p, i) => i !== divisionIndex && Number(p.id) === Number(actual.id) &&
+                JSON.stringify(idsQuitables(p.sin)) === JSON.stringify(idsQuitables(actual.sin)) && mismosExtras(p, actual) && mismaDivision(p, actual));
+            if (otro >= 0) {
+                carrito[otro].cantidad = (Number(carrito[otro].cantidad) || 1) + (Number(actual.cantidad) || 1);
+                carrito.splice(divisionIndex, 1);
+            }
+            guardarCarrito(carrito);
+            cerrarModalDividir();
+        }
+        document.getElementById('div-agregar').addEventListener('click', () => agregarNombreDivision(document.getElementById('div-input').value));
+        document.getElementById('div-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregarNombreDivision(e.target.value); } });
+        document.getElementById('div-guardar').addEventListener('click', () => {
+            const pendiente = normalizarNombre(document.getElementById('div-input').value);
+            if (pendiente) agregarNombreDivision(pendiente);
+            if (divisionNombres.length < 2) { document.getElementById('div-error').textContent = 'Para dividir un plato hacen falta al menos dos personas.'; return; }
+            recordarNombres(divisionNombres);
+            aplicarDivision(divisionNombres.slice().sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
+        });
+        document.getElementById('div-quitar').addEventListener('click', () => aplicarDivision([]));
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('modal-dividir-plato').style.display === 'flex') cerrarModalDividir(); });
+        document.getElementById('modal-dividir-plato').addEventListener('mousedown', e => { if (e.target.id === 'modal-dividir-plato') cerrarModalDividir(); });
+
         function cerrarModalEditar() { document.getElementById('modal-editar-plato').style.display = 'none'; }
+        /* ---- extras con recargo dentro de la edición del plato ---- */
+        function pintarExtrasEdicion(item, opciones) {
+            const wrap = document.getElementById('edit-extras-wrap');
+            const lista = document.getElementById('edit-extras-list');
+            lista.replaceChildren();
+            wrap.style.display = opciones.length ? 'block' : 'none';
+            const actuales = new Map(extrasDe(item).map(e => [e.id, e.cantidad]));
+            opciones.forEach(o => {
+                const id = Number(o.id), max = Math.min(10, Math.max(1, Number(o.max_por_unidad) || 1));
+                const cant = Math.min(max, actuales.get(id) || 0);
+                const fila = document.createElement('div');
+                fila.className = 'extra-edit' + (cant > 0 ? ' activo' : '');
+                fila.dataset.id = String(id); fila.dataset.max = String(max); fila.dataset.precio = String(Number(o.precio) || 0);
+                fila.innerHTML = `<div class="extra-info"><span class="extra-nombre">${escaparHtmlCarrito(o.nombre)}</span>
+                    <span class="extra-precio">+${escaparHtmlCarrito(monedaAR(o.precio))}${max > 1 ? ` · hasta ${max}` : ''}</span></div>
+                    <div class="extra-paso"><button type="button" data-delta="-1" aria-label="Quitar ${escaparHtmlCarrito(o.nombre)}">−</button>
+                    <span class="extra-cant" aria-live="polite">${cant}</span>
+                    <button type="button" data-delta="1" aria-label="Sumar ${escaparHtmlCarrito(o.nombre)}">+</button></div>`;
+                fila.querySelectorAll('button').forEach(b => b.addEventListener('click', () => ajustarExtraEdicion(fila, Number(b.dataset.delta))));
+                lista.appendChild(fila);
+                refrescarFilaExtra(fila);
+            });
+            const nota = document.getElementById('edit-extras-nota');
+            const unidades = Number(item.cantidad) || 1;
+            nota.style.display = opciones.length && unidades > 1 ? 'block' : 'none';
+            nota.textContent = `Se aplican a las ${unidades} unidades de este renglón.`;
+            actualizarPrecioEdicion();
+        }
+        function refrescarFilaExtra(fila) {
+            const n = Number(fila.querySelector('.extra-cant').textContent) || 0, max = Number(fila.dataset.max) || 1;
+            const [menos, mas] = fila.querySelectorAll('button');
+            menos.disabled = n <= 0; mas.disabled = n >= max;
+            fila.classList.toggle('activo', n > 0);
+        }
+        function ajustarExtraEdicion(fila, delta) {
+            const span = fila.querySelector('.extra-cant'), max = Number(fila.dataset.max) || 1;
+            span.textContent = String(Math.min(max, Math.max(0, (Number(span.textContent) || 0) + delta)));
+            refrescarFilaExtra(fila); actualizarPrecioEdicion();
+        }
+        function extrasSeleccionadosEdicion() {
+            return [...document.querySelectorAll('#edit-extras-list .extra-edit')]
+                .map(f => ({ id: Number(f.dataset.id), cantidad: Number(f.querySelector('.extra-cant').textContent) || 0 }))
+                .filter(e => e.cantidad > 0);
+        }
+        function actualizarPrecioEdicion() {
+            const item = obtenerCarrito()[Number(document.getElementById('edit-index-carrito').value)];
+            const p = document.getElementById('edit-precio-unidad');
+            const filas = [...document.querySelectorAll('#edit-extras-list .extra-edit')];
+            if (!item || !filas.length) { p.style.display = 'none'; return; }
+            const recargo = filas.reduce((s, f) => s + (Number(f.dataset.precio) || 0) * (Number(f.querySelector('.extra-cant').textContent) || 0), 0);
+            p.style.display = 'block';
+            p.textContent = `Precio por unidad: ${monedaAR((Number(item.precio) || 0) + recargo)}`;
+        }
         function cambiarCantidad(index, delta) {
             const carrito = obtenerCarrito();
             if (!carrito[index]) return;
@@ -721,8 +945,10 @@
                 const items=Array.isArray(comanda.items)?comanda.items:[];
                 const lineas=items.map(i=>{
                     const sin=Array.isArray(i.sin)?i.sin:[];
+                    const conExtras=(Array.isArray(i.extras)?i.extras:[]).map(e=>`${String(e&&e.nombre||'Extra')}${Number(e&&e.cantidad)>1?' x'+Number(e.cantidad):''}`);
+                    const detalle=[sin.length?'sin '+sin.join(', '):'',conExtras.length?'con '+conExtras.join(', '):''].filter(Boolean).join('; ');
                     const importe=i.sub_total!=null?` — ${monedaAR(i.sub_total)}`:'';
-                    return `${Number(i.cantidad)||1}× ${String(i.nombre||'Producto')}${sin.length?' (sin '+sin.join(', ')+')':''}${importe}`;
+                    return `${Number(i.cantidad)||1}× ${String(i.nombre||'Producto')}${detalle?' ('+detalle+')':''}${importe}`;
                 }).join(' · ');
                 const card=document.createElement('div');
                 card.className='carrito-historial-card';
@@ -769,7 +995,11 @@
                 const p = productoActual(item.id);
                 if (!p) return true;
                 const permitidos = new Set(opcionesQuitables(p).map(q => Number(q.id)));
-                return (Array.isArray(item.sin) ? item.sin : []).some(id =>
+                const extrasOk = extrasDe(item).every(e => {
+                    const op = opcionesExtras(p).find(o => Number(o.id) === e.id);
+                    return op && e.cantidad <= (Number(op.max_por_unidad) || 1);
+                });
+                return !extrasOk || (Array.isArray(item.sin) ? item.sin : []).some(id =>
                     !Number.isSafeInteger(Number(id)) || !permitidos.has(Number(id)));
             });
             if (invalido) {
@@ -784,6 +1014,10 @@
                     const linea = {id: Number(item.id)};
                     const sin = idsQuitables(item.sin);
                     if (sin.length) linea.sin = sin;
+                    const extrasLinea = extrasDe(item).map(e => ({ id: e.id, cantidad: e.cantidad }));
+                    if (extrasLinea.length) linea.extras = extrasLinea;
+                    const compartido = nombresDe(item);
+                    if (compartido.length >= 2 && puedeDividirPlatos()) linea.compartido = compartido;
                     itemsPlana.push(linea);
                 }
             });
@@ -799,6 +1033,9 @@
                 pin: sessionStorage.getItem('savage-mesa-pin'),
                 items: itemsPlana
             };
+            // Grupo de amigos: cada pedido es de quien lo hace (su nombre ya está registrado en la mesa).
+            const comensalActual = window.SGM ? SGM.comensal() : null;
+            if (comensalActual && SGM.esGrupal()) payload.id_comensal = comensalActual.id;
             // Adjuntamos la versión solamente cuando el catálogo ya la recibió.
             const version = sessionStorage.getItem('savage-version-menu');
             if (version) payload.version_menu = version;
@@ -814,10 +1051,24 @@
                     sessionStorage.removeItem('savage-envio-pendiente');
                     window.itemsBloqueadosPorStock = [];
                     mostrarHistorialGuardado();
-                    mostrarAviso('Pedido enviado', 'Tu pedido fue recibido por Cocina. Podés volver al catálogo o solicitar la cuenta desde esta pantalla.');
+                    mostrarAviso('Pedido realizado', 'Tu pedido fue recibido. Podés volver al menú para pedir algo más o pagar desde el botón «Pagar», arriba a la derecha.');
                     cargarHistorialPedidos();
                 } else if (resp.status === 409) {
                     const datos = await resp.json().catch(() => ({}));
+                    if (/cuenta[^.]*en curso/i.test(String(datos.error || ''))) {
+                        // La cuenta ya se emitió (se empezó a pagar): para pedir algo más hay que abrir una mesa nueva con el mozo.
+                        mostrarAviso('La cuenta ya está en curso', 'Para pedir algo más, pedile al mozo que abra una mesa nueva.');
+                        return;
+                    }
+                    if (Array.isArray(datos.extras_invalidos) && datos.extras_invalidos.length) {
+                        // Algún extra se agotó, salió de la carta o no combina con lo que se quitó: se marca el plato para revisarlo.
+                        const MOTIVOS = { no_existe: 'ya no existe', no_pertenece: 'no corresponde a este plato', fuera_de_carta: 'salió de la carta', sin_stock: 'se agotó', excede_maximo: 'supera el máximo permitido', incompatible_con_sin: 'no se puede pedir junto con quitar ese mismo ingrediente' };
+                        window.itemsBloqueadosPorStock = [...new Set(datos.extras_invalidos.map(x => Number(x.producto)).filter(Number.isSafeInteger))];
+                        cargarCarritoStorage();
+                        const detalle = datos.extras_invalidos.map(x => `${x.nombre || 'Un extra'}: ${MOTIVOS[x.motivo] || 'no está disponible'}`).join('. ');
+                        mostrarAviso('Revisá los extras', `${detalle}. Editá el plato (lápiz) para cambiarlos antes de enviar.`);
+                        return;
+                    }
                     const bloqueados = ['productos_sin_stock','productos_no_disponibles','modificadores_invalidos']
                         .flatMap(clave => Array.isArray(datos[clave]) ? datos[clave].map(p => Number(p.id ?? p.producto_id ?? p)) : []);
                     window.itemsBloqueadosPorStock = [...new Set(bloqueados.filter(Number.isSafeInteger))];
@@ -829,52 +1080,11 @@
                     mostrarAviso('No se pudo enviar el pedido', mensaje);
                 }
             } catch (error) {
-                mostrarAviso('Conexión interrumpida', 'No pudimos confirmar el envío. Revisá Cocina antes de reintentar para evitar duplicar el pedido; tu selección sigue guardada.');
+                mostrarAviso('Conexión interrumpida', 'No pudimos confirmar el envío. Revisá «Pedidos de la Mesa» antes de reintentar para evitar duplicar el pedido; tu selección sigue guardada.');
             } finally {
                 enviandoPedido = false;
                 cargarCarritoStorage();
             }
-        }
-        function confirmarCierreMesa() {
-            const carrito = obtenerCarrito();
-            if(!historialConsultaOK){
-                mostrarAviso('Cuenta no verificada','No podemos solicitar el cierre hasta consultar el historial real. Revisá la conexión e intentá nuevamente.');
-                return;
-            }
-            const historial = Array.isArray(historialServidor) ? historialServidor : [];
-            const consumosEnviados = historial.some(comandaValida);
-            const metodo = consumosEnviados
-                ? (document.querySelector('input[name="metodo_pago"]:checked')?.value || 'efectivo')
-                : 'ninguno';
-            const titulo = consumosEnviados ? '¿Solicitar la cuenta?' : '¿Cancelar mesa sin consumos?';
-            let texto = consumosEnviados
-                ? `¿Querés solicitar la cuenta con pago por ${metodo}? Se avisará al mozo para finalizar tu mesa.`
-                : 'No hay pedidos enviados desde esta sesión. ¿Querés avisar al mozo para cancelar la mesa?';
-            if (carrito.length) {
-                texto += ' Tenés platos en el carrito que TODAVÍA NO se enviaron a Cocina. Esos platos no se incluirán en la cuenta.';
-            }
-            mostrarAviso(titulo, texto, async () => {
-                try {
-                    const resp = await fetch(urlApiCarrito('solicitar-cuenta'), {
-                        method:'POST', headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({
-                            numero_mesa:Number(sessionStorage.getItem('savage-mesa-numero')),
-                            pin:sessionStorage.getItem('savage-mesa-pin'), metodo_pago:metodo
-                        })
-                    });
-                    if (!resp.ok) {
-                        const datos = await resp.json().catch(() => ({}));
-                        const mensaje = typeof datos.error === 'string' ? datos.error :
-                            typeof datos.detail === 'string' ? datos.detail : `El servidor rechazó la solicitud (HTTP ${resp.status}).`;
-                        throw new Error(mensaje);
-                    }
-                    cuentaSolicitadaServidor=true;
-                    cargarCarritoStorage();
-                    mostrarAviso('Solicitud enviada', 'Se avisó al mozo que querés la cuenta. Podés consultar tus pedidos mientras esperás; la mesa será cerrada por el personal.');
-                } catch (error) {
-                    mostrarAviso('No se pudo solicitar la cuenta', String(error.message || 'Revisá la conexión o avisá al mozo.'));
-                }
-            },'Confirmar');
         }
     </script>
 </body>

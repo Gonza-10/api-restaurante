@@ -18,6 +18,7 @@ from .auth import SALON
 from .comprobante import comprobante_disponible, fijar_pedido, generar
 from .cuenta import ReglaCuenta, factura_vigente
 from .serializers import AccesoClienteSerializer
+from .gestor_pago import respuesta_gestor_ocupado, verificar_gestor
 from .views import _sesion_cliente
 from .views_cuenta import _cuerpo, _error, _factura_del_usuario, _no_existe, pedido_de_factura
 
@@ -65,7 +66,11 @@ class CuentaFacturaClienteView(APIView):
         sesion, error = _sesion_cliente(request, entrada.validated_data['numero_mesa'], entrada.validated_data['pin'])
         if error is not None:
             return error
-        pedido = pedido_de_factura(_cuerpo(request))
+        cuerpo = _cuerpo(request)
+        ocupado = verificar_gestor(sesion.id, cuerpo.get('dispositivo'))   # solo quien gestiona el pago puede cargar la factura
+        if ocupado is not None:
+            return respuesta_gestor_ocupado(ocupado)
+        pedido = pedido_de_factura(cuerpo)
         if pedido is None:
             raise ValidationError({'quiere_factura': 'Indicar verdadero o falso.'})
         factura = factura_vigente(sesion)

@@ -37,6 +37,25 @@ def estados_de(uuid_comanda, cliente=None):
     return estados
 
 
+TTL_DESPACHO_SEGUNDOS = 24 * 3600
+
+
+def _clave_despacho(uuid_comanda, destino):
+    return f'mozo:despachado:{uuid_comanda}:{destino}'
+
+
+def marcar_despachado(uuid_comanda, destino, cliente=None):
+    """Recuerda que cocina o la barra despacho (marco `entregado`) lo de ese destino: la clave de estado se borra, pero el mozo
+    tiene que seguir viendo el aviso hasta confirmar que lo llevo a la mesa (ver ListosMozoView)."""
+    cliente = cliente or redis_client
+    cliente.set(_clave_despacho(uuid_comanda, destino), '1', ex=TTL_DESPACHO_SEGUNDOS)
+
+
+def fue_despachado(uuid_comanda, destino, cliente=None):
+    cliente = cliente or redis_client
+    return bool(cliente.exists(_clave_despacho(uuid_comanda, destino)))
+
+
 def estado_global(uuid_comanda):
     """Un solo estado para toda la comanda (el del destino mas atrasado), o None si ya se entrego todo."""
     return estado_resumen(estados_de(uuid_comanda))

@@ -69,6 +69,22 @@
         .tiempo-badge { color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
         .item-pedido { display: flex; flex-direction: column; font-size: 14px; margin-bottom: 8px; color: var(--text-main); }
         
+        /* Extras con recargo que pidió el cliente: se preparan además del plato */
+        .modificador-extra {
+            background: #2ecc71;
+            color: #06210f;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: inline-block;
+            width: max-content;
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
         /* Modificador "SIN" (Tarea 10) */
         .modificador-sin {
             background: #e74c3c;
@@ -395,7 +411,7 @@
         <button class="tab-btn active" onclick="cambiarTab('tab-comandas', this)">Tablero de Comandas</button>
         <button class="tab-btn" onclick="cambiarTab('tab-notificaciones', this)">Notificaciones <span id="badge-noti-global" class="badge-noti">0</span></button>
         <button class="tab-btn" onclick="cambiarTab('tab-stock', this)">Estado de Insumos</button>
-        <button class="tab-btn" onclick="cambiarTab('tab-acciones', this)">Gestión y Pérdidas</button>
+        <button class="tab-btn" id="tab-btn-acciones" onclick="cambiarTab('tab-acciones', this)">Gestión y Pérdidas</button>
     </div>
 
     <!-- ==========================================================================
@@ -467,7 +483,7 @@
                 <div class="card-panel">
                     <h3 style="margin-top: 0; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; display: flex; justify-content: space-between;">
                         Control de Vencimientos
-                        <button onclick="procesarVencidos()" class="btn-orange" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; background-color: #e74c3c;">Dar de Baja Vencidos</button>
+                        <button data-solo-cocina onclick="procesarVencidos()" class="btn-orange" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; background-color: #e74c3c;">Dar de Baja Vencidos</button>
                     </h3>
                     <div id="lista-vencimientos" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
                         <p style="color: var(--text-muted); font-size: 13px;">Analizando lotes...</p>
@@ -523,8 +539,8 @@
                 </form>
             </div>
 
-            <!-- Formulario Producción (Elaboraciones) -->
-            <div class="card-panel">
+            <!-- Formulario Producción (Elaboraciones): solo Cocina -->
+            <div class="card-panel" data-solo-cocina>
                 <h3 style="margin-top: 0; color: #3498db; border-bottom: 1px solid rgba(52,152,219,0.3); padding-bottom: 10px;">Registrar Elaboración Interna</h3>
                 <form id="form-produccion" onsubmit="enviarProduccion(event)">
                     <div class="form-group">
@@ -562,6 +578,32 @@
     <script>
         // API Base
         const BASE_URL = window.SAVAGE_CONFIG.API_BASE_URL;
+
+        /* Esta misma pantalla sirve a Cocina y a la Barra: mismo tablero, mismas pestañas.
+           El bartender entra siempre a la barra; Admin y Gerente eligen con ?sector=barra (barra.html lo agrega). */
+        const SECTOR = (() => {
+            let rol = null;
+            try { rol = (JSON.parse(sessionStorage.getItem('savage_usuario') || 'null') || {}).rol; } catch (_) { /* sin sesión */ }
+            return (rol === 'Bartender' || new URLSearchParams(location.search).get('sector') === 'barra') ? 'barra' : 'cocina';
+        })();
+        const ES_BARRA = SECTOR === 'barra';
+        const RUTA_TABLERO = ES_BARRA ? '/barra/tablero' : '/cocina/tablero';
+        const rutaEstado = uuid => ES_BARRA
+            ? `/barra/pedidos/${encodeURIComponent(uuid)}/estado`
+            : `/pedidos/${encodeURIComponent(uuid)}/estado`;
+        // Destinos de producto que le interesan a cada sector en la lista de platos de las pérdidas.
+        const DESTINOS_DEL_SECTOR = ES_BARRA ? ['BARRA', 'MOZO'] : ['COCINA'];
+        if (ES_BARRA) {
+            document.title = 'Panel de Barra - Savage Grill';
+            document.querySelectorAll('.cocina-subtitulo').forEach(e => { e.textContent = 'BARRA'; });
+            const titulo = document.getElementById('cocina-modal-titulo');
+            if (titulo) titulo.textContent = 'Cerrar sesión de Barra';
+            const descripcion = document.getElementById('cocina-modal-descripcion');
+            if (descripcion) descripcion.textContent = '¿Querés salir de tu cuenta? Los pedidos guardados permanecerán en el sistema y podrás volver a ingresar desde el acceso principal.';
+            document.querySelectorAll('[data-solo-cocina]').forEach(e => { e.style.display = 'none'; });
+            const tabAcciones = document.getElementById('tab-btn-acciones');
+            if (tabAcciones) tabAcciones.textContent = 'Pérdidas';
+        }
 
         // Variables Globales
         let comandas = [];
@@ -741,6 +783,13 @@
                         modificador.textContent = `SIN: ${item.sin.join(', ')}`;
                         renglon.appendChild(modificador);
                     }
+                    const extras = Array.isArray(item.extras) ? item.extras : (item.extras ? [item.extras] : []);
+                    if (extras.length > 0) {
+                        const extra = document.createElement('span');
+                        extra.className = 'modificador-extra';
+                        extra.textContent = `CON: ${extras.join(', ')}`;
+                        renglon.appendChild(extra);
+                    }
                     lista.appendChild(renglon);
                 }
                 tarjeta.appendChild(lista);
@@ -780,7 +829,7 @@
             cambiosEnCurso.add(uuid);
             renderizarTablero();
             try {
-                const respuesta = await fetchAutenticado(`${BASE_URL}/pedidos/${encodeURIComponent(uuid)}/estado`, {
+                const respuesta = await fetchAutenticado(`${BASE_URL}${rutaEstado(uuid)}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ estado: nuevoEstado })
                 });
@@ -800,7 +849,7 @@
             if (!pollingActivo || document.hidden || cambiosEnCurso.size > 0 || sincronizando) return;
             sincronizando = true;
             try {
-                const respuesta = await fetchAutenticado(`${BASE_URL}/cocina/tablero`);
+                const respuesta = await fetchAutenticado(`${BASE_URL}${RUTA_TABLERO}`);
                 if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
                 const datos = await respuesta.json();
                 if (!Array.isArray(datos)) throw new Error('El tablero no devolvió una lista de comandas.');
@@ -849,7 +898,7 @@
                     tipo.textContent = String(aviso.tipo ?? '').replace(/_/g, ' ');
                     texto.append(titulo, tipo);
                     fila.appendChild(texto);
-                    if (aviso.tipo === 'se_puede_reactivar' && Number.isInteger(Number(aviso.producto?.id)) && Number(aviso.producto.id) > 0) {
+                    if (!ES_BARRA && aviso.tipo === 'se_puede_reactivar' && Number.isInteger(Number(aviso.producto?.id)) && Number(aviso.producto.id) > 0) {
                         const btn = document.createElement('button');
                         btn.className = 'btn-orange';
                         btn.style.cssText = 'background:#2ecc71;padding:4px 8px;font-size:11px;';
@@ -989,10 +1038,11 @@
             const consultas = [
                 {ruta: '/perdidas/motivos', id: 'perdida-motivo', extraer: d => d, texto: m => String(m.etiqueta ?? ''), clave: 'codigo'},
                 {ruta: '/stock', id: 'perdida-insumo', extraer: d => d.insumos, texto: i => String(i.nombre ?? '')},
-                {ruta: '/productos', id: 'perdida-plato', extraer: d => d, texto: p => String(p.nombre ?? '')},
-                {ruta: '/elaboraciones', id: 'prod-elaboracion', extraer: d => d, texto: e => `Elaborar: ${e.insumo_nombre ?? ''} (Rinde: ${e.rinde_texto ?? e.rinde ?? '-'} por tanda)`}
+                {ruta: '/productos', id: 'perdida-plato', extraer: d => (Array.isArray(d) ? d.filter(p => DESTINOS_DEL_SECTOR.includes(String(p.destino_efectivo || 'COCINA').toUpperCase())) : d), texto: p => String(p.nombre ?? '')},
+                {ruta: '/elaboraciones', id: 'prod-elaboracion', extraer: d => d, texto: e => `Elaborar: ${e.insumo_nombre ?? ''} (Rinde: ${e.rinde_texto ?? e.rinde ?? '-'} por tanda)`, soloCocina: true}
             ];
             for (const consulta of consultas) {
+                if (ES_BARRA && consulta.soloCocina) continue;
                 try {
                     const respuesta = await fetchAutenticado(`${BASE_URL}${consulta.ruta}`);
                     if (!respuesta.ok) throw new Error(await leerMensajeError(respuesta));
@@ -1134,8 +1184,9 @@
                 if (!perfil.ok) throw new Error(await leerMensajeError(perfil));
                 const usuario = await perfil.json();
                 const rol = usuario.rol ?? usuario.empleado?.rol;
-                if (!['Cocina', 'Admin', 'Gerente'].includes(rol)) {
-                    indicarConexion('Sin permiso para acceder a Cocina', false);
+                const rolesPermitidos = ES_BARRA ? ['Bartender', 'Admin', 'Gerente'] : ['Cocina', 'Admin', 'Gerente'];
+                if (!rolesPermitidos.includes(rol)) {
+                    indicarConexion(`Sin permiso para acceder a ${ES_BARRA ? 'la Barra' : 'Cocina'}`, false);
                     return;
                 }
                 await sincronizarComandas();

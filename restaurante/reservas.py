@@ -66,6 +66,11 @@ def vencer_reservas():
         estado=NO_SE_PRESENTO, fecha_hora_resolucion=timezone.now())
 
 
+def reservas_proximas_de_mesa(mesa_id):
+    """Cuantas reservas Confirmadas (de hoy en adelante) tiene la mesa. Una mesa con reservas no se da de baja."""
+    return Reserva.objects.filter(mesa_id=mesa_id, estado=CONFIRMADA, fecha__gte=ahora_local().date()).count()
+
+
 def reserva_bloqueante(mesa_id, jornada):
     """La reserva Confirmada que bloquea la mesa en la jornada dada (o None). Llamar despues de vencer_reservas()."""
     if jornada is None:

@@ -4,7 +4,7 @@ from rest_framework import mixins, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .auth import ADMIN_GERENTE, COCINA
+from .auth import ADMIN_GERENTE, BARRA, COCINA
 from .elaboraciones import (
     InsumoProducidoInactivo, ProduccionInvalida, armar_elaboracion, armar_producciones, registrar_produccion,
 )
@@ -176,8 +176,8 @@ class ProduccionViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.R
 
 class VencimientosView(APIView):
     """GET /vencimientos. Lotes que ya vencieron (y falta dar de baja) y lotes por vencer dentro de los dias de aviso,
-    con los dias que faltan, el que vence antes primero. Cocina, Admin y Gerente; el valor solo Admin y Gerente."""
-    roles_lectura = COCINA
+    con los dias que faltan, el que vence antes primero. Cocina, Bartender, Admin y Gerente; el valor solo Admin y Gerente."""
+    roles_lectura = COCINA | BARRA
 
     def get(self, request):
         return Response(armar_vencimientos(_ve_costos(request)))

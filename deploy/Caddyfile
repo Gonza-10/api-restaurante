@@ -14,10 +14,10 @@
 		}
 	}
 
-	# Todo lo demas es el front de Gonzalo (HTML/JS/CSS). La entrada del cliente es pin.html.
+	# Todo lo demas es el front de Gonzalo (HTML/JS/CSS). La entrada del cliente es pin.html (se conserva la consulta: Mercado Pago devuelve al cliente a /?mp=...).
 	handle {
 		root * /srv/frontend
-		redir / /pin.html 302
+		redir / /pin.html?{query} 302
 		encode zstd gzip
 		file_server
 	}

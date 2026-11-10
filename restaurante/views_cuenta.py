@@ -16,6 +16,7 @@ from .comprobante_calculos import PedidoInvalido, validar_pedido_de_factura
 from .cuenta import (
     ReglaCuenta, anular_factura, anular_pago, armar_cuenta, emitir_factura, pagar_efectivo, pagar_tarjeta, propinas_por_mozo,
 )
+from .gestor_pago import gestor_publico, leer_plan
 from .mercadopago import modo as modo_mercadopago
 from .models import Factura, Pago, PedidoCabecera
 from .serializers import AccesoClienteSerializer, fecha_iso
@@ -144,8 +145,10 @@ def cuenta_json(cuenta, publico=False):
         'en_sobremesa': cuenta['en_sobremesa'],
         'caja_abierta': cuenta['caja_abierta'],
     }
+    datos['plan_pago'] = leer_plan(sesion.id)               # como piensa pagar la mesa (aviso; lo cobra el mozo); lo ven la mesa y el personal
     if not publico:
         datos['sesion']['mozo'] = _nombre(sesion.empleado)
+        datos['gestor_pago'] = gestor_publico(sesion.id)   # quien gestiona el pago desde el celular (None si nadie)
     return en_texto(datos)
 
 
@@ -280,7 +283,8 @@ class PagoTarjetaView(APIView):
     """POST /facturas/{id}/pagos/tarjeta. Mozo (solo sus mesas), Admin y Gerente. CONFIRMA un cobro con tarjeta de credito o debito.
     El pago en si es manual: el cliente pide pagar con tarjeta, el mozo le lleva el postnet y, cuando la plata impacto, lo
     confirma aca. {"monto_cuenta": 20000, "clave": "...", "quiere_factura": true, "nombre_factura": "..."} (todo opcional)
-    - `monto_cuenta` (pesos): cuanto de la cuenta cubre este cobro; sin indicar, todo el saldo. No hay vuelto ni propina.
+    - `monto_cuenta` (pesos): cuanto de la cuenta cubre este cobro; sin indicar, todo el saldo. No hay vuelto.
+    - `propina` (pesos, opcional): lo que el cliente dejo ademas de la cuenta; va solo al mozo de la mesa (suma en GET /propinas).
     - `clave` (hasta 36 caracteres): reintentar con la misma clave no cobra dos veces (responde 200 con el mismo pago).
     - `quiere_factura` y `nombre_factura`: igual que en el cobro en efectivo.
     No mueve el efectivo de la caja. Se puede combinar con efectivo o Mercado Pago. 409 si no hay caja abierta o hay pedidos en
@@ -298,13 +302,19 @@ class PagoTarjetaView(APIView):
                 monto_cuenta = validar_monto(datos.get('monto_cuenta'), 'monto_cuenta', positivo=True)
             except CajaInvalida as error:
                 raise _campo('monto_cuenta', error)
+        propina = None
+        if datos.get('propina') not in (None, ''):
+            try:
+                propina = validar_monto(datos.get('propina'), 'propina')
+            except CajaInvalida as error:
+                raise _campo('propina', error)
         clave = str(datos.get('clave') or '').strip() or None
         if clave and len(clave) > 36:
             raise ValidationError({'clave': 'Admite hasta 36 caracteres.'})
         pedido = pedido_de_factura(datos)   # se valida antes de cobrar: un error de la casilla no debe dejar un cobro hecho
 
         try:
-            pago, creado = pagar_tarjeta(factura.id, request.user.empleado, monto_cuenta, clave)
+            pago, creado = pagar_tarjeta(factura.id, request.user.empleado, monto_cuenta, clave, propina)
         except CobroInvalido as error:
             return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
         except (ReglaCuenta, ReglaCaja) as error:
