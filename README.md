@@ -622,6 +622,25 @@ python manage.py cargar_imagenes_productos fotos.zip imagenes.csv --pisar     # 
 - **En la VM:** la base y la carpeta de fotos de la VM son propias, por eso se corre ahí también: `docker compose -f docker-compose.prod.yml cp fotos.zip api:/tmp/` y `cp imagenes.csv api:/tmp/`, y luego `docker compose -f docker-compose.prod.yml exec api python manage.py cargar_imagenes_productos /tmp/fotos.zip /tmp/imagenes.csv`. Las fotos quedan en el volumen `media`, que es el que sirve Caddy.
 - **Probarlo:** `python Tests\Scripts\probar_imagenes_carga.py` (22 chequeos de las reglas, sin Django ni base).
 
+## Reinicio de la demo y stock realista
+
+Scripts de mantenimiento en `sql/mantenimiento/`. **No son parte de la instalación** (el deploy solo corre los `NN_*.sql` de `sql/`): se ejecutan a mano en SSMS.
+
+**Camino recomendado: `rehacer_demo_completa.sql`.** Deja la base lista para la demo en un solo paso, todo o nada:
+
+- **Borra:** pedidos, comandas, comensales, facturas, pagos, cajas; todos los productos, recetas, insumos, lotes, compras, proveedores, pérdidas, producciones y especiales (incluida la basura de prueba `ZZ`). Las mesas quedan libres.
+- **Conserva:** empleados, roles, mesas, categorías, turnos, jornadas, cotizaciones, configuración y reservas (se les suelta el vínculo con la sesión de mesa; con `@BorrarReservas = 1` también se borran).
+- **Crea:** los 35 productos de la carta (sin fotos: se cargan después con `cargar_imagenes_productos`), una receta por producto con gramajes por porción, ingredientes quitables y extras con su recargo, 3 proveedores (Frigorífico Del Litoral, Verdulería Mayorista Posadas, Distribuidora Almacén y Bebidas) vinculados a los insumos según su nombre, y un stock realista: lo que gasta una porción por 40 porciones (perecederos) o 60 (larga vida), que además queda como `StockObjetivo` del semáforo. Los perecederos entran en dos lotes (60 % y 40 %) con vencimientos distintos.
+- Si la carta no queda completa (un producto sin receta) o algo falla, **deshace todo** y lo informa.
+
+Cómo usarlo:
+
+1. **Copia de seguridad** en SSMS: clic derecho en `RestauranteDB` → *Tasks* → *Back Up…* → *OK*. Para volver atrás: *Restore Database*. Es **irreversible** sin la copia.
+2. Abrir el script y ejecutarlo. Viene con `@Aplicar = 1` (aplica de verdad); con `@Aplicar = 0` hace todo, muestra el informe y lo deshace (ensayo).
+3. Esperar 1 minuto (el menú se guarda en caché 60 s) o reiniciar `runserver`.
+
+Después de correr las colecciones de Postman, que vuelven a crear datos de prueba y consumen stock, repetir el script para volver al estado de la demo.
+
 ## Estructura del repositorio
 
 ```
