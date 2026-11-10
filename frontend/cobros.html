@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+
+<html lang="es-AR"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#0b0b0b" name="theme-color"/><title>Cobros del salón — Savage Grill</title>
+<link href="styles.css" rel="stylesheet"/><link href="savage-cobros.css" rel="stylesheet"/><link href="savage-cobros-experiencia.css" rel="stylesheet"/><link href="savage-theme.css" rel="stylesheet"/><link href="savage-cobros-header.css" rel="stylesheet"/><script defer="" src="config.js"></script><script defer="" src="savage-theme.js"></script><script defer="" src="savage-cobros-vistas.js"></script><script defer="" src="savage-cobros.js"></script><script defer="" src="savage-cobros-header.js"></script>
+<link rel="stylesheet" href="savage-final-v8.css">
+</head><body class="sg-cobros-portal" data-sg-portal="personal">
+<header class="sg-cobros-header sg-header-v5"><div class="sg-v5-left"><a aria-label="Volver a la pantalla principal" class="sg-v5-back" data-sg-regreso="" href="mozo.html"><svg aria-hidden="true" fill="none" height="19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24" width="19"><path d="m15 18-6-6 6-6"></path></svg><span>Volver a mi panel</span></a><span class="sg-v5-rol">Mi panel</span></div><a aria-label="Savage Grill: ir al inicio" class="sg-cobros-brand sg-v5-brand" data-sg-inicio="" href="mozo.html"><span class="sg-brand-word">SAVAGE<span>GRILL.</span></span><span class="sg-brand-role">COBROS DEL SALÓN</span></a><div class="sg-v5-right"><div data-savage-theme="inline"></div><button class="sg-salir-v8" data-sg-salir="" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><path d="M10 17l5-5-5-5M15 12H3M13 3h4a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-4"></path></svg><span>Cerrar sesión</span></button></div></header>
+<main class="marco sg-cobros-main"><div class="sg-cobros-intro"><p class="ceja">OPERACIONES DEL SALÓN</p><h1>Cobros del salón</h1><p>Seleccioná una mesa para consultar su cuenta, registrar pagos y entregar comprobantes.</p></div>
+<div aria-live="polite" class="alerta" hidden="" id="mensaje-global" role="status"></div>
+<section class="vista" id="vista-personal"><article class="tarjeta" id="personal-acceso">
+<h2>Acceso de personal</h2><p class="suave">Podés iniciar sesión acá para operar cobros. No se guarda tu contraseña.</p>
+<form class="rejilla dos" id="form-personal">
+<label>Usuario<input autocomplete="username" id="personal-usuario" placeholder="jperez" required=""/></label>
+<label>Contraseña<input autocomplete="current-password" id="personal-clave" required="" type="password"/></label>
+<button class="primario" type="submit">Ingresar a cobros</button>
+</form>
+</article>
+<div hidden="" id="panel-personal"><div class="fila separacion cabecera"><h2 class="sg-identidad-v8" id="personal-identidad">Personal</h2></div>
+<nav aria-label="Secciones de cobros del salón" class="sg-cobros-nav" hidden="" id="sg-cobros-nav">
+<button aria-pressed="true" class="activo" data-sg-panel="mesas" type="button">Mesas y cobros</button>
+<button aria-pressed="false" data-sg-panel="propinas" type="button">Propinas</button>
+<button aria-pressed="false" class="sg-solo-gerencia" data-sg-panel="caja" hidden="" type="button">Caja y registros</button>
+<button aria-pressed="false" class="sg-solo-gerencia" data-sg-panel="pruebas" hidden="" type="button">Pruebas y anulaciones</button>
+</nav>
+<section class="sg-panel" data-sg-contenido="mesas" id="sg-panel-mesas"><div class="sg-panel-intro"><h2>Mesas y cobros</h2><p>Seleccioná una mesa, revisá su saldo y prepará la cuenta. Para cobrar, la caja debe estar abierta y los pedidos terminados.</p></div><div class="rejilla dos sg-staff-main-grid"><article class="tarjeta"><h2>Seleccionar mesa</h2>
+<div class="acciones"><button class="mini" id="personal-mesas-actualizar" type="button">Actualizar mesas</button></div><div class="filas separacion" id="personal-mesas"></div>
+<div class="filas separacion" id="mozo-cuenta"></div>
+<div class="acciones"><button class="secundario" id="mozo-factura" type="button">Preparar la cuenta</button><button class="secundario" id="mozo-cerrar" type="button">Cerrar mesa</button></div>
+<details class="sg-avanzado"><summary>¿No encontrás tu mesa? Buscar por número de sesión</summary><form class="campos" id="form-mesa"><label>Número interno de sesión<input id="sesion-id" min="1" required="" type="number"/></label><button class="primario">Ver cuenta de la mesa</button></form></details></article><article class="tarjeta"><h2>Cobrar en efectivo</h2><p class="suave">La cuenta debe estar lista y la caja abierta. El vuelto siempre se entrega en pesos.</p>
+<form class="campos" id="form-efectivo">
+<label>Número de factura (se completa al preparar la cuenta)<input id="efectivo-factura" min="1" placeholder="Se completa al emitir la factura" readonly="" required="" type="number"/></label>
+<div class="rejilla dos"><label>Moneda<select id="efectivo-moneda"><option>ARS</option><option>USD</option><option>BRL</option><option>PYG</option></select></label><label>Dinero recibido<input id="efectivo-recibido" inputmode="decimal" placeholder="10000,00" required=""/></label></div>
+<div class="rejilla dos"><label>Pago parcial en pesos (opcional)<input id="efectivo-parte" inputmode="decimal" placeholder="Vacío = saldo"/><small class="sg-ayuda-v8">Dejalo vacío para cobrar todo el saldo. Úsalo si una persona paga solo una parte.</small></label><label>Propina (pesos, opcional)<input id="efectivo-propina" inputmode="decimal" placeholder="0,00"/></label></div>
+<label class="opcion"><input id="efectivo-quiere-factura" type="checkbox"/> Comprobante PDF<small class="sg-ayuda-v8">Comprobante interno en PDF para el cliente. El restaurante conserva el registro digital.</small></label>
+<label hidden="" id="efectivo-nombre-fila">Nombre del comprobante<input id="efectivo-nombre" maxlength="120"/></label>
+<button class="primario" type="submit">Registrar cobro en efectivo</button>
+</form>
+<div class="detalle" hidden="" id="efectivo-resultado"></div>
+</article></div><div class="separacion"><details class="sg-avanzado sg-pago-avanzado-v8"><summary>Consultar un pago digital o descargar un comprobante</summary><p class="suave">El número de pago identifica una operación de Mercado Pago. Se consulta cuando hay un pago pendiente de confirmación. El PDF se descarga si fue solicitado y la cuenta está pagada.</p><article class="tarjeta separacion">
+<h2>Comprobante y estado del pago</h2>
+<p class="suave">El comprobante solo está disponible cuando la factura está pagada y fue solicitado.</p>
+<div class="acciones"><button class="secundario" id="personal-comprobante" type="button">Descargar comprobante</button>
+<button class="secundario" id="personal-sincronizar" type="button">Actualizar pago digital</button></div>
+<div class="rejilla dos separacion"><label>Número del pago<input id="personal-pago-id" inputmode="numeric" min="1" placeholder="Número del pago" type="number"/></label>
+<label>Última respuesta<div class="detalle" id="personal-pago-estado">Sin consultar</div></label></div>
+</article></details></div></section>
+<section class="sg-panel" data-sg-contenido="propinas" hidden="" id="sg-panel-propinas"><div class="sg-panel-intro"><h2>Propinas</h2><p>Consultá las propinas registradas en el salón.</p></div><article class="tarjeta"><div class="fila cabecera"><h2>Propinas recibidas</h2><button class="mini" id="propinas-consultar" type="button">Consultar</button></div><div class="filas" id="propinas-resultado"></div></article></section>
+<section class="sg-panel" data-sg-contenido="caja" hidden="" id="sg-panel-caja"><div class="sg-panel-intro"><h2>Caja y registros</h2><p>Controlá el dinero recibido, los movimientos y la actividad del salón.</p></div><div class="separacion" hidden="" id="panel-administracion">
+<div class="rejilla dos">
+<article class="tarjeta"><div class="fila cabecera"><h2>Caja actual</h2><button class="mini" id="caja-consultar" type="button">Consultar</button></div>
+<div class="sg-caja-resumen-v8" id="caja-estado">—</div><h3>Abrir caja</h3>
+<form class="campos" id="form-abrir-caja"><p class="suave">Fondo inicial de efectivo que hay al comenzar el turno. Completá las monedas disponibles; si no hay dinero, dejá cero. No son ventas.</p><div class="rejilla dos" id="abrir-montos"></div><button class="secundario" type="submit">Abrir caja</button></form><details class="sg-rate-disclosure sg-cierre-desplegable separacion"><summary>Realizar cierre y arqueo de caja</summary><form class="campos" id="form-cerrar-caja"><p class="suave">Arqueo: contá cuánto dinero hay físicamente en caja al finalizar. El sistema lo compara con el importe esperado y muestra las diferencias.</p><div class="rejilla dos" id="cerrar-montos"></div><label>Mercado Pago acreditado (ARS)<input id="caja-mp" inputmode="decimal" required="" value="0.00"/></label><button class="peligro" type="submit">Cerrar caja</button></form></details>
+</article>
+<article class="tarjeta"><h2>Auditoría</h2><form class="campos" id="form-auditoria"><div class="rejilla dos"><label>Desde<input id="audit-desde" type="date"/></label><label>Hasta<input id="audit-hasta" type="date"/></label></div><label>Tipo<select id="audit-tipo"><option value="">Todos</option><option value="pago">Pago</option><option value="movimiento">Movimiento</option><option value="caja">Caja</option><option value="factura">Factura</option><option value="mesa">Mesa</option></select></label><button class="secundario" type="submit">Consultar actividad</button></form><div class="filas" id="audit-lista"></div></article>
+</div>
+<div class="rejilla dos separacion"><article class="tarjeta"><h2>Movimientos de caja</h2><form class="campos" id="form-movimiento"><div class="rejilla dos"><label>Tipo<select id="mov-tipo"><option>Ingreso</option><option>Egreso</option></select></label><label>Moneda<select id="mov-moneda"><option>ARS</option><option>USD</option><option>BRL</option><option>PYG</option></select></label></div><label>Monto<input id="mov-monto" inputmode="decimal" required=""/></label><label>Descripción<input id="mov-descripcion" maxlength="200" required=""/></label><button class="secundario">Registrar movimiento</button></form></article><article class="tarjeta"><h2>Cotización BCRA</h2><p class="suave">Los valores se actualizan automáticamente para todas las operaciones.</p><button class="secundario" id="cotizacion-actualizar">Actualizar cotizaciones</button><div aria-live="polite" class="sg-cotizaciones-v8" id="sg-cotizaciones-personal"><p class="suave">Consultando cotizaciones…</p></div><h3>Facturas</h3><button class="secundario" id="facturas-consultar">Consultar últimas facturas</button><div class="filas" id="facturas-lista"></div></article></div>
+</div></section>
+<section class="sg-panel" data-sg-contenido="pruebas" hidden="" id="sg-panel-pruebas"><div class="sg-panel-intro"><h2>Operaciones especiales</h2><p>Herramientas reservadas para Administración y Gerencia.</p></div><div class="rejilla dos"><p class="suave sg-nota-v8">Las confirmaciones de demostración son solo para probar cobros sin transferir dinero real.</p><details class="sg-avanzado sg-mp-demo-v8"><summary>Confirmar pago en entorno de pruebas</summary><article class="tarjeta"><h2>Confirmar pago de demostración</h2><p class="suave">Solo para las pruebas del restaurante. No se mueve dinero real.</p>
+<form class="campos" id="form-mp-simular"><label>Número del pago<input id="simular-pago-id" min="1" required="" type="number"/></label>
+<label>Resultado<select id="simular-resultado"><option value="approved">Aprobado</option><option value="rejected">Rechazado</option><option value="in_process">En proceso</option></select></label><button class="secundario" type="submit">Simular pago</button></form>
+</article></details><article class="tarjeta"><h2>Anulaciones autorizadas</h2><p class="suave">Las anulaciones deben estar justificadas y quedan registradas en el historial.</p>
+<form class="campos" id="form-anular"><div class="rejilla dos"><label>Tipo<select id="anular-tipo"><option value="pago">Pago en efectivo</option><option value="factura">Factura</option><option value="mp">Pago Mercado Pago pendiente</option></select></label><label>Número<input id="anular-id" min="1" required="" type="number"/></label></div><label>Motivo<input id="anular-motivo" maxlength="200" placeholder="Motivo de la operación" required=""/></label><button class="peligro" type="submit">Solicitar anulación</button></form>
+</article></div>
+<article class="tarjeta separacion" id="sg-regularizacion-mesa">
+<h2>Regularizar una mesa de una jornada anterior</h2>
+<p class="suave">Consultá primero los consumos y pagos de la mesa. Si no es posible cobrarla, Administración o Gerencia puede registrar un cierre excepcional con motivo. No se considerará pagada.</p>
+<div class="rejilla dos">
+<label>Número de mesa<input id="sg-regularizar-numero" inputmode="numeric" min="1" step="1" type="number" value="3"/></label>
+<div class="acciones" style="align-self:end"><button class="secundario" id="sg-regularizar-consultar" type="button">Consultar estado</button></div>
+</div>
+<div aria-live="polite" class="filas separacion" id="sg-regularizar-detalle"><p class="suave">Todavía no se consultó esta mesa.</p></div>
+<form class="campos" hidden="" id="sg-regularizar-form">
+<p class="suave"><strong>Atención:</strong> el cierre excepcional libera la mesa pero NO registra un pago ni cancela una deuda. Usalo solo después de revisar los movimientos y explicar el motivo.</p>
+<label>Motivo del cierre excepcional<input id="sg-regularizar-motivo" maxlength="200" minlength="12" placeholder="Ej.: Sesión antigua de pruebas sin cobro registrado" required=""/></label>
+<label>Confirmación (escribí exactamente el texto indicado)<input autocomplete="off" id="sg-regularizar-confirmar" required=""/></label>
+<button class="peligro" type="submit">Cerrar sesión excepcionalmente</button>
+</form>
+</article></section>
+</div></section>
+</main><footer class="sg-cobros-footer">SAVAGE GRILL · EXPERIENCIA DEL SALÓN</footer><script defer src="savage-final-v8.js"></script>
+</body></html>

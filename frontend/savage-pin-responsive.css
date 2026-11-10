@@ -1,0 +1,97 @@
+/* Savage Grill · Acceso por PIN adaptable (iPhone y Android).
+   No modifica validación, seguridad, rutas ni almacenamiento de sesión. */
+html:has(body.sg-pin-responsive) {
+  max-width:100%;
+  overflow-x:clip;
+}
+body.sg-pin-responsive {
+  width:100%; max-width:100%; min-width:0; overflow-x:clip;
+}
+body.sg-pin-responsive .login-page {
+  width:100%; max-width:100%; min-width:0;
+  min-height:100svh;
+  padding:clamp(12px,3.5vw,28px) max(12px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  display:flex; align-items:center; justify-content:center;
+}
+body.sg-pin-responsive .login-shell {
+  width:min(500px,100%)!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  display:block!important;
+  grid-template-columns:none!important;
+  overflow:visible!important;
+}
+body.sg-pin-responsive .form-panel {
+  display:block!important;
+  width:100%!important; min-width:0!important;
+  padding:clamp(20px,5vw,40px)!important;
+  border-radius:var(--radius-xl);
+}
+body.sg-pin-responsive .login-card,
+body.sg-pin-responsive .login-header,
+body.sg-pin-responsive #formulario-login,
+body.sg-pin-responsive .pin-fieldset {
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+body.sg-pin-responsive .login-card {padding:0!important;}
+body.sg-pin-responsive .login-header h2 {
+  font-size:clamp(23px,5.7vw,32px);
+  line-height:1.22;
+  overflow-wrap:break-word;
+}
+body.sg-pin-responsive .login-header p {
+  max-width:100%; font-size:clamp(12px,3.6vw,14px);
+  line-height:1.55; overflow-wrap:break-word;
+}
+body.sg-pin-responsive .logo-restaurante {
+  font-size:clamp(22px,6vw,28px);
+  line-height:1.15;
+}
+body.sg-pin-responsive .pin-group {
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  width:min(320px,100%)!important;
+  max-width:100%!important;
+  min-width:0!important;
+  gap:clamp(7px,2vw,13px)!important;
+  margin-inline:auto;
+}
+body.sg-pin-responsive .pin-input {
+  display:block; box-sizing:border-box;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  height:clamp(50px,14vw,64px)!important;
+  padding:0!important;
+  font-size:clamp(20px,5.6vw,26px)!important;
+  transform:none!important;
+  -webkit-appearance:none;appearance:none;
+  border-radius:12px;
+}
+body.sg-pin-responsive .pin-input:focus {transform:none!important;}
+body.sg-pin-responsive #login-error {
+  max-width:100%;overflow-wrap:anywhere;
+  font-size:clamp(12px,3.3vw,13px);
+  line-height:1.5;text-align:center;
+}
+body.sg-pin-responsive .btn-primary {
+  width:100%!important;max-width:100%;min-width:0;
+  min-height:54px;height:auto;padding:12px 8px;
+  font-size:clamp(12px,3.5vw,14px);
+  white-space:normal;overflow-wrap:break-word;
+}
+body.sg-pin-responsive .btn-primary:hover {transform:none!important;}
+@media(max-width:430px) {
+  body.sg-pin-responsive .form-panel {padding:24px 17px!important;}
+  body.sg-pin-responsive #formulario-login {margin-top:25px!important;}
+  body.sg-pin-responsive .brand {margin-bottom:14px!important;}
+  body.sg-pin-responsive .login-header h2 {font-size:clamp(22px,6vw,28px);}
+}
+@media(max-height:650px) {
+  body.sg-pin-responsive .login-page {justify-content:flex-start;}
+}
+@media(prefers-reduced-motion:reduce) {
+  body.sg-pin-responsive .pin-input {transition:none!important;}
+}

@@ -160,6 +160,8 @@
     <link rel="stylesheet" href="savage-gerencia-responsive.css">
     <script defer src="savage-theme.js"></script>
     <script defer src="savage-gerencia-responsive.js"></script>
+<link rel="stylesheet" href="savage-global-centered-header-v5.css">
+<link rel="stylesheet" href="savage-final-v8.css">
 </head>
 <body>
 <div class="g-shell">
@@ -199,7 +201,7 @@
       <div class="g-grid">
         <section class="g-panel g-col-12" aria-labelledby="g-alta-titulo">
           <h3 id="g-alta-titulo">Registrar nuevo empleado</h3>
-          <p class="g-muted">Los accesos se crean en el servidor y los permisos dependen del rol asignado.</p>
+          <p class="g-muted">Los accesos y permisos se asignan según el puesto de cada empleado.</p>
           <form class="g-form" id="form-empleado" autocomplete="off">
             <div class="g-field"><label for="emp-nombre">Nombre *</label><input class="g-input" id="emp-nombre" maxlength="80" required autocomplete="given-name"></div>
             <div class="g-field"><label for="emp-apellido">Apellido *</label><input class="g-input" id="emp-apellido" maxlength="80" required autocomplete="family-name"></div>
@@ -231,7 +233,7 @@
       <div class="g-grid">
         <section class="g-panel g-col-6"><h3>Actividad de mesas</h3><p class="g-muted">Sesiones abiertas por día, dentro del período elegido.</p><div class="g-bars" id="g-grafico-sesiones"><div class="g-empty">Sin datos cargados.</div></div></section>
         <section class="g-panel g-col-6"><h3>Productos más pedidos</h3><p class="g-muted">Unidades registradas en los detalles de las sesiones del período.</p><div class="g-bars" id="g-grafico-productos"><div class="g-empty">Sin datos cargados.</div></div></section>
-        <section class="g-panel g-col-12"><h3>Lectura de los indicadores</h3><p class="g-muted">Los datos proceden de <strong>sesiones-mesa</strong> y sus detalles de pedido; no son ventas liquidadas ni informes contables. Una sesión abierta también puede tener consumo. Las comandas rechazadas, anulaciones, cubiertos y pagos requieren criterios oficiales del backend antes de ofrecer indicadores de facturación neta, ticket promedio cobrado o rentabilidad.</p><p id="g-alcance-consulta" class="g-muted"></p></section>
+        <section class="g-panel g-col-12"><h3>Lectura de los indicadores</h3><p class="g-muted">Estos indicadores muestran consumos y actividad del salón. No representan necesariamente importes ya cobrados. Para revisar pagos, consultá el apartado de Caja y cobros.</p><p id="g-alcance-consulta" class="g-muted"></p></section>
       </div>
     </section>
   </main>
@@ -266,5 +268,7 @@
 </div>
 <script src="app.js"></script>
 <script src="gerente-panel.js"></script>
+    <script defer src="savage-cobros-acceso.js"></script>
+<script defer src="savage-final-v8.js"></script>
 </body>
 </html>

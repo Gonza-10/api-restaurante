@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Pedido - Savage Grill</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="savage-scrollbars.css">
-    <link rel="stylesheet" href="savage-theme.css">
-    <script defer src="savage-theme.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mi Pedido - Savage Grill</title>
+<link href="styles.css" rel="stylesheet"/>
+<link href="savage-scrollbars.css" rel="stylesheet"/>
+<link href="savage-theme.css" rel="stylesheet"/>
+<script defer="" src="savage-theme.js"></script>
+<style>
         .carrito-container {
             display: grid;
             grid-template-columns: 1.3fr 0.9fr;
@@ -279,133 +280,107 @@
         }
         body.light-mode #carrito-total-movil-importe {color:#28221e;}
     </style>
-    <link rel="stylesheet" href="savage-modal-lock.css">
-    <script defer src="savage-modal-lock.js"></script>
-    <link rel="stylesheet" href="savage-brand-unificado.css">
+<link href="savage-modal-lock.css" rel="stylesheet"/>
+<script defer="" src="savage-modal-lock.js"></script>
+<link href="savage-brand-unificado.css" rel="stylesheet"/>
+<link href="savage-global-centered-header-v5.css" rel="stylesheet"/>
+<link href="savage-final-v8.css" rel="stylesheet"/>
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
-
-    <header class="sg-header carrito-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
-        <h1 class="logo-restaurante sg-brand-unified" style="margin: 0; cursor: pointer;" onclick="window.location.href='catalogo.html'">SAVAGE<span>GRILL.</span></h1>
-        <div class="carrito-header-acciones" style="display: flex; align-items: center; gap: 15px;">
-            <div data-savage-theme="inline"></div>
-            <span class="carrito-badge-mesa" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+<header class="sg-header carrito-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid var(--glass-border);">
+<h1 class="logo-restaurante sg-brand-unified" onclick="window.location.href='catalogo.html'" style="margin: 0; cursor: pointer;">SAVAGE<span>GRILL.</span></h1><span class="sg-carrito-submarca-v8">TU SELECCIÓN</span>
+<div class="carrito-header-acciones" style="display: flex; align-items: center; gap: 15px;">
+<div data-savage-theme="inline"></div>
+<span class="carrito-badge-mesa" style="border: 1px solid var(--primary-orange); color: var(--primary-orange); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                 Mesa #<span id="txt-nro-mesa">--</span>
-            </span>
-            <button class="carrito-volver" onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
+</span>
+<button class="carrito-volver" onclick="window.location.href='catalogo.html'" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 13px;">
                 ← Volver al Menú
             </button>
-        </div>
-    </header>
-
-    <div class="carrito-container">
-        <!-- ZONA 1: Selección y Enviar a Cocina -->
-        <div class="carrito-columna-seleccion" style="display: flex; flex-direction: column; gap: 25px;">
-            <div>
-                <h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos listos para enviar a cocina en este nuevo pedido.</p>
-                <div id="contenedor-items-carrito" style="display: flex; flex-direction: column; gap: 12px;"></div>
-            </div>
-
-            <!-- Botón original intacto -->
-            <button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
+</div>
+</header>
+<div class="carrito-container">
+<!-- ZONA 1: Selección y Enviar a Cocina -->
+<div class="carrito-columna-seleccion" style="display: flex; flex-direction: column; gap: 25px;">
+<div>
+<h2 style="font-size: 24px; font-weight: 900; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Tu Selección</h2>
+<p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Platos listos para enviar a cocina en este nuevo pedido.</p>
+<div id="contenedor-items-carrito" style="display: flex; flex-direction: column; gap: 12px;"></div>
+</div>
+<!-- Botón original intacto -->
+<div class="sg-comensal-v8"><label for="sg-nombre-comensal-v8">¿Quién hace este pedido? <small>Opcional, útil para grupos de amigos</small></label><input autocomplete="nickname" id="sg-nombre-comensal-v8" maxlength="50" placeholder="Ej.: Juan"/></div><button id="btn-enviar-cocina" onclick="enviarPedidoACocina()" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--primary-orange); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(255,122,0,0.3); transition: all 0.3s;">
                 Enviar Selección a Cocina
             </button>
+<!-- Historial -->
+<div style="margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 25px;">
+<h3 style="font-size: 18px; font-weight: 800; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Pedidos de la Mesa</h3>
+<p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Consultá los pedidos enviados y su estado. Podés acceder aunque no tengas productos nuevos en el carrito.</p>
+<div id="contenedor-historial-pedidos" style="display: flex; flex-direction: column; gap: 10px;"></div>
+</div>
+</div>
+<!-- ZONA 2 y 3: Resumen y Pago -->
+<div class="carrito-columna-cuenta" style="display: flex; flex-direction: column; gap: 20px;">
+<div class="product-card carrito-resumen" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
+<h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
+<div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
+<span>Pedidos realizados</span>
+<span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
+</div>
+<div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
 
-            <!-- Historial -->
-            <div style="margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 25px;">
-                <h3 style="font-size: 18px; font-weight: 800; margin-top: 0; margin-bottom: 8px; color: var(--text-main);">Pedidos de la Mesa</h3>
-                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Consultá los pedidos enviados y su estado. Podés acceder aunque no tengas productos nuevos en el carrito.</p>
-                <div id="contenedor-historial-pedidos" style="display: flex; flex-direction: column; gap: 10px;"></div>
-            </div>
-        </div>
-
-        <!-- ZONA 2 y 3: Resumen y Pago -->
-        <div class="carrito-columna-cuenta" style="display: flex; flex-direction: column; gap: 20px;">
-            <div class="product-card carrito-resumen" style="padding: 25px; display: flex; flex-direction: column; gap: 14px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--primary-orange); font-weight: 800;">Resumen de la Mesa</h3>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
-                    <span>Consumos enviados (según servidor)</span>
-                    <span id="lbl-subtotal" style="color: var(--text-main); font-weight: 600;">$0.00</span>
-                </div>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; gap:10px;"><span>Selección sin enviar</span><span id="lbl-seleccion" style="color:var(--text-main);font-weight:600">$0,00</span></div>
-                <div class="carrito-resumen-fila" style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
-                    <span>Costo de Servicio (Cubierto)</span>
-                    <span id="lbl-cubierto" style="color: var(--text-main); font-weight: 600;">$0.00</span>
-                </div>
-                <div class="carrito-resumen-total" style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-                    <span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa (sin selección nueva)</span>
-                    <span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
-                </div>
-                <p id="estado-consulta-historial" style="margin:0;font-size:12px;line-height:1.5;color:var(--text-muted)" aria-live="polite">Consultando los consumos de la mesa...</p>
-                <p id="estimado-seleccion" style="margin:0;font-size:12px;color:var(--text-muted);display:none"></p>
-            </div>
-
-            <div id="zona-metodo-pago" class="product-card carrito-zona-pago" style="padding: 25px; display: flex; flex-direction: column; gap: 12px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-main); font-weight: 800;">Método de Pago</h3>
-                <p style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px;">Seleccioná cómo vas a abonar al finalizar tu estadía.</p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="efectivo" checked style="accent-color: var(--primary-orange);"> Efectivo (al mozo)</label>
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="tarjeta" style="accent-color: var(--primary-orange);"> Tarjeta de Crédito / Débito</label>
-                    <label class="metodo-pago-label"><input type="radio" name="metodo_pago" value="transferencia" style="accent-color: var(--primary-orange);"> Transferencia Bancaria / QR</label>
-                </div>
-            </div>
-
-            <button id="btn-cerrar-mesa" onclick="confirmarCierreMesa()" style="width: 100%; padding: 16px; border-radius: 12px; background: transparent; color: var(--primary-orange); border: 2px solid var(--primary-orange); font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 122, 0, 0.1)';" onmouseout="this.style.background='transparent';">
-                Solicitar Cierre de Mesa y Pago
-            </button>
-        </div>
-    </div>
-
-    <!-- Resumen fijo en celular: subtotal de esta selección y total real registrado. -->
-    <aside class="carrito-total-movil" aria-label="Subtotal de tu selección y total registrado de la mesa">
-        <div class="carrito-total-movil-fila">
-            <span class="carrito-total-movil-etiqueta">Subtotal <small>Selección sin enviar</small></span>
-            <strong id="carrito-total-movil-importe" aria-live="polite">$ 0,00</strong>
-        </div>
-        <div class="carrito-total-movil-fila carrito-total-movil-fila-principal">
-            <span class="carrito-total-movil-etiqueta">Total de la mesa <small>Consumos ya registrados + cubierto</small></span>
-            <strong id="carrito-total-movil-mesa" aria-live="polite">—</strong>
-        </div>
-    </aside>
-
-    <!-- Retorno adicional para clientes que llegaron al final del historial y la cuenta. -->
-    <nav class="carrito-navegacion-final" aria-label="Navegación de la carta">
-        <a class="carrito-continuar-menu" href="catalogo.html" aria-label="Volver al menú digital y seguir viendo productos">
-            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+<div class="carrito-resumen-total" style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+<span style="font-size: 16px; font-weight: bold; color: var(--text-main);">Total de la mesa (sin selección nueva)</span>
+<span id="lbl-total" style="font-size: 28px; font-weight: 900; color: var(--primary-orange);">$0.00</span>
+</div>
+<p aria-live="polite" id="estado-consulta-historial" style="margin:0;font-size:12px;line-height:1.5;color:var(--text-muted)">Consultando los consumos de la mesa...</p>
+<p id="estimado-seleccion" style="margin:0;font-size:12px;color:var(--text-muted);display:none"></p>
+</div>
+</div>
+</div>
+<!-- Resumen fijo en celular: subtotal de esta selección y total real registrado. -->
+<aside aria-label="Subtotal de tu selección y total registrado de la mesa" class="carrito-total-movil">
+<div class="carrito-total-movil-fila">
+<span class="carrito-total-movil-etiqueta">Subtotal <small>Selección sin enviar</small></span>
+<strong aria-live="polite" id="carrito-total-movil-importe">$ 0,00</strong>
+</div>
+<div class="carrito-total-movil-fila carrito-total-movil-fila-principal">
+<span class="carrito-total-movil-etiqueta">Total de la mesa <small>Consumos registrados</small></span>
+<strong aria-live="polite" id="carrito-total-movil-mesa">—</strong>
+</div>
+</aside>
+<!-- Retorno adicional para clientes que llegaron al final del historial y la cuenta. -->
+<nav aria-label="Navegación de la carta" class="carrito-navegacion-final">
+<a aria-label="Volver al menú digital y seguir viendo productos" class="carrito-continuar-menu" href="catalogo.html">
+<svg aria-hidden="true" fill="none" height="19" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="19"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
             Volver al Menú
         </a>
-    </nav>
-
-    <!-- Modal Editar Plato desde Carrito -->
-    <div id="modal-editar-plato" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
-        <div class="product-card carrito-modal-edicion" style="width: min(400px, 90%); max-height: 85vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--glass-border); border-radius: 20px; position: relative;">
-            <button onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 18px; cursor: pointer; z-index: 10;">✕</button>
-            <div style="padding: 30px;">
-                <h2 id="edit-nombre" style="margin: 0 0 5px 0; font-size: 20px;"></h2>
-                <p style="margin: 0 0 20px 0; color: var(--primary-orange); font-weight: bold;">Personalizá tu plato</p>
-                <div id="edit-quitables-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                <input type="hidden" id="edit-index-carrito">
-                <button onclick="guardarEdicionCarrito()" style="width: 100%; margin-top: 25px; background: var(--primary-orange); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
+</nav>
+<!-- Modal Editar Plato desde Carrito -->
+<div id="modal-editar-plato" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2500; justify-content: center; align-items: center;">
+<div class="product-card carrito-modal-edicion" style="width: min(400px, 90%); max-height: 85vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--glass-border); border-radius: 20px; position: relative;">
+<button onclick="cerrarModalEditar()" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; font-size: 18px; cursor: pointer; z-index: 10;">✕</button>
+<div style="padding: 30px;">
+<h2 id="edit-nombre" style="margin: 0 0 5px 0; font-size: 20px;"></h2>
+<p style="margin: 0 0 20px 0; color: var(--primary-orange); font-weight: bold;">Personalizá tu plato</p>
+<div id="edit-quitables-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+<input id="edit-index-carrito" type="hidden"/>
+<button onclick="guardarEdicionCarrito()" style="width: 100%; margin-top: 25px; background: var(--primary-orange); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
                     Guardar Cambios
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Custom -->
-    <div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
-        <div class="product-card carrito-modal-aviso" style="width: min(425px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
-            <h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
-            <p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
-            <div id="modal-botones" style="display: flex; gap: 10px;"></div>
-        </div>
-    </div>
-
-    <script src="config.js"></script>
-    <script>
+</div>
+</div>
+</div>
+<!-- Modal Custom -->
+<div id="modal-aviso" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); z-index: 3500; justify-content: center; align-items: center;">
+<div class="product-card carrito-modal-aviso" style="width: min(425px, 90%); padding: 35px; text-align: center; border: 1px solid var(--glass-border);">
+<h2 id="aviso-titulo" style="margin: 0 0 10px 0; color: var(--text-main); font-size: 22px;">Aviso</h2>
+<p id="aviso-mensaje" style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
+<div id="modal-botones" style="display: flex; gap: 10px;"></div>
+</div>
+</div>
+<script src="config.js"></script>
+<script>
         let callbackAviso = null;
-        const VALOR_CUBIERTO_POR_PERSONA = 1500;
         window.itemsBloqueadosPorStock = []; 
         // Se usa la misma API del catálogo; file:// mantiene el servidor local de desarrollo.
         const BASE_API_CARRITO = (() => {
@@ -533,37 +508,25 @@
             const totalHistorial = historial.filter(comandaValida).reduce((suma,c)=>suma+totalComandaServidor(c),0);
             const totalPendiente = carrito.reduce((suma,i)=>suma+(Number(i.precio)||0)*(Number(i.cantidad)||1),0);
             const noHayConsumos = historialConsultaOK && historial.filter(comandaValida).length === 0 && carrito.length === 0;
-            const cubierto = historialConsultaOK && (historial.some(comandaValida) || carrito.length) ? comensales * VALOR_CUBIERTO_POR_PERSONA : 0;
-            const zonaPago = document.getElementById('zona-metodo-pago');
-            const btnCerrar = document.getElementById('btn-cerrar-mesa');
-            // Si no pudimos verificar los pedidos, no mostrar una deuda artificialmente menor.
-            zonaPago.style.display = historialConsultaOK && noHayConsumos ? 'none' : 'flex';
-            btnCerrar.textContent = !historialConsultaOK ? 'Verificando cuenta de la mesa...' :
-                noHayConsumos ? 'Cancelar Mesa y Retirarse (Sin consumos)' : 'Solicitar Cierre de Mesa y Pago';
-            btnCerrar.disabled = !historialConsultaOK || cuentaSolicitadaServidor;
-            btnCerrar.style.opacity = btnCerrar.disabled ? '0.6' : '1';
-            btnCerrar.style.cursor = btnCerrar.disabled ? 'not-allowed' : 'pointer';
-            btnCerrar.style.borderColor = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
-            btnCerrar.style.color = noHayConsumos ? 'var(--text-muted)' : 'var(--primary-orange)';
-            if(cuentaSolicitadaServidor)btnCerrar.textContent='Cuenta solicitada al mozo';
+
+            // El pago y el cierre de la mesa se gestionan exclusivamente desde Pagar.
             document.getElementById('lbl-subtotal').textContent = historialConsultaOK ? monedaAR(totalHistorial) : '—';
             document.getElementById('lbl-seleccion').textContent = monedaAR(totalPendiente);
             const totalMovil = document.getElementById('carrito-total-movil-importe');
             if (totalMovil) totalMovil.textContent = monedaAR(totalPendiente);
             const totalMesaMovil = document.getElementById('carrito-total-movil-mesa');
             if (totalMesaMovil) totalMesaMovil.textContent = historialConsultaOK
-                ? monedaAR(totalHistorial + cubierto) : '—';
-            document.getElementById('lbl-cubierto').textContent = historialConsultaOK ? `${monedaAR(cubierto)} (${comensales} personas)` : '—';
-            document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial+cubierto) : '—';
+                ? monedaAR(totalHistorial) : '—';
+            document.getElementById('lbl-total').textContent = historialConsultaOK ? monedaAR(totalHistorial) : '—';
             const estado=document.getElementById('estado-consulta-historial');
             estado.textContent = !historialConsultaOK ?
-                (ultimoErrorHistorial || 'Consultando historial real de la mesa. Los importes se verificarán con el servidor.') :
+                (ultimoErrorHistorial || 'Consultando tus consumos...') :
                 (ultimoErrorHistorial ? 'Conexión interrumpida. Se muestra la última cuenta verificada; puede estar desactualizada.' :
-                'La cuenta incluye las comandas registradas, aunque Cocina ya las haya entregado.');
+                'La cuenta muestra los consumos registrados de la mesa.');
             estado.style.color = ultimoErrorHistorial ? '#edab65' : 'var(--text-muted)';
             const estimado=document.getElementById('estimado-seleccion');
             estimado.style.display = totalPendiente > 0 && historialConsultaOK ? 'block' : 'none';
-            if(historialConsultaOK)estimado.textContent=`Con los productos aún sin enviar: ${monedaAR(totalHistorial+cubierto+totalPendiente)} (estimado, no es deuda registrada).`;
+            if(historialConsultaOK)estimado.textContent=`Con los productos aún sin enviar: ${monedaAR(totalHistorial+totalPendiente)} (estimado, no es deuda registrada).`;
 
             contenedor.replaceChildren();
             const bloqueados = window.itemsBloqueadosPorStock;
@@ -704,7 +667,7 @@
             const cont=document.getElementById('contenedor-historial-pedidos');
             cont.replaceChildren();
             if(!historialConsultaOK){
-                cont.innerHTML='<p class="texto-auxiliar-carrito">Consultando los pedidos de esta mesa en el servidor...</p>';
+                cont.innerHTML='<p class="texto-auxiliar-carrito">Cargando los pedidos de tu mesa...</p>';
                 return;
             }
             const historial=Array.isArray(historialServidor)?historialServidor:[];
@@ -744,7 +707,7 @@
                 });
                 if(!resp.ok)throw new Error(resp.status===403?'El PIN ya no permite consultar esta mesa. Consultá al mozo.':`No se pudo verificar el historial (HTTP ${resp.status}).`);
                 const datos=await resp.json();
-                if(Number(datos.numero_mesa)!==numero_mesa||!Array.isArray(datos.comandas))throw new Error('El servidor devolvió un historial inválido.');
+                if(Number(datos.numero_mesa)!==numero_mesa||!Array.isArray(datos.comandas))throw new Error('No pudimos mostrar los pedidos de tu mesa. Intentá de nuevo.');
                 historialServidor=datos.comandas;
                 historialConsultaOK=true;
                 ultimoErrorHistorial=null;
@@ -762,7 +725,7 @@
             const carrito = obtenerCarrito();
             if (!carrito.length) return;
             if (!await cargarProductosParaCarrito(true)) {
-                mostrarAviso('No se pudo verificar el menú', 'Revisá tu conexión con el servidor antes de enviar el pedido. Tu selección sigue guardada.');
+                mostrarAviso('No se pudo verificar el menú', 'No pudimos confirmar la conexión. Tu selección sigue guardada; probá nuevamente.');
                 return;
             }
             const invalido = carrito.find(item => {
@@ -787,7 +750,8 @@
                     itemsPlana.push(linea);
                 }
             });
-            const firma = JSON.stringify(itemsPlana);
+            const comensalNombre = (document.getElementById('sg-nombre-comensal-v8')?.value||'').trim();
+            const firma = comensalNombre ? JSON.stringify([itemsPlana,comensalNombre]) : JSON.stringify(itemsPlana);
             let pedidoPendiente;
             try { pedidoPendiente = JSON.parse(sessionStorage.getItem('savage-envio-pendiente')); } catch (_) { /* nuevo pedido */ }
             const uuid = pedidoPendiente?.firma === firma && pedidoPendiente?.uuid
@@ -799,6 +763,7 @@
                 pin: sessionStorage.getItem('savage-mesa-pin'),
                 items: itemsPlana
             };
+            if(comensalNombre)payload.comensal = comensalNombre;
             // Adjuntamos la versión solamente cuando el catálogo ya la recibió.
             const version = sessionStorage.getItem('savage-version-menu');
             if (version) payload.version_menu = version;
@@ -814,7 +779,7 @@
                     sessionStorage.removeItem('savage-envio-pendiente');
                     window.itemsBloqueadosPorStock = [];
                     mostrarHistorialGuardado();
-                    mostrarAviso('Pedido enviado', 'Tu pedido fue recibido por Cocina. Podés volver al catálogo o solicitar la cuenta desde esta pantalla.');
+                    mostrarAviso('Pedido enviado', 'Tu pedido fue recibido por Cocina. Podés volver al catálogo o ir a Pagar cuando termines de consumir.');
                     cargarHistorialPedidos();
                 } else if (resp.status === 409) {
                     const datos = await resp.json().catch(() => ({}));
@@ -825,7 +790,7 @@
                 } else {
                     const datos = await resp.json().catch(() => ({}));
                     const mensaje = typeof datos.error === 'string' ? datos.error :
-                        typeof datos.detail === 'string' ? datos.detail : `El servidor rechazó el pedido (HTTP ${resp.status}).`;
+                        typeof datos.detail === 'string' ? datos.detail : `No se pudo registrar el pedido. Intentá nuevamente o consultá al mozo.`;
                     mostrarAviso('No se pudo enviar el pedido', mensaje);
                 }
             } catch (error) {
@@ -865,7 +830,7 @@
                     if (!resp.ok) {
                         const datos = await resp.json().catch(() => ({}));
                         const mensaje = typeof datos.error === 'string' ? datos.error :
-                            typeof datos.detail === 'string' ? datos.detail : `El servidor rechazó la solicitud (HTTP ${resp.status}).`;
+                            typeof datos.detail === 'string' ? datos.detail : `No se pudo completar la solicitud. Pedí ayuda al mozo.`;
                         throw new Error(mensaje);
                     }
                     cuentaSolicitadaServidor=true;
@@ -877,5 +842,7 @@
             },'Confirmar');
         }
     </script>
+<script defer="" src="savage-cobros-acceso.js"></script>
+<script defer="" src="savage-final-v8.js"></script>
 </body>
 </html>

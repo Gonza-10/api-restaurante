@@ -336,6 +336,8 @@
     <link rel="stylesheet" href="savage-modal-lock.css">
     <script defer src="savage-modal-lock.js"></script>
     <link rel="stylesheet" href="savage-brand-unificado.css">
+<link rel="stylesheet" href="savage-global-centered-header-v5.css">
+<link rel="stylesheet" href="savage-final-v8.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
     <div id="toast-exito">¡Mesa abierta con éxito!</div>
@@ -546,7 +548,7 @@
                                 <div class="sesion-pin-box"><span>PIN cliente</span><strong class="sesion-pin">${escapeHTML(s.codigo_pin)}</strong></div>
                             </div>
                         </div>
-                        <div class="sesion-footer"><button type="button" class="action-btn action-btn-primary" data-action="historial" data-sesion="${num(s.id)}">Ver historial</button><button type="button" class="action-btn ${cuenta?'action-btn-warn':'action-btn-danger'}" data-action="cerrar" data-sesion="${num(s.id)}">Gestionar cierre</button></div></article>`;
+                        <div class="sesion-footer"><a class="action-btn action-btn-primary" href="cobros.html?sesion=${num(s.id)}" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Cobrar</a><button type="button" class="action-btn action-btn-primary" data-action="historial" data-sesion="${num(s.id)}">Ver historial</button><button type="button" class="action-btn ${cuenta?'action-btn-warn':'action-btn-danger'}" data-action="cerrar" data-sesion="${num(s.id)}">Gestionar cierre</button></div></article>`;
                 }).join('');
             } catch(e) {
                 console.error('No fue posible cargar las sesiones:',e);
@@ -735,9 +737,11 @@
                     mostrarAviso("Error", err.error || "No se pudo cerrar la mesa.");
                 }
             } catch (error) {
-                mostrarAviso("Error", "Fallo de conexión al servidor.");
+                mostrarAviso("Error", "No se pudieron cargar los datos. Verificá la conexión e intentá nuevamente.");
             }
         }
     </script>
+    <script defer src="savage-cobros-acceso.js"></script>
+<script defer src="savage-final-v8.js"></script>
 </body>
 </html>

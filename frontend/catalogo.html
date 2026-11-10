@@ -339,9 +339,12 @@
         #contenedor-categorias { scrollbar-width:none!important; -ms-overflow-style:none; }
         #contenedor-categorias::-webkit-scrollbar { display:none!important; width:0!important; height:0!important; }
     </style>
+    <link rel="stylesheet" href="savage-jornada-aviso.css">
     <link rel="stylesheet" href="savage-modal-lock.css">
     <script defer src="savage-modal-lock.js"></script>
     <link rel="stylesheet" href="savage-brand-unificado.css">
+<link rel="stylesheet" href="savage-global-centered-header-v5.css">
+<link rel="stylesheet" href="savage-final-v8.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
@@ -359,13 +362,11 @@
     </header>
 
     <main class="sg-main" style="padding: 40px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; position: relative;">
-        <!-- Overlay Local Cerrado -->
-        <div id="overlay-local-cerrado" style="display: none; position: absolute; inset: 0; background: rgba(18,18,18,0.9); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 16px;">
-            <span style="font-size: 60px; margin-bottom: 20px;">🌙</span>
-            <h2 style="color: var(--primary-orange); font-size: 32px; font-weight: 900; margin: 0 0 15px 0;">Local Cerrado</h2>
-            <p style="color: var(--text-muted); font-size: 16px; max-width: 400px; line-height: 1.5;">La jornada actual ha finalizado. No estamos tomando pedidos en este momento.</p>
-        </div>
-
+        <!-- Estado desde el servidor: no bloquea la consulta de consumos existentes. -->
+        <section id="overlay-local-cerrado" class="sg-jornada-aviso" role="status" aria-live="polite" hidden>
+          <div><strong><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> El salón está cerrado por el momento</strong><p>No estamos tomando pedidos nuevos. Si ya consumiste, podés revisar tu cuenta y pagar desde el celular.</p></div>
+          <div class="sg-jornada-acciones"><a href="mi-cuenta.html">Pagar</a><button type="button" id="sg-jornada-actualizar">Volver a consultar</button></div>
+        </section>
         <!-- Especiales vigentes desde /productos: sin precios ni platos inventados en el HTML. -->
         <section class="sg-especial" id="especial-del-dia" aria-label="Especial del día" aria-live="polite" tabindex="0" hidden>
             <div class="sg-especial-fondo" id="especial-fondo" aria-hidden="true"></div>
@@ -413,7 +414,7 @@
             <div id="contenedor-categorias" role="group" aria-label="Categorías: deslizá horizontalmente para ver todas" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
 
-        <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">Fallo al cargar el menú digital. Verifique si el servidor backend está encendido.</div>
+        <div id="caja-error-conexion" class="message error" style="display: none; margin-bottom: 20px;">No pudimos cargar la carta. Comprobá tu conexión e intentá nuevamente.</div>
         <div id="listado" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;"></div>
     </main>
 
@@ -896,13 +897,32 @@
             actualizarBarraFlotanteDesdeStorage(); 
         });
 
+        let sgJornadaCerrada = false;
         async function verificarJornadaAbierta() {
+            const banner = document.getElementById('overlay-local-cerrado');
             try {
-                const resp = await fetch(rutaApiCatalogo('jornada/actual'));
-                const data = await resp.json();
-                if (!data.abierta) { document.getElementById('overlay-local-cerrado').style.display = 'flex'; }
-            } catch(e) { console.error("Error verificando jornada:", e); }
+                const resp = await fetch(rutaApiCatalogo('jornada/actual'),{cache:'no-store'});
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data=await resp.json();
+                sgJornadaCerrada = data.abierta === false;
+                banner.querySelector('strong').textContent = 'El salón está cerrado por el momento';
+                banner.querySelector('p').textContent = 'No estamos tomando pedidos nuevos. Si ya consumiste, podés revisar tu cuenta y pagar desde el celular.';
+                banner.hidden = !sgJornadaCerrada;
+                document.body.classList.toggle('sg-jornada-cerrada',sgJornadaCerrada);
+                return data;
+            } catch(e) {
+                console.error('Error verificando jornada:', e);
+                banner.hidden = false;
+                banner.querySelector('strong').textContent = 'No se pudo verificar la jornada';
+                banner.querySelector('p').textContent = 'Revisá la conexión antes de intentar un pedido. Si tenés consumos previos, consultalos desde Pagar.';
+                sgJornadaCerrada = true;
+                document.body.classList.add('sg-jornada-cerrada');
+                return null;
+            }
         }
+        document.addEventListener('click',e=>{
+           if(e.target.closest('#sg-jornada-actualizar'))verificarJornadaAbierta();
+        });
 
         function actualizarBarraFlotanteDesdeStorage() {
             let c = [];
@@ -1299,6 +1319,12 @@
         }
 
         function agregarAlCarritoDesdeDetalle(idProducto, nombre, arrQuitables, botonElement) {
+            if (sgJornadaCerrada) {
+                const b=document.getElementById('overlay-local-cerrado');
+                b.hidden=false;b.scrollIntoView({behavior:'smooth',block:'start'});
+                return;
+            }
+
             const productoOriginal = productoPorId(idProducto);
             const imagenUrl = urlImagenCatalogo(productoOriginal?.imagen_url || productoOriginal?.imagen || productoOriginal?.foto);
             // Canonicalizar IDs facilita agrupar dos personalizaciones equivalentes.
@@ -1443,5 +1469,7 @@
         function abrirModalCarrito() { window.location.href = 'carrito.html'; }
         function cerrarSesionCliente() { sessionStorage.clear(); window.location.href = 'pin.html'; }
     </script>
+    <script defer src="savage-cobros-acceso.js"></script>
+<script defer src="savage-final-v8.js"></script>
 </body>
 </html>

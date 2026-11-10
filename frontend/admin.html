@@ -786,6 +786,8 @@
     <script defer src="savage-admin-responsive.js"></script>
     <script defer src="savage-modal-lock.js"></script>
     <link rel="stylesheet" href="savage-brand-unificado.css">
+<link rel="stylesheet" href="savage-global-centered-header-v5.css">
+<link rel="stylesheet" href="savage-final-v8.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
@@ -866,7 +868,7 @@
                 <div class="login-card">
                     <div class="login-header">
                         <h2>Nuevo Producto</h2>
-                        <p>Ingresá los datos para enviar al servidor</p>
+                        <p>Completá los datos del nuevo producto.</p>
                     </div>
 
                     <form id="formulario-registro" style="margin-top: 25px; display: flex; flex-direction: column; gap: 18px;">
@@ -936,7 +938,7 @@
             </div>
             
             <div id="listado" class="products-grid">
-                <p style="color: var(--text-muted); font-size: 14px;">Cargando registros desde la API...</p>
+                <p style="color: var(--text-muted); font-size: 14px;">Cargando registros...</p>
             </div>
         </div>
     </div>
@@ -1324,7 +1326,7 @@
             <div class="sg-rp-grid">
               <section class="sg-admin-box">
                 <h2>Necesidades de reposición</h2>
-                <p class="sg-rp-note">Se consulta la sugerencia que calcula el servidor; esta pantalla no agrega mercadería ni realiza compras automáticamente.</p>
+                <p class="sg-rp-note">Estas cantidades son sugerencias de reposición. Revisalas antes de generar una compra.</p>
                 <div class="sg-admin-actions" style="margin-bottom:17px"><button type="button" class="sg-admin-secondary" id="rp-actualizar">Actualizar sugerencias</button></div>
                 <p class="sg-admin-msg" id="rp-mensaje" role="status" aria-live="polite" hidden></p>
                 <div class="sg-rp-cards" id="rp-lista" aria-live="polite"></div>
@@ -1359,7 +1361,7 @@
                 <h2>Historial de pérdidas</h2>
                 <div class="sg-rp-stats">
                   <div class="sg-rp-stat"><span>Registros visibles</span><strong id="rp-total-registros">—</strong></div>
-                  <div class="sg-rp-stat"><span>Costo informado por API</span><strong id="rp-total-costo">—</strong></div>
+                  <div class="sg-rp-stat"><span>Costo estimado</span><strong id="rp-total-costo">—</strong></div>
                   <div class="sg-rp-stat"><span>Última actualización</span><strong id="rp-ultima-actualizacion">—</strong></div>
                 </div>
                 <div class="sg-rp-filter"><input type="search" id="rp-buscar" placeholder="Buscar insumo, plato o motivo..." aria-label="Buscar pérdidas"><button type="button" class="sg-admin-secondary" id="rp-recargar-perdidas">Actualizar historial</button></div>
@@ -1373,7 +1375,7 @@
         <!-- P30: Jornada y Especiales. Calendario conectado a la API. -->
         <section id="vista-jornada" class="sg-admin-view" aria-label="Jornada y especiales" hidden>
           <h1 class="sg-admin-page-title">Jornada y Especiales</h1>
-          <p class="sg-admin-help">Gestioná el funcionamiento del salón y programá ofertas reales por día de la semana o para una fecha determinada. El catálogo mostrará solamente promociones que estén vigentes según el servidor.</p>
+          <p class="sg-admin-help">Organizá los turnos del salón y programá las promociones que verán tus clientes.</p>
           <div class="sg-je-tabs" role="tablist" aria-label="Secciones de jornada y especiales">
             <button type="button" class="sg-je-tab" data-je-tab="jornada" role="tab" aria-selected="true" aria-controls="sg-je-subview-jornada">Jornada actual</button>
             <button type="button" class="sg-je-tab" data-je-tab="especiales" role="tab" aria-selected="false" aria-controls="sg-je-subview-especiales">Especiales del día</button>
@@ -1382,7 +1384,7 @@
             <div class="sg-je-grid">
               <section class="sg-admin-box">
                 <h2>Estado de la jornada</h2>
-                <p class="sg-je-note">Se consulta el estado real del servidor. Abrir o cerrar una jornada es una operación operativa y requiere confirmación.</p>
+                <p class="sg-je-note">Consultá si el salón está abierto y administrá el turno actual.</p>
                 <p class="sg-admin-msg" id="je-estado-error" role="status" aria-live="polite" hidden></p>
                 <div class="sg-je-summary" id="je-estado" aria-live="polite">Consultando jornada actual...</div>
                 <div class="sg-admin-actions" style="margin-top:16px">
@@ -1391,11 +1393,11 @@
               </section>
               <section class="sg-admin-box">
                 <h2>Abrir o cerrar una jornada</h2>
-                <p class="sg-je-note">Las acciones se envían a los endpoints de jornada del backend. No crean registros ficticios en el navegador.</p>
+                <p class="sg-je-note">Seleccioná un turno para abrir el salón o cerrá la jornada al finalizar la atención.</p>
                 <div class="sg-admin-field" style="margin-bottom:16px"><label for="je-turno-jornada">Turno de apertura</label><select id="je-turno-jornada"><option value="">Turno no seleccionado</option></select></div>
                 <div class="sg-admin-actions"><button type="button" id="je-abrir-jornada" class="sg-admin-primary">Abrir jornada</button><button type="button" id="je-cerrar-jornada" class="sg-admin-secondary sg-je-danger">Cerrar jornada</button></div>
                 <p class="sg-admin-msg" id="je-accion-mensaje" role="status" aria-live="polite" hidden></p>
-                <p class="sg-je-note" style="margin-top:16px">Si hay mesas, pedidos o cuentas pendientes, respetá las validaciones del servidor antes de cerrar.</p>
+                <p class="sg-je-note" style="margin-top:16px">Antes de cerrar, revisá las mesas, pedidos y cuentas pendientes.</p>
               </section>
             </div>
             <section class="sg-admin-box">
@@ -1433,7 +1435,7 @@
               </section>
               <section class="sg-admin-box">
                 <div class="sg-je-between"><h2>Ofertas programadas</h2><button type="button" id="je-actualizar-especiales" class="sg-admin-secondary">Actualizar</button></div>
-                <p class="sg-je-note">Se muestran los registros guardados en la API, no promociones inventadas por el frontend.</p>
+                <p class="sg-je-note">Estas son las promociones programadas para el salón.</p>
                 <p class="sg-admin-msg" id="je-lista-error" role="status" aria-live="polite" hidden></p>
                 <div class="sg-je-list" id="je-lista" aria-live="polite"></div>
               </section>
@@ -1540,5 +1542,7 @@
     <script src="app.js"></script>
     <script src="admin-panel.js"></script>
 
+    <script defer src="savage-cobros-acceso.js"></script>
+<script defer src="savage-final-v8.js"></script>
 </body>
 </html>

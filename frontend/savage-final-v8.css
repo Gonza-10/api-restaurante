@@ -1,0 +1,119 @@
+/* Savage Grill | v8. Ajustes de experiencia, sin sustituir autenticación ni cálculo de importes. */
+:root{--sg8-orange:#ff8000;--sg8-orange-soft:rgba(255,128,0,.14);--sg8-outline:rgba(255,128,0,.35)}
+.sg-cobros-portal .sg-cobros-header{border-bottom:1px solid rgba(255,128,0,.27)}
+.sg-cobros-portal .sg-v5-brand{pointer-events:auto}
+.sg-cobros-portal .sg-v5-brand .sg-brand-word{letter-spacing:-.07em;font-weight:950}
+.sg-cobros-portal .sg-v5-brand .sg-brand-role{margin:1px 0 0;color:var(--sg8-orange)!important;border:0!important;padding:0!important;letter-spacing:.13em}
+.sg-cobros-portal .sg-salir-v8{display:inline-flex;gap:7px;align-items:center;justify-content:center;min-height:42px;background:rgba(238,65,55,.11);border:1px solid rgba(238,65,55,.48);color:#ff625e;border-radius:11px;padding:9px 13px;font:750 12px Montserrat,Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:background .16s ease}
+.sg-cobros-portal .sg-salir-v8:hover{background:rgba(238,65,55,.22)}
+.sg-cobros-portal .sg-salir-v8 svg{width:17px;height:17px}
+.sg-cobros-portal .sg-identidad-v8{font-weight:750;letter-spacing:-.01em}
+.sg-cobros-portal .sg-cobros-main .tarjeta{border:1px solid rgba(255,128,0,.16);box-shadow:0 12px 30px rgba(0,0,0,.14);border-radius:18px;min-width:0}
+.sg-cobros-portal .sg-cobros-main .tarjeta h2{letter-spacing:-.025em}
+.sg-cobros-portal .sg-cobros-nav{border-color:rgba(255,128,0,.22)!important}
+.sg-cobros-portal .sg-cobros-nav button.activo{background:var(--sg8-orange-soft)!important;border-color:var(--sg8-outline)!important;color:#ff9e36!important}
+.sg-cobros-portal .sg-cobros-nav button:not(.activo):hover{background:rgba(255,128,0,.06)}
+.sg-cobros-portal .sg-cobros-main .tarjeta > h2:first-child:before{content:"";display:inline-block;width:4px;height:19px;background:var(--sg8-orange);border-radius:6px;margin-right:11px;vertical-align:-3px}
+.sg-cobros-portal .sg-cobros-main input,.sg-cobros-portal .sg-cobros-main select,.sg-cobros-portal .sg-cobros-main textarea{min-width:0;font-weight:550!important;letter-spacing:normal;border-radius:11px;}
+.sg-cobros-portal .sg-cobros-main input::placeholder,.sg-cobros-portal .sg-cobros-main textarea::placeholder{font-weight:400!important;color:#81776f!important;opacity:1}
+.sg-cobros-portal .sg-ayuda-v8{display:block;margin:7px 0 2px;font-size:11px;font-weight:450;line-height:1.55;color:#ab9a8e}
+.sg-cobros-portal .sg-cobros-main .fila-dato{display:grid!important;grid-template-columns:minmax(110px,1fr) minmax(0,1fr);gap:12px;align-items:center;border:1px solid rgba(255,128,0,.15)!important;border-left:3px solid var(--sg8-orange)!important;background:rgba(255,128,0,.035)!important;border-radius:10px;padding:13px 14px!important;margin-bottom:8px;min-width:0;line-height:1.4}
+.sg-cobros-portal .sg-cobros-main .fila-dato span{min-width:0;white-space:normal;overflow-wrap:anywhere;font-size:13px;color:#c5b7a9;text-align:left}
+.sg-cobros-portal .sg-cobros-main .fila-dato strong{min-width:0;text-align:right;overflow-wrap:anywhere;font-weight:730;font-size:13px;color:#f3eeeb;font-variant-numeric:tabular-nums}
+.sg-cobros-portal .sg-caja-resumen-v8 .fila-dato{margin-bottom:9px}
+.sg-cobros-portal .sg-caja-resumen-v8 .fila-dato:first-child{border-left-color:#42ce8b!important}
+.sg-cobros-portal .sg-caja-resumen-v8 .fila-dato:first-child strong{color:#42ce8b}
+.sg-cobros-portal .sg-caja-resumen-v8 .sg-caja-fondo-v8{display:grid;gap:7px;margin:7px 0 18px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.sg-cobros-portal .sg-caja-resumen-v8 .sg-caja-fondo-v8 > div{border:1px solid rgba(255,128,0,.19);border-radius:11px;padding:13px 10px;background:rgba(255,128,0,.035)}
+.sg-cobros-portal .sg-caja-resumen-v8 .sg-caja-fondo-v8 span{display:block;color:#bea89a;font-size:11px;font-weight:600;margin-bottom:7px}
+.sg-cobros-portal .sg-caja-resumen-v8 .sg-caja-fondo-v8 b{font-size:16px;letter-spacing:-.02em;word-break:break-word;color:#ffa447}
+.sg-cotizaciones-v8{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0 22px}
+.sg-cotizaciones-v8 .sg-rate-v8{border:1px solid rgba(255,128,0,.22);border-left:3px solid var(--sg8-orange);background:rgba(255,128,0,.045);border-radius:12px;padding:13px;min-width:0}
+.sg-cotizaciones-v8 .sg-rate-v8:nth-child(1){border-left-color:#ff9b36}.sg-cotizaciones-v8 .sg-rate-v8:nth-child(2){border-left-color:#48c985}.sg-cotizaciones-v8 .sg-rate-v8:nth-child(3){border-left-color:#59a9f9}.sg-cotizaciones-v8 .sg-rate-v8:nth-child(4){border-left-color:#ff9b36}
+.sg-cotizaciones-v8 .sg-rate-v8 small{display:block;color:#c1b1a4;font-weight:750;font-size:12px;margin-bottom:8px}
+.sg-cotizaciones-v8 .sg-rate-v8 strong{font-size:clamp(15px,1.6vw,19px);font-weight:850;color:#f5eee8;overflow-wrap:anywhere}
+.sg-cotizaciones-v8 .sg-rate-v8 em{font-size:10px;font-style:normal;color:#8f8580;display:block;margin-top:5px}
+.sg-cobros-portal .sg-cobros-main .primario,.sg-cobros-portal .sg-cobros-main button.primario{background:linear-gradient(125deg,#ff7300,#ff9615);border-color:rgba(255,130,0,.5)!important;font-weight:850}
+.sg-cobros-portal .sg-cobros-main .mini,.sg-cobros-portal .sg-cobros-main .secundario{border-color:rgba(255,128,0,.28)}
+.sg-cobros-portal .sg-cobros-main .mini:hover,.sg-cobros-portal .sg-cobros-main .secundario:hover{background:rgba(255,128,0,.12);color:#ffa23b}
+.sg-cobros-portal .sg-avanzado summary,.sg-cobros-portal details.sg-rate-disclosure summary{cursor:pointer;color:#ffa34b;font-weight:750;line-height:1.5}
+.sg-cobros-portal .sg-avanzado summary:hover{color:#ffbe7b}
+.sg-cobros-portal [hidden]{display:none!important}
+/* Select personalizado: conserva select nativo en DOM para formularios y event handlers */
+.sg-cobros-portal .sg-select-v8{position:relative;min-width:0;width:100%}
+.sg-cobros-portal .sg-select-v8>select{position:absolute!important;inset:0;opacity:0!important;pointer-events:none!important;width:1px;height:1px;}
+.sg-cobros-portal .sg-select-trigger-v8{width:100%;height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#100e0d;color:#f9f1ea;border:1px solid #514138;border-radius:11px;text-align:left;font:750 14px Montserrat,Arial,sans-serif;cursor:pointer}
+.sg-cobros-portal .sg-select-trigger-v8:focus-visible,.sg-cobros-portal .sg-select-option-v8:focus-visible{outline:2px solid #ff8300;outline-offset:2px}
+.sg-cobros-portal .sg-select-trigger-v8 svg{height:15px;width:15px;color:#ff8a20;flex-shrink:0}
+.sg-cobros-portal .sg-select-list-v8{display:none;position:absolute;z-index:999;top:calc(100% + 4px);left:0;right:0;max-height:230px;overflow-y:auto;background:#1c1714;border:1px solid #9b5a24;box-shadow:0 20px 35px rgba(0,0,0,.5);border-radius:11px;padding:5px}
+.sg-cobros-portal .sg-select-v8[data-open="true"] .sg-select-list-v8{display:block}
+.sg-cobros-portal .sg-select-option-v8{width:100%;min-height:41px;padding:9px 11px;text-align:left;border:0;border-radius:7px;background:transparent;color:#f4e8df;font:650 13px Montserrat,Arial,sans-serif;cursor:pointer}
+.sg-cobros-portal .sg-select-option-v8:hover,.sg-cobros-portal .sg-select-option-v8[aria-selected="true"]{background:rgba(255,128,0,.16);color:#ffad53}
+/* Mi cuenta / PAGAR */
+.sg-cobros-portal .sg-v8-badge-mesa{display:block!important;border:0!important;color:#ffa246!important;font-size:10px!important;font-weight:850!important;text-align:center!important;white-space:nowrap}
+.sg-cobros-portal .sg-resultado-cliente-renglones-v8 .fila-dato{border-left-color:#ff8200!important;background:rgba(255,128,0,.05)!important}
+.sg-cobros-portal .sg-resultado-cliente-comensales-v8 .fila-dato{border-left-color:#6198ec!important}
+.sg-cobros-portal .sg-resultado-cliente-pagos-v8 .fila-dato{border-left-color:#47c890!important}
+.sg-cobros-portal .sg-resultado-cliente-equivalentes-v8{display:grid!important;grid-template-columns:1fr!important;gap:9px;margin:10px 0}
+.sg-cobros-portal .sg-resultado-cliente-equivalentes-v8 span{display:block!important;margin:0!important;border-radius:11px!important;border:1px solid rgba(255,128,0,.25)!important;border-left:4px solid #ff9b36!important;padding:12px 14px!important;font-weight:740!important;color:inherit!important;overflow-wrap:anywhere}
+.sg-cobros-portal .sg-resultado-cliente-equivalentes-v8 span:nth-child(1){border-left-color:#48c985!important}
+.sg-cobros-portal .sg-resultado-cliente-equivalentes-v8 span:nth-child(2){border-left-color:#57aafd!important}
+.sg-elegir-pago-v8 .sg-metodos-v8{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.sg-elegir-pago-v8 .sg-metodo-v8{display:flex;align-items:center;gap:12px;text-align:left;min-width:0;border-radius:12px;border:1px solid rgba(255,128,0,.32);background:rgba(255,128,0,.055);color:#faf2eb;padding:14px;cursor:pointer;min-height:75px}
+.sg-elegir-pago-v8 .sg-metodo-v8:hover,.sg-elegir-pago-v8 .sg-metodo-v8:focus-visible{background:rgba(255,128,0,.13);outline-color:#ff8300}
+.sg-elegir-pago-v8 .sg-metodo-v8 svg{flex-shrink:0;color:#ff8e27}
+.sg-elegir-pago-v8 .sg-metodo-v8 span{display:block;font-weight:800;min-width:0;font-size:13px}
+.sg-elegir-pago-v8 .sg-metodo-v8 small{display:block;margin-top:5px;color:#a99b91;font-weight:450;font-size:11px}
+.sg-elegir-pago-v8 .sg-pago-aviso-v8:not(:empty){padding:12px 14px;margin-top:12px;border-radius:10px;border:1px solid rgba(255,128,0,.3);font-size:13px;line-height:1.6}
+.sg-mp-dialog-v8{width:min(620px,calc(100vw - 24px));max-height:min(85dvh,850px);overflow:auto;border:1px solid rgba(255,128,0,.42);border-radius:18px;background:#141110;color:#fff;box-shadow:0 30px 90px rgba(0,0,0,.7);padding:20px}
+.sg-mp-dialog-v8::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(5px)}
+.sg-mp-dialog-v8 .sg-dialog-top-v8{display:flex;align-items:center;justify-content:space-between;color:#ff9831;font-size:19px;margin-bottom:12px}
+.sg-mp-dialog-v8 #sg-cerrar-mp-v8{background:rgba(255,128,0,.12);border:1px solid rgba(255,128,0,.25);border-radius:9px;color:#fff;min-height:39px;min-width:39px;cursor:pointer;font-size:22px}
+.sg-mp-dialog-v8 .sg-acciones-mp-v8{padding:5px;border:0;background:transparent;box-shadow:none}
+.sg-cobros-portal.sg-cliente-identificado-v8 #sg-identificar-cliente{display:none!important}
+/* Catálogo: móvil con controles simétricos a los lados del logo */
+.sg8-catalog-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:clamp(6px,1vw,16px)!important;align-items:center!important;padding:14px clamp(10px,3vw,36px)!important}
+.sg8-catalog-left{display:flex;flex-direction:column;align-items:flex-start;gap:6px;justify-self:start}
+.sg8-catalog-center{display:flex;flex-direction:column;align-items:center;justify-self:center;text-align:center;gap:5px;min-width:0}
+.sg8-catalog-center .logo-restaurante{white-space:nowrap;text-align:center;font-size:clamp(17px,3vw,31px)!important}
+.sg8-catalog-center .sg-mesa-badge{display:inline-flex;white-space:nowrap;font-size:clamp(10px,1.3vw,12px)!important;padding:5px 10px!important;min-height:28px;align-items:center}
+.sg8-catalog-right{display:flex;justify-content:flex-end;align-items:center;justify-self:end}
+.sg8-catalog-right .sg8-pay-link{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:10px;border:1px solid #ff8200;background:#ff8200;color:#130d06;min-height:41px;font:bold 13px Montserrat,Arial,sans-serif;text-decoration:none;white-space:nowrap}
+.sg8-catalog-left .sg-salir-cliente{min-height:38px;min-width:60px!important;padding:5px 10px!important;transform:none!important;margin:0!important;font-size:12px!important}
+.sg8-catalog-left [data-savage-theme] .sg-theme-trigger{min-width:38px;min-height:38px;transform:none!important}
+.sg8-catalog-left [data-savage-theme]{display:flex;align-items:center}
+/* Carrito: selección sin caja ni pagos. */
+.sg-comensal-v8{display:flex;flex-direction:column;gap:7px;padding:15px 16px;border:1px solid rgba(255,128,0,.25);border-radius:13px}
+.sg-comensal-v8 label{font-weight:720;color:var(--text-main)}.sg-comensal-v8 small{display:block;font-weight:450;color:var(--text-muted);margin-top:3px}
+.sg-comensal-v8 input{padding:12px;border-radius:9px;border:1px solid var(--glass-border);background:var(--input-bg,#101010);color:var(--text-main);font:500 14px Montserrat,Arial,sans-serif;width:100%;box-sizing:border-box}
+/* Light theme: ensure all added UI remains legible. */
+body.light-mode.sg-cobros-portal .sg-cobros-main .fila-dato{background:rgba(255,128,0,.04)!important;border-color:rgba(180,93,19,.18)!important}
+body.light-mode.sg-cobros-portal .sg-cobros-main .fila-dato strong{color:#2b211c}
+body.light-mode.sg-cobros-portal .sg-cobros-main .fila-dato span{color:#69564a}
+body.light-mode.sg-cobros-portal .sg-select-trigger-v8{background:#fffaf7;color:#2b211c;border-color:#d9bba2}
+body.light-mode.sg-cobros-portal .sg-select-list-v8{background:#fffaf7;border-color:#f19a54;box-shadow:0 15px 35px rgba(77,42,14,.25)}
+body.light-mode.sg-cobros-portal .sg-select-option-v8{color:#281d17}
+body.light-mode.sg-cobros-portal .sg-cotizaciones-v8 .sg-rate-v8 strong,body.light-mode.sg-cobros-portal .sg-caja-resumen-v8 .sg-caja-fondo-v8 b{color:#a34c0e}
+body.light-mode.sg-cobros-portal .sg-elegir-pago-v8 .sg-metodo-v8{color:#25201d;background:#fff8f2}
+body.light-mode.sg-cobros-portal .sg-mp-dialog-v8{background:#fff9f4;color:#231910}
+body.light-mode.sg-cobros-portal .sg-salir-v8{color:#b63434}
+@media(max-width:850px){.sg-cotizaciones-v8{grid-template-columns:1fr}.sg-elegir-pago-v8 .sg-metodos-v8{grid-template-columns:1fr}}
+@media(max-width:600px){
+ .sg-cobros-portal .sg-cobros-main .fila-dato{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:8px;padding:11px 10px!important}
+ .sg-cobros-portal .sg-cobros-main .fila-dato span,.sg-cobros-portal .sg-cobros-main .fila-dato strong{font-size:12px}
+ .sg-cobros-portal .sg-salir-v8{padding:7px;min-width:37px;min-height:37px}
+ .sg-cobros-portal .sg-salir-v8 span{display:none}
+ .sg-cobros-portal .sg-v5-brand .sg-brand-word{font-size:clamp(17px,4.3vw,23px)}
+ .sg8-catalog-head{grid-template-columns:minmax(60px,1fr) auto minmax(60px,1fr)!important}
+ .sg8-catalog-center .logo-restaurante{font-size:clamp(17px,5vw,24px)!important;letter-spacing:-.08em}
+ .sg8-catalog-right .sg8-pay-link{padding:7px 10px;font-size:11px;min-height:37px}
+ .sg8-catalog-left .sg-salir-cliente{min-width:45px!important;padding:6px!important;font-size:10px!important}
+ .sg8-catalog-center .sg-mesa-badge{font-size:10px!important}
+}
+@media(max-width:375px){.sg-cobros-portal .sg-header-v5{gap:4px}.sg-cobros-portal .sg-v5-back{min-width:32px;padding:5px;width:34px}.sg-cobros-portal .sg-v5-brand .sg-brand-word{font-size:16px}.sg-cobros-portal .sg-v5-right{gap:4px}.sg-cobros-portal [data-savage-theme] .sg-theme-trigger{width:35px!important;height:35px!important}.sg8-catalog-center .logo-restaurante{font-size:16px!important}}
+@media(prefers-reduced-motion:reduce){.sg-cobros-portal *{scroll-behavior:auto!important;transition:none!important}}
+/* Titulares de Mozo y Cocina: centrados y sin línea decorativa. */
+.salon-shell .top-bar>.brand.sg-brand-lockup,.cocina-header .cocina-marca{align-items:center!important;justify-content:center!important;text-align:center!important}
+.salon-shell .top-bar>.brand .sg-role-unified,.cocina-header .cocina-marca .sg-role-unified{display:block!important;align-self:center!important;text-align:center!important;margin:5px 0 0!important;padding:0!important;border:0!important}
+.salon-shell .top-bar>.brand .sg-role-unified::before,.cocina-header .cocina-marca .sg-role-unified::before{display:none!important;content:none!important}
+body .sg-header.sg8-catalog-head{display:grid!important;flex-direction:initial!important;justify-content:normal!important;align-items:center!important;text-align:initial!important;gap:clamp(6px,1vw,16px)!important}

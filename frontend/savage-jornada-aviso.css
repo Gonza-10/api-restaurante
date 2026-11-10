@@ -1,0 +1,17 @@
+#overlay-local-cerrado.sg-jornada-aviso{display:flex;gap:18px;align-items:center;justify-content:space-between;margin:0 0 22px;padding:19px 21px;border-radius:17px;border:1px solid rgba(255,122,0,.40);background:linear-gradient(125deg,rgba(255,122,0,.12),rgba(0,0,0,.38));color:var(--text-main);max-width:100%;overflow-wrap:anywhere}
+#overlay-local-cerrado[hidden]{display:none!important}
+.sg-jornada-aviso strong{display:block;font-size:clamp(17px,2.4vw,22px);font-weight:900;color:var(--primary-orange)}
+.sg-jornada-aviso p{font-size:14px;line-height:1.55;color:var(--text-muted);margin:7px 0 0}
+.sg-jornada-acciones{display:flex;flex:0 0 auto;gap:8px;flex-wrap:wrap}
+.sg-jornada-acciones a,.sg-jornada-acciones button{min-height:43px;display:inline-flex;align-items:center;justify-content:center;padding:10px 13px;border-radius:10px;border:1px solid #f80;background:#f80;color:#fff;font-weight:800;font:inherit;text-decoration:none;cursor:pointer}
+.sg-jornada-acciones button{background:transparent;color:var(--text-main);border-color:var(--glass-border)}
+body.sg-jornada-cerrada .sg-card-add{opacity:.5;cursor:not-allowed}
+@media(max-width:730px){#overlay-local-cerrado.sg-jornada-aviso{flex-direction:column;align-items:stretch}.sg-jornada-acciones{flex:1 1 auto}.sg-jornada-acciones>*{flex:1 1 120px}}
+
+/* Aviso integrado al lenguaje visual del restaurante. */
+#overlay-local-cerrado.sg-jornada-aviso{border-radius:14px;background:var(--glass-bg,rgba(25,25,25,.95));border:1px solid var(--glass-border,rgba(255,122,0,.25));box-shadow:none}
+#overlay-local-cerrado.sg-jornada-aviso strong{display:flex;gap:10px;align-items:center;color:var(--text-main,#fff);font-size:clamp(16px,2vw,20px);letter-spacing:-.02em}
+#overlay-local-cerrado.sg-jornada-aviso strong svg{width:22px;height:22px;flex:0 0 22px;color:var(--primary-orange,#ff7a00)}
+body.light-mode #overlay-local-cerrado.sg-jornada-aviso{background:rgba(255,255,255,.96);border-color:#e6d2c1}
+body.light-mode #overlay-local-cerrado.sg-jornada-aviso strong{color:#242121}
+@media(max-width:430px){#overlay-local-cerrado.sg-jornada-aviso{padding:15px 14px;gap:13px}#overlay-local-cerrado.sg-jornada-aviso p{font-size:12.5px}.sg-jornada-acciones>*{min-width:0;font-size:12px}}

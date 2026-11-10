@@ -1,0 +1,27 @@
+/* Menu lateral responsive: boton a la derecha = panel desde la derecha. */
+@media (max-width: 900px) {
+  body.sg-menu-derecha .sg-panel-lateral-derecha {
+    position:fixed !important;
+    right:0 !important;
+    left:auto !important;
+    top:0 !important;
+    bottom:0 !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    width:min(354px, 89vw) !important;
+    max-width:89vw !important;
+    z-index:9998 !important;
+    box-sizing:border-box !important;
+    transform:translateX(105%) !important;
+    transition:transform .25s ease !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
+    box-shadow:-20px 0 55px rgba(0,0,0,.40);
+  }
+  body.sg-menu-derecha .sg-panel-lateral-derecha.sg-panel-lateral-abierto {
+    transform:translateX(0) !important;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  body.sg-menu-derecha .sg-panel-lateral-derecha {transition:none !important;}
+}

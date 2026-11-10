@@ -1,0 +1,22 @@
+/* Savage Grill · unificar logo centrado sin alterar controles ni eventos. */
+@media(min-width:761px){
+  .salon-shell .top-bar,.sg-header:not(.sg-cobros-header),.cocina-header.sg-header{position:relative!important;justify-content:flex-end!important}
+  .salon-shell .top-bar>.brand,.sg-header:not(.sg-cobros-header)>.logo-restaurante,.cocina-header.sg-header>.cocina-marca{position:absolute;left:50%;transform:translateX(-50%);text-align:center;z-index:1}
+  .salon-shell .top-bar>.sg-mozo-acciones,.sg-header:not(.sg-cobros-header)>.sg-header-actions,.sg-header:not(.sg-cobros-header)>.carrito-header-acciones,.cocina-header.sg-header>.cocina-header-acciones{position:relative;z-index:2}
+}
+@media(max-width:760px){
+  .salon-shell .top-bar,.sg-header:not(.sg-cobros-header),.cocina-header.sg-header{display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;text-align:center;gap:11px!important;padding:14px 12px!important}
+  .salon-shell .top-bar>.brand,.sg-header:not(.sg-cobros-header)>.logo-restaurante,.cocina-header.sg-header>.cocina-marca{position:static!important;transform:none!important;text-align:center;margin:0 auto!important}
+  .salon-shell .top-bar>.sg-mozo-acciones,.sg-header:not(.sg-cobros-header)>.sg-header-actions,.sg-header:not(.sg-cobros-header)>.carrito-header-acciones,.cocina-header.sg-header>.cocina-header-acciones{display:flex!important;align-items:center;justify-content:center;flex-wrap:wrap;max-width:100%;gap:8px!important}
+  .salon-shell .top-bar>.brand .sg-role-unified,.cocina-header.sg-header>.cocina-marca .sg-role-unified{text-align:center}
+  .sg-admin-mobilebar-top,.g-mobilebar-top{position:relative;display:flex!important;align-items:center;justify-content:flex-end!important;min-height:58px}
+  .sg-admin-mobilebar-top>.sg-admin-mobile-brand,.g-mobilebar-top>.g-mobile-brand{position:absolute;left:50%;transform:translateX(-50%);max-width:52vw;text-align:center;line-height:1.1}
+  .sg-admin-mobilebar-top>.sg-admin-mobile-actions,.g-mobilebar-top>.g-mobile-actions{position:relative;z-index:2;max-width:46%;margin-left:auto}
+}
+@media(max-width:410px){
+  .sg-admin-mobilebar-top>.sg-admin-mobile-brand,.g-mobilebar-top>.g-mobile-brand{font-size:clamp(15px,4.7vw,20px)}
+  .sg-admin-menu-trigger span,.g-menu-trigger span{display:none!important}
+  .sg-header:not(.sg-cobros-header)>.sg-header-actions,.sg-header:not(.sg-cobros-header)>.carrito-header-acciones{gap:5px!important}
+  .sg-header:not(.sg-cobros-header)>.sg-header-actions>*{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){.salon-shell .top-bar>.brand{transition:none}}

@@ -6,8 +6,9 @@
     <title>Acceso a Mesa - Savage Grill</title>
     <!-- Reutilizamos el archivo de estilos centralizado -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-pin-responsive.css">
 </head>
-<body>
+<body class="sg-pin-responsive">
 
     <div class="login-page">
         <div class="login-shell" style="grid-template-columns: 1fr; max-width: 500px; min-height: auto;">
@@ -43,10 +44,9 @@
                         </button>
                     </form>
 
-                    <div style="margin-top: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <div style="width: 8px; height: 8px; background-color: var(--success); border-radius: 50%;"></div>
-                        <span>Sistema conectado al servidor local</span>
-                    </div>
+                    <p style="margin-top: 30px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.6;">
+                        ¿No tenés el PIN? Pedíselo al mozo.
+                    </p>
 
                 </div>
             </div>
@@ -159,5 +159,6 @@
             document.body.appendChild(btnTema);
         });
     </script>
+    <script defer src="savage-cobros-acceso.js"></script>
 </body>
 </html>

@@ -1,0 +1,24 @@
+/* Savage Grill · encabezado centrado para cobros de personal y mi cuenta. */
+.sg-cobros-portal .sg-header-v5{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;isolation:isolate;position:relative;min-height:82px;padding-inline:clamp(12px,3vw,40px)}
+.sg-cobros-portal .sg-v5-left,.sg-cobros-portal .sg-v5-right{display:flex;align-items:center;gap:12px;min-width:0}
+.sg-cobros-portal .sg-v5-left{justify-self:start}.sg-cobros-portal .sg-v5-right{justify-self:end}
+.sg-cobros-portal .sg-v5-brand{align-items:center!important;justify-self:center;text-align:center;gap:4px;white-space:nowrap}
+.sg-cobros-portal .sg-v5-brand .sg-brand-role{border:0;padding:0;letter-spacing:.14em}
+.sg-cobros-portal .sg-v5-back{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:42px;padding:9px 12px;border:1px solid #544338;border-radius:10px;background:#231b17;color:#ffb46e;font:800 13px 'Montserrat',sans-serif;text-decoration:none;white-space:nowrap}
+.sg-cobros-portal .sg-v5-back:hover,.sg-cobros-portal .sg-v5-menu>summary:hover{border-color:#ff7a00}
+.sg-cobros-portal .sg-v5-mesa,.sg-cobros-portal .sg-v5-rol{font:700 11px 'Montserrat',sans-serif;color:#b6aaa0;white-space:nowrap}
+.sg-cobros-portal .sg-v5-menu{position:relative}.sg-cobros-portal .sg-v5-menu>summary{display:flex;align-items:center;justify-content:center;width:43px;height:43px;list-style:none;cursor:pointer;color:#ff9b36;background:#1a1511;border:1px solid #61412b;border-radius:10px}
+.sg-cobros-portal .sg-v5-menu>summary::-webkit-details-marker{display:none}
+.sg-cobros-portal .sg-v5-popover{position:absolute;z-index:200;right:0;top:calc(100% + 9px);width:min(245px,calc(100vw - 22px));display:flex;flex-direction:column;gap:4px;padding:9px;border:1px solid #654126;border-radius:12px;background:#181614;box-shadow:0 16px 36px rgba(0,0,0,.45)}
+.sg-cobros-portal .sg-v5-popover a,.sg-cobros-portal .sg-v5-popover button{display:block;min-height:43px;padding:11px 13px;border:0;border-radius:8px;background:transparent;color:#fff;text-align:left;font:700 13px 'Montserrat',sans-serif;text-decoration:none;cursor:pointer}
+.sg-cobros-portal .sg-v5-popover a:hover,.sg-cobros-portal .sg-v5-popover button:hover{background:rgba(255,122,0,.15);color:#ffb46e}
+.sg-cobros-portal .sg-v5-cubierto-aviso{margin-top:10px;padding:12px 14px;border-left:3px solid #ff7a00;background:rgba(255,122,0,.06);font-size:12px;line-height:1.5}
+body.sg-cobros-portal.light-mode .sg-v5-back,body.sg-cobros-portal.light-mode .sg-v5-menu>summary{background:#fff9f5;border-color:#e6d0c0;color:#9d450b}
+body.sg-cobros-portal.light-mode .sg-v5-mesa,body.sg-cobros-portal.light-mode .sg-v5-rol{color:#64574e}
+body.sg-cobros-portal.light-mode .sg-v5-popover{background:#fff;border-color:#ead6c8;box-shadow:0 14px 30px rgba(65,34,7,.16)}
+body.sg-cobros-portal.light-mode .sg-v5-popover a,body.sg-cobros-portal.light-mode .sg-v5-popover button{color:#25201c}
+body.sg-cobros-portal.light-mode .sg-v5-cubierto-aviso{background:#fff8f1}
+@media(max-width:860px){.sg-cobros-portal .sg-v5-rol,.sg-cobros-portal .sg-v5-mesa{display:none}}
+@media(max-width:530px){.sg-cobros-portal .sg-header-v5{padding-inline:12px;gap:6px;min-height:66px}.sg-cobros-portal .sg-v5-brand .sg-brand-word{font-size:clamp(16px,4.6vw,24px);letter-spacing:-.05em}.sg-cobros-portal .sg-v5-brand .sg-brand-role{font-size:7px}.sg-cobros-portal .sg-v5-left,.sg-cobros-portal .sg-v5-right{gap:6px}.sg-cobros-portal .sg-v5-back{width:38px;height:38px;padding:6px}.sg-cobros-portal .sg-v5-back span{display:none}.sg-cobros-portal .sg-v5-menu>summary{width:38px;height:38px}.sg-cobros-portal .sg-v5-right [data-savage-theme] .sg-theme-trigger{width:38px;height:38px}}
+@media(max-width:360px){.sg-cobros-portal .sg-header-v5{padding-inline:8px;gap:4px}.sg-cobros-portal .sg-v5-brand .sg-brand-word{font-size:16px}.sg-cobros-portal .sg-v5-back{width:35px;height:35px}.sg-cobros-portal .sg-v5-menu>summary{width:35px;height:35px}.sg-cobros-portal .sg-v5-right [data-savage-theme] .sg-theme-trigger{width:35px;height:35px}}
+@media(prefers-reduced-motion:reduce){.sg-cobros-portal .sg-v5-popover{animation:none}}

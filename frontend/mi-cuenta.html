@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+
+<html lang="es-AR"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#0b0b0b" name="theme-color"/><title>Pagar — Savage Grill</title>
+<link href="styles.css" rel="stylesheet"/><link href="savage-cobros.css" rel="stylesheet"/><link href="savage-cobros-experiencia.css" rel="stylesheet"/><link href="savage-theme.css" rel="stylesheet"/><link href="savage-cobros-header.css" rel="stylesheet"/><script defer="" src="config.js"></script><script defer="" src="savage-theme.js"></script><script defer="" src="savage-cobros-vistas.js"></script><script defer="" src="savage-cobros.js"></script><script defer="" src="savage-cobros-header.js"></script>
+<link href="savage-final-v8.css" rel="stylesheet"/>
+</head><body class="sg-cobros-portal" data-sg-portal="cliente">
+<header class="sg-cobros-header sg-header-v5"><div class="sg-v5-left"><a aria-label="Volver a la pantalla principal" class="sg-v5-back" data-sg-regreso="" href="catalogo.html"><svg aria-hidden="true" fill="none" height="19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24" width="19"><path d="m15 18-6-6 6-6"></path></svg><span>Volver</span></a></div><a aria-label="Savage Grill: ir al inicio" class="sg-cobros-brand sg-v5-brand" data-sg-inicio="" href="catalogo.html"><span class="sg-brand-word">SAVAGE<span>GRILL.</span></span><span class="sg-brand-role">PAGAR</span><span class="sg-v5-mesa sg-v8-badge-mesa" data-sg-numero-mesa="">Mi mesa</span></a><div class="sg-v5-right"><div data-savage-theme="inline"></div><button class="sg-salir-v8" data-sg-salir="" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><path d="M10 17l5-5-5-5M15 12H3M13 3h4a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-4"></path></svg><span>Salir</span></button></div></header>
+<main class="marco sg-cobros-main"><div class="sg-cobros-intro"><p class="ceja">TU CONSUMO</p><h1>Pagar</h1><p>Revisá tus consumos y elegí cómo pagar tu mesa.</p></div>
+<div aria-live="polite" class="alerta" hidden="" id="mensaje-global" role="status"></div>
+<section class="vista" id="vista-cliente">
+<div class="rejilla dos">
+<article class="tarjeta" id="sg-identificar-cliente">
+<h2>Acceso a tu mesa</h2><p class="suave">Ingresá con el PIN que te entregó el mozo para consultar tus consumos.</p>
+<form class="campos" id="form-cliente">
+<label>Mesa<input autocomplete="off" min="1" name="numero_mesa" placeholder="Ej. 2" required="" step="1" type="number"/></label>
+<label>PIN de mesa<input autocomplete="off" inputmode="numeric" maxlength="4" name="pin" pattern="[0-9]{4}" placeholder="••••" required="" type="password"/></label>
+<button class="primario" type="submit">Consultar mi cuenta</button>
+</form>
+</article>
+</div>
+<section class="tarjeta separacion" hidden="" id="resultado-cliente">
+<div class="fila cabecera"><h2>Detalle de tu consumo</h2><strong class="dato-grande" id="cliente-total">—</strong></div>
+<div class="estadisticas"><div><span>Total</span><b id="cliente-total2">—</b></div><div><span>Saldo</span><b id="cliente-saldo">—</b></div><div><span>Estado</span><b id="cliente-estado">—</b></div></div>
+<h3>Productos</h3><div class="filas sg-resultado-cliente-renglones-v8" id="cliente-renglones"></div>
+<div class="rejilla dos"><div><h3>Por comensal</h3><div class="filas sg-resultado-cliente-comensales-v8" id="cliente-comensales"></div></div><div><h3>Pagos registrados</h3><div class="filas sg-resultado-cliente-pagos-v8" id="cliente-pagos"></div></div></div>
+<h3>Equivalentes informativos</h3><div class="chips sg-resultado-cliente-equivalentes-v8" id="cliente-equivalentes"></div>
+</section>
+<section class="tarjeta separacion sg-elegir-pago-v8" hidden="" id="sg-elegir-pago-v8">
+<h2>¿Cómo querés pagar?</h2><p class="suave">Elegí una opción. En pagos presenciales, el mozo se acercará a tu mesa.</p>
+<div class="sg-metodos-v8">
+<button class="sg-metodo-v8" data-sg-tipo="mp" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><rect height="15" rx="2" width="18" x="3" y="5"></rect><path d="M16 13h5M3 9h18"></path></svg><span>Mercado Pago<small>Pagá desde tu celular</small></span></button>
+<button class="sg-metodo-v8" data-sg-tipo="efectivo" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><rect height="14" rx="2" width="20" x="2" y="5"></rect><circle cx="12" cy="12" r="3"></circle><path d="M6 8h.01M18 16h.01"></path></svg><span>Efectivo<small>Pagás al mozo</small></span></button>
+<button class="sg-metodo-v8" data-sg-tipo="tarjeta" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><rect height="14" rx="2" width="20" x="2" y="5"></rect><path d="M2 10h20"></path></svg><span>Tarjeta de débito o crédito<small>Te atiende el mozo</small></span></button>
+<button class="sg-metodo-v8" data-sg-tipo="transferencia" type="button"><svg aria-hidden="true" fill="none" height="22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="22"><path d="m3 10 9-6 9 6M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18"></path></svg><span>Transferencia<small>Requiere verificación del personal</small></span></button>
+</div><div aria-live="polite" class="sg-pago-aviso-v8" id="sg-pago-aviso-v8"></div>
+</section><dialog class="sg-mp-dialog-v8" id="sg-mp-dialog-v8"><div class="sg-dialog-top-v8"><strong>Mercado Pago</strong><button aria-label="Cerrar" id="sg-cerrar-mp-v8" type="button">×</button></div><section class="tarjeta separacion sg-acciones-mp-v8" hidden="" id="acciones-cliente">
+<h2>Pago con Mercado Pago</h2>
+<p class="suave">Pagá toda tu cuenta o una parte. Para abonar en efectivo, avisale al mozo.</p>
+<div class="rejilla dos"><label>Importe a pagar (pesos)<input id="cliente-monto" inputmode="decimal" placeholder="Vacío = saldo completo"/></label><label>Propina (pesos, opcional)<input id="cliente-propina" inputmode="decimal" placeholder="0,00"/></label></div>
+<label class="opcion"><input id="cliente-quiere-factura" type="checkbox"/> Quiero un comprobante a mi nombre</label>
+<label hidden="" id="fila-nombre-factura">Nombre para el comprobante<input id="cliente-nombre-factura" maxlength="120" placeholder="Nombre que debe figurar"/></label>
+<div class="acciones"><button class="primario" id="cliente-pagar" type="button">Continuar con Mercado Pago</button></div>
+
+
+</section></dialog><section class="tarjeta separacion sg-estado-pago-v8" hidden="" id="sg-estado-pago-v8"><h2>Comprobante y seguimiento</h2><p class="suave">Si pagaste con Mercado Pago, podés consultar su estado. Cuando la cuenta esté pagada y hayas pedido comprobante, descargalo desde acá.</p><div class="acciones"><button class="secundario" id="cliente-estado-pago" type="button">Ver estado del pago</button><button class="secundario" id="cliente-cancelar" type="button">Cancelar pago</button></div><div class="detalle" hidden="" id="cliente-pago-info"></div><button class="secundario" hidden="" id="cliente-descargar" type="button">Descargar comprobante PDF</button></section>
+<details class="sg-rate-disclosure separacion"><summary>Consultar cotizaciones de referencia</summary><article class="tarjeta sg-cotizacion-card" id="cotizaciones-caja">
+<div class="fila cabecera"><h2>Cotizaciones</h2><button class="mini" id="refrescar-cotizaciones" type="button">Actualizar</button></div>
+<p class="suave">Valores de referencia. El importe definitivo aparece en tu cuenta.</p>
+<div class="cotizaciones" id="cotizaciones-cliente">Sin consultar</div>
+<p class="nota">El monto a pagar se expresa en pesos argentinos.</p>
+</article></details></section>
+</main><footer class="sg-cobros-footer">SAVAGE GRILL · EXPERIENCIA DEL SALÓN</footer><script defer="" src="savage-final-v8.js"></script>
+</body></html>

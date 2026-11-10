@@ -60,10 +60,13 @@
         .kanban-column { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
         body.light-mode .kanban-column { background: #f8fafc; border-color: #e2e8f0; }
         .kanban-header { padding: 20px; border-bottom: 1px solid var(--glass-border); text-align: center; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
+        body.light-mode .kanban-header { border-bottom-color: #e2e8f0; }
+
         .kanban-body { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .comanda-card { background: rgba(18,18,18,0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
         body.light-mode .comanda-card { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .comanda-card:hover { transform: translateY(-3px); }
+
         .comanda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed var(--text-muted); padding-bottom: 10px; }
         .mesa-badge { background: var(--primary-orange); color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .tiempo-badge { color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
@@ -370,6 +373,8 @@
     <link rel="stylesheet" href="savage-modal-lock.css">
     <script defer src="savage-modal-lock.js"></script>
     <link rel="stylesheet" href="savage-brand-unificado.css">
+<link rel="stylesheet" href="savage-global-centered-header-v5.css">
+<link rel="stylesheet" href="savage-final-v8.css">
 </head>
 <body style="background-color: var(--bg-dark); color: var(--text-main); margin: 0;">
 
@@ -1476,5 +1481,6 @@
         });
     })();
     </script>
+<script defer src="savage-final-v8.js"></script>
 </body>
 </html>

@@ -1,0 +1,80 @@
+/* Savage Grill · Cuenta del cliente / Cobros del salón · misma identidad del resto de la web. */
+:root{--sg-orange:#ff7a00;--sg-ink:#101010}
+html{scroll-behavior:smooth;overflow-x:clip}
+body.sg-cobros-portal{font-family:'Montserrat',Arial,sans-serif!important;color-scheme:dark;overflow-x:hidden;
+ --accent:var(--sg-orange);--bg:#0f0f0f;--panel:#191919;--border:rgba(255,255,255,.12);
+ --input:#0b0b0b;--muted:#a9a9a9;--text:#fff; background:radial-gradient(ellipse at 0 12%,#281710 0%,transparent 45%),#101010}
+body.sg-cobros-portal [hidden]{display:none!important}
+.sg-cobros-header{position:relative;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:78px;padding:14px clamp(16px,4vw,54px);
+ background:#0b0b0b; border-bottom:1px solid #2b2725}
+.sg-cobros-brand{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;text-decoration:none}
+.sg-brand-word{font-family:'Elemental End',sans-serif!important;font-weight:400;font-size:clamp(21px,3.5vw,32px);white-space:nowrap;letter-spacing:-.05em;line-height:1.1;color:#fff}
+.sg-brand-word span{color:#ff7a00}
+.sg-brand-role{font-family:'Montserrat',sans-serif;font-size:9px;font-weight:800;letter-spacing:.15em;color:#9e9690;padding-left:7px;border-left:2px solid #ff7a00}
+.sg-cobros-header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sg-volver{color:#e9dfda;border:1px solid #3f3530;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:800;text-decoration:none}
+.sg-volver:hover{border-color:#ff7a00;color:#ff9b36}
+.sg-cobros-main{width:min(1190px,calc(100% - 40px));padding-top:clamp(24px,5vw,52px);padding-bottom:80px}
+.sg-cobros-intro{margin-bottom:26px}
+.sg-cobros-intro .ceja{font-size:11px;color:#ff7a00;letter-spacing:.2em}
+.sg-cobros-intro h1{font-family:'Montserrat',sans-serif;font-size:clamp(31px,4.5vw,48px);line-height:1.12;font-weight:900;letter-spacing:-.045em;margin:7px 0 10px}
+.sg-cobros-intro>p:last-child{color:#adadad;max-width:690px;font-size:14px;line-height:1.65}
+.sg-cobros-portal .tarjeta{background:#1a1a1a;border:1px solid #34302e;border-radius:16px;box-shadow:none;padding:clamp(18px,2.6vw,26px)}
+.sg-cobros-portal .tarjeta h2{font-family:inherit;font-size:clamp(19px,2.5vw,24px);letter-spacing:-.025em}
+.sg-cobros-portal .tarjeta h3{color:#efefef}
+.sg-cobros-portal .primario{background:#ff7a00;color:#16100a}
+.sg-cobros-portal .primario:hover{background:#ff8b25}
+.sg-cobros-portal .secundario,.sg-cobros-portal .mini{background:#24201e;border:1px solid #544338;color:#ffe3ca}
+.sg-cobros-portal .secundario:hover,.sg-cobros-portal .mini:hover{border-color:#ff7a00;background:#2a211b}
+.sg-cobros-portal .fila-dato,.sg-cobros-portal .estadisticas>div{background:#111; border:1px solid #312d2a}
+.sg-cobros-portal input,.sg-cobros-portal select{background:#111;color:#f8f8f8;border-color:#4c423e;font-size:16px}
+.sg-cobros-portal input:focus-visible,.sg-cobros-portal select:focus-visible{outline:2px solid #ff7a00;outline-offset:1px}
+.sg-cobros-portal .detalle{background:#211812;color:#ffe6d1;border-left-color:#ff7a00}
+.sg-cobros-portal .suave,.sg-cobros-portal .nota{color:#bcb3ad}
+.sg-cobros-portal .sg-cobros-nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 30px;padding:6px;background:#121212;border:1px solid #2b2725;border-radius:12px}
+.sg-cobros-nav button{appearance:none;background:transparent;color:#b2aaa4;border:1px solid transparent;border-radius:9px;padding:12px 15px;font:800 13px 'Montserrat',sans-serif;cursor:pointer}
+.sg-cobros-nav button.activo{background:rgba(255,122,0,.13);border-color:rgba(255,122,0,.55);color:#ff9c36}
+.sg-cobros-nav button:hover{color:#ff9c36}
+.sg-panel-intro{margin:18px 0 17px}.sg-panel-intro h2{font-size:clamp(21px,3vw,28px);margin:0 0 6px}.sg-panel-intro p{color:#a79e98;font-size:14px;margin:0}
+.sg-staff-main-grid{align-items:start}
+.sg-cobros-portal .sg-avanzado{margin-top:18px;border-top:1px solid #352e29;padding-top:14px}
+.sg-avanzado summary{font-size:13px;color:#ff9d4e;cursor:pointer;font-weight:700;padding:5px 0}
+.sg-avanzado form{margin-top:14px}
+.sg-cobros-portal #personal-mesas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sg-cobros-portal #personal-mesas .mini{font-size:13px;min-height:48px;text-align:left;white-space:normal}
+.sg-cobros-portal #form-efectivo{gap:15px}
+.sg-cobros-portal .sg-link-pago{display:inline-flex;min-height:48px;padding:12px 19px;margin-top:12px;align-items:center;justify-content:center;text-decoration:none;color:#1f130a;border-radius:10px;font-weight:800}
+.sg-cobros-portal .sg-cotizacion-card{align-self:start}
+.sg-cobros-footer{text-align:center;color:#777;border-top:1px solid #292622;padding:26px;font-size:11px;letter-spacing:.15em}
+.sg-cobros-portal .sg-theme-host{z-index:250}.sg-cobros-portal .sg-theme-popup{max-width:calc(100vw - 24px)}
+.sg-cobros-portal .alerta{font-size:13px}
+body.sg-cobros-portal.light-mode{--bg:#f7f5f2;--panel:#fff;--input:#fff;--border:#dfd8d1;--muted:#666;--text:#202020;color-scheme:light;background:#f4f2ef;color:#212121}
+body.sg-cobros-portal.light-mode .sg-cobros-header{background:#fff;border-color:#e5ddd7}
+body.sg-cobros-portal.light-mode .sg-brand-word{color:#1b1917}
+body.sg-cobros-portal.light-mode .sg-brand-role{color:#5f5750}
+body.sg-cobros-portal.light-mode .sg-volver{color:#3c3430;border-color:#d2c7bf}
+body.sg-cobros-portal.light-mode .sg-cobros-intro>p:last-child,body.sg-cobros-portal.light-mode .sg-panel-intro p{color:#615b56}
+body.sg-cobros-portal.light-mode .tarjeta{background:#fff;border-color:#dfd6d0}
+body.sg-cobros-portal.light-mode .tarjeta h3{color:#27221f}
+body.sg-cobros-portal.light-mode input,body.sg-cobros-portal.light-mode select{background:#fff;color:#171717;border-color:#c9beb5}
+body.sg-cobros-portal.light-mode .fila-dato,body.sg-cobros-portal.light-mode .estadisticas>div{background:#f9f7f5;border-color:#dfd6d0}
+body.sg-cobros-portal.light-mode .sg-cobros-nav{background:#fff;border-color:#e7ddd5}
+body.sg-cobros-portal.light-mode .sg-cobros-nav button{color:#5a524c}
+body.sg-cobros-portal.light-mode .sg-cobros-nav button.activo{color:#994000}
+body.sg-cobros-portal.light-mode .suave,body.sg-cobros-portal.light-mode .nota{color:#585450}
+body.sg-cobros-portal.light-mode .sg-avanzado{border-color:#e7ddd5}
+body.sg-cobros-portal.light-mode .sg-cobros-footer{color:#776f68}
+@media(max-width:790px){.sg-cobros-main{width:calc(100% - 28px)}.sg-cobros-portal .rejilla.dos{grid-template-columns:1fr;gap:15px}.sg-cobros-portal .estadisticas{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.sg-cobros-header{padding:12px 14px;min-height:69px}.sg-brand-word{font-size:clamp(19px,5.5vw,25px)}.sg-brand-role{font-size:8px}.sg-cobros-header-actions{gap:6px}.sg-volver{padding:9px 10px;font-size:12px}.sg-cobros-main{width:calc(100% - 22px);padding-top:24px}.sg-cobros-portal .tarjeta{padding:17px 14px}.sg-cobros-portal .estadisticas{grid-template-columns:1fr}.sg-cobros-nav{gap:3px}.sg-cobros-nav button{flex:1 1 44%;padding:11px 8px;font-size:12px}.sg-cobros-portal .acciones > *{flex:1 1 100%}#personal-mesas{grid-template-columns:1fr 1fr}.sg-cobros-intro h1{font-size:30px}}
+@media(max-width:360px){.sg-cobros-header{gap:5px}.sg-brand-word{font-size:18px}.sg-volver{font-size:11px;padding:8px}.sg-cobros-header-actions .sg-theme-trigger{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){.sg-cobros-portal *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Informacion secundaria y cierre de caja solo bajo demanda. */
+.sg-cobros-portal .sg-rate-disclosure{margin-top:21px;padding:15px;border:1px solid #39322e;border-radius:13px;background:#151313}
+.sg-cobros-portal .sg-rate-disclosure>summary{cursor:pointer;color:#ff9b36;font-size:13px;font-weight:800;list-style:none;padding:2px 0}
+.sg-cobros-portal .sg-rate-disclosure>summary::after{content:'+';float:right;font-size:18px;line-height:1}
+.sg-cobros-portal .sg-rate-disclosure[open]>summary::after{content:'–'}
+.sg-cobros-portal .sg-rate-disclosure[open]>summary{margin-bottom:12px}
+.sg-cobros-portal .sg-rate-disclosure>.tarjeta{border-color:transparent;background:transparent;padding:0}
+body.sg-cobros-portal.light-mode .sg-rate-disclosure{background:#fff;border-color:#ddd1c9}
+.sg-cobros-portal .sg-rate-disclosure .campos{margin-top:15px}
