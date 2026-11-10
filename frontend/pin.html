@@ -6,8 +6,11 @@
     <title>Acceso a Mesa - Savage Grill</title>
     <!-- Reutilizamos el archivo de estilos centralizado -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="savage-theme.css">
+    <link rel="stylesheet" href="savage-pin-responsive.css">
+    <script src="savage-theme.js" defer></script>
 </head>
-<body>
+<body class="sg-pin-responsive">
 
     <div class="login-page">
         <div class="login-shell" style="grid-template-columns: 1fr; max-width: 500px; min-height: auto;">
@@ -57,17 +60,14 @@
                         <div id="nombre-error" class="message error" style="display: none; justify-content: center; margin-top: 10px;"></div>
                         <button type="submit" id="btn-nombre" class="btn-primary" style="margin-top: 24px;">Entrar al Menú <span class="btn-arrow">→</span></button>
                     </form>
-
-                    <div style="margin-top: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <div style="width: 8px; height: 8px; background-color: var(--success); border-radius: 50%;"></div>
-                        <span>Sistema conectado al servidor local</span>
-                    </div>
-
                 </div>
             </div>
         </div>
     </div>
 
+    <div class="sg-pin-theme-control"
+        data-savage-theme="inline"
+        aria-label="Elegir apariencia"></div>
     <script src="config.js"></script>
     <script src="savage-mesa.js"></script>
     <script>
@@ -233,30 +233,6 @@
         if (new URLSearchParams(location.search).get('paso') === 'nombre' && window.SGM.numero() && window.SGM.pin() && window.SGM.esGrupal()) {
             mostrarPasoNombre();
         }
-    </script>
-    <script>
-        // Inyector local de Modo Claro/Oscuro
-        document.addEventListener('DOMContentLoaded', () => {
-            const temaGuardado = localStorage.getItem('savage-tema');
-            if (temaGuardado === 'light') document.body.classList.add('light-mode');
-
-            const btnTema = document.createElement('button');
-            btnTema.className = 'btn-tema';
-            
-            const actualizarTexto = () => {
-                btnTema.innerHTML = document.body.classList.contains('light-mode') ? 'Modo: Claro' : 'Modo: Oscuro';
-            };
-            
-            actualizarTexto();
-            
-            btnTema.onclick = () => {
-                document.body.classList.toggle('light-mode');
-                actualizarTexto();
-                localStorage.setItem('savage-tema', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-            };
-            
-            document.body.appendChild(btnTema);
-        });
     </script>
 </body>
 </html>
